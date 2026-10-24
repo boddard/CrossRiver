@@ -182,6 +182,16 @@ tr.is-off td { color: var(--muted); }
 .chips button { background: none; border: 0; width: 26px; height: 26px; border-radius: 50%; color: var(--muted); font-size: 16px; line-height: 1; }
 .chips button:hover { background: var(--line); color: var(--ink); }
 .opts { display: grid; gap: 10px; }
+.modes { border: 0; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.modes legend { padding: 0; margin-bottom: 8px; }
+.mode { position: relative; display: block; cursor: pointer; }
+.mode input { position: absolute; opacity: 0; pointer-events: none; }
+.mode span { display: grid; gap: 4px; height: 100%; padding: 12px 14px; border: 2px solid var(--line); border-radius: 10px; background: var(--asphalt); transition: border-color .15s; }
+.mode b { font: 900 20px/1 var(--display); text-transform: uppercase; letter-spacing: .03em; }
+.mode small { color: var(--muted); font-size: 13px; line-height: 1.35; }
+.mode input:checked + span { border-color: var(--bus); box-shadow: 0 0 0 3px rgba(245,179,1,.18); }
+.mode input:checked + span b { color: var(--bus); }
+.mode input:focus-visible + span { outline: 2px solid var(--bus); outline-offset: 2px; }
 .opt { display: flex; gap: 10px; align-items: flex-start; }
 .opt input { width: 20px; height: 20px; accent-color: var(--bus); margin-top: 2px; flex: none; }
 .opt span small { display: block; color: var(--muted); font-size: 13px; }
@@ -258,7 +268,15 @@ details p { max-width: 65ch; color: var(--muted); }
     { key: "C", sym: "♣", name: "Clubs", red: false },
   ];
   const RANKS = ["2","3","4","5","6","7","8","9","10","J","Q","K","A"];
-  const STOPS = [["Red / Black", "Red/Blk"], ["Higher / Lower", "Hi/Lo"], ["Inside / Outside", "In/Out"], ["Suit", "Suit"]];
+  // Each mode is four cards. Classic asks four different questions; Higher or Lower deals a free start card, then three hi/lo calls in a row.
+  const MODES = {
+    classic: { name: "Classic", dots: ["1", "2", "3", "4"],
+      stops: [["Red / Black", "Red/Blk"], ["Higher / Lower", "Hi/Lo"], ["Inside / Outside", "In/Out"], ["Suit", "Suit"]] },
+    hilo: { name: "Higher or Lower", dots: ["S", "1", "2", "3"],
+      stops: [["Start card", "Start"], ["Guess 1", "Guess 1"], ["Guess 2", "Guess 2"], ["Guess 3", "Guess 3"]] },
+  };
+  const mode = () => MODES[state.settings.mode] ? state.settings.mode : "classic";
+  const hilo = () => mode() === "hilo";
   const STORE = "fthebus.v1";
 
   const app = document.getElementById("app");
@@ -273,7 +291,7 @@ details p { max-width: 65ch; color: var(--muted); }
       screen: "setup",
       players: ["Alex", "Sam", "Jordan"].map(newPlayer),
       sample: true,
-      settings: { acesHigh: true, tiesMiss: true },
+      settings: { acesHigh: true, tiesMiss: true, mode: "classic" },
       current: 0,
       starter: 0,
       deck: [],
@@ -315,6 +333,11 @@ details p { max-width: 65ch; color: var(--muted); }
   // ---- game ----
   function judge(stage, guess, card) {
     const v = value(card), ties = state.settings.tiesMiss;
+    if (hilo()) {
+      const a = value(state.row[stage - 1]);
+      if (v === a) return !ties;
+      return guess === "higher" ? v > a : v < a;
+    }
     if (stage === 0) return (guess === "red") === suitOf(card).red;
     if (stage === 1) {
       const a = value(state.row[0]);
@@ -353,7 +376,9 @@ details p { max-width: 65ch; color: var(--muted); }
     } else {
       fx = "good";
       state.stage += 1;
-      state.lastGood = label(card) + ". Card " + (stage + 1) + " is good.";
+      state.lastGood = hilo()
+        ? `${label(card)}. ${stage} right, ${3 - stage} to go.`
+        : label(card) + ". Card " + (stage + 1) + " is good.";
     }
     save(); render();
   }
@@ -367,6 +392,7 @@ details p { max-width: 65ch; color: var(--muted); }
   function beginTurn(idx) {
     state.current = idx; state.players[idx].tries += 1;
     state.row = []; state.stage = 0; state.phase = "guess"; state.lastGood = ""; state.dealt = -1;
+    if (hilo()) { state.row[0] = draw(); state.stage = 1; state.dealt = 0; }
     fx = "turn";
     save(); render();
   }
@@ -411,12 +437,12 @@ details p { max-width: 65ch; color: var(--muted); }
   }
 
   function stopsHTML() {
-    return `<section class="route-line" aria-label="The four cards">${STOPS.map((name, i) => {
+    return `<section class="route-line" aria-label="The four cards">${MODES[mode()].stops.map((name, i) => {
       let cls = "stop" + (fx === "turn" ? " enter" : fx === "won" ? " cheer" : "");
       if (state.phase === "miss" && i === state.stage) cls += " bust";
       else if (i < state.stage || state.phase === "won") cls += " done";
       else if (i === state.stage) cls += " on";
-      return `<div class="${cls}" style="--i:${i}"><div class="stop-head"><span class="dot">${i + 1}</span><span class="stop-name"><span class="long">${name[0]}</span><span class="short">${name[1]}</span></span></div>${cardHTML(i)}</div>`;
+      return `<div class="${cls}" style="--i:${i}"><div class="stop-head"><span class="dot">${MODES[mode()].dots[i]}</span><span class="stop-name"><span class="long">${name[0]}</span><span class="short">${name[1]}</span></span></div>${cardHTML(i)}</div>`;
     }).join("")}</section>`;
   }
 
@@ -448,7 +474,10 @@ details p { max-width: 65ch; color: var(--muted); }
     }
     const r = state.row;
     let prompt, choices;
-    if (state.stage === 0) {
+    if (hilo()) {
+      prompt = `${state.stage === 3 ? "Last one. " : ""}Higher or lower than <span class="vs">${esc(label(r[state.stage - 1]))}</span>?`;
+      choices = `<div class="choices"><button class="choice" data-g="higher">Higher ↑</button><button class="choice" data-g="lower">Lower ↓</button></div>`;
+    } else if (state.stage === 0) {
       prompt = "Red or black?";
       choices = `<div class="choices"><button class="choice choice-red" data-g="red"><span class="r">Red</span></button><button class="choice" data-g="black">Black</button></div>`;
     } else if (state.stage === 1) {
@@ -480,12 +509,16 @@ details p { max-width: 65ch; color: var(--muted); }
   }
 
   function rulesHTML() {
-    return `<details><summary>House rules</summary><ol>
+    const tail = `Aces are ${state.settings.acesHigh ? "high" : "low"}. A tie with the card you're comparing against ${state.settings.tiesMiss ? "counts as a miss" : "is a free pass"}.`;
+    if (hilo()) return `<details><summary>House rules: Higher or Lower</summary>
+      <p>Each turn starts with a free card dealt face up. Call higher or lower for the next card, then the next, comparing each one with the card before it. Get 3 right in a row and you're off the bus.</p>
+      <p>Every miss is 1 drink. After a miss you pass to the next player, who starts again with a fresh start card. Get off the bus and you sit out until everyone else is off. ${tail}</p></details>`;
+    return `<details><summary>House rules: Classic</summary><ol>
       <li><b>Red or black.</b></li>
       <li><b>Higher or lower</b> than card 1.</li>
       <li><b>Inside or outside</b> cards 1 and 2.</li>
       <li><b>Pick the suit.</b> Hit it and you're off the bus.</li></ol>
-      <p>Every miss is 1 drink, whichever card you miss on. Players take turns. After a miss you drink and pass to the next player, who starts from card 1 with a fresh deal. Get off the bus and you sit out until everyone else is off. Aces are ${state.settings.acesHigh ? "high" : "low"}. A tie with an earlier card ${state.settings.tiesMiss ? "counts as a miss" : "is a free pass"}.</p></details>`;
+      <p>Every miss is 1 drink, whichever card you miss on. Players take turns. After a miss you drink and pass to the next player, who starts from card 1 with a fresh deal. Get off the bus and you sit out until everyone else is off. ${tail}</p></details>`;
   }
 
   function playHTML() {
@@ -497,7 +530,7 @@ details p { max-width: 65ch; color: var(--muted); }
       </div></div>` : "";
     return `${confirm}${fx === "miss" ? '<div class="miss-flash"></div>' : ""}<div class="wrap" style="max-width:none"><div class="stage">
       <section class="status">
-        <div><span class="label">On the bus</span><p class="rider${fx === "turn" ? " slide" : ""}">${esc(p.name)}</p></div>
+        <div><span class="label">${MODES[mode()].name} · on the bus</span><p class="rider${fx === "turn" ? " slide" : ""}">${esc(p.name)}</p></div>
         <div class="meters">
           <div class="meter"><span class="label">Try</span><strong>${p.tries}</strong></div>
           <div class="meter"><span class="label">Drinks</span><strong>${p.roundDrinks}</strong></div>
@@ -513,6 +546,10 @@ details p { max-width: 65ch; color: var(--muted); }
       ${state.sample ? '<p class="hint">These are example names. Adding your first player replaces them.</p>' : ""}
       <form class="add" id="addform"><input id="pname" maxlength="20" placeholder="Add a player" autocomplete="off" aria-label="Player name"><button class="ghost" type="submit">Add</button></form>
       <ul class="chips">${chips}</ul>
+      <fieldset class="modes"><legend class="label">Game mode</legend>
+        <label class="mode"><input type="radio" name="mode" value="classic" ${mode() === "classic" ? "checked" : ""}><span><b>Classic</b><small>Red or black, higher or lower, inside or outside, then the suit.</small></span></label>
+        <label class="mode"><input type="radio" name="mode" value="hilo" ${mode() === "hilo" ? "checked" : ""}><span><b>Higher or Lower</b><small>Get 3 higher-or-lower calls right in a row.</small></span></label>
+      </fieldset>
       <div class="opts">
         <label class="opt"><input type="checkbox" id="aces" ${state.settings.acesHigh ? "checked" : ""}><span>Aces high<small>Off makes aces the lowest card.</small></span></label>
         <label class="opt"><input type="checkbox" id="ties" ${state.settings.tiesMiss ? "checked" : ""}><span>Ties are a miss<small>A card matching the one it's compared to means you drink. Off gives a free pass.</small></span></label>
@@ -608,6 +645,7 @@ details p { max-width: 65ch; color: var(--muted); }
   app.addEventListener("change", e => {
     if (e.target.id === "aces") state.settings.acesHigh = e.target.checked;
     if (e.target.id === "ties") state.settings.tiesMiss = e.target.checked;
+    if (e.target.name === "mode") { state.settings.mode = e.target.value; save(); return render(); }
     save();
   });
 
@@ -615,6 +653,7 @@ details p { max-width: 65ch; color: var(--muted); }
     state = (data && data.state) || load() || fresh();
     state.players = state.players.map(p => Object.assign(newPlayer(p.name), p));
     state.starter = state.starter || 0;
+    state.settings.mode = state.settings.mode || "classic";
     if (state.screen === "play" && (!state.players.length || !state.players[state.current] || !state.players[state.current].tries)) state.screen = "setup";
     state.dealt = -1;
     render();
