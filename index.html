@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
-/* Layout: a full-screen night-bus stage. Slim sign on top, four big cards fill the middle (2x2 on phones, one row on wider screens), guess buttons dock at the bottom; the scoreboard sits below the fold. */
+/* Layout: phone-only, full-screen night-bus stage. Slim sign on top, four big cards in a 2x2 grid fill the middle, buttons dock at the bottom; the scoreboard sits below the fold. Wider screens get the same phone-width column. */
 :root {
   --asphalt: #14161b;
   --panel: #1d2028;
@@ -44,7 +44,7 @@ body {
   padding-right: max(16px, env(safe-area-inset-right, 0px));
   padding-block: var(--pad-y) 32px;
 }
-.wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: var(--gap); }
+.wrap { max-width: 480px; margin: 0 auto; display: grid; gap: var(--gap); }
 button { font: inherit; color: inherit; cursor: pointer; }
 button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--bus); outline-offset: 2px; }
 
@@ -57,8 +57,6 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
   margin: 0; font: 900 30px/1 var(--display); letter-spacing: .02em; text-transform: uppercase;
   color: var(--bus); text-shadow: 0 0 14px rgba(245,179,1,.35);
 }
-.sign .route { white-space: nowrap; font: 700 12px/1.2 var(--mono); color: var(--bus); letter-spacing: .12em; text-transform: uppercase; opacity: .85; }
-.sign .route b { display: inline-block; background: var(--bus); color: var(--bus-ink); padding: 2px 6px; border-radius: 3px; margin-right: 6px; }
 
 .label { font: 600 12px/1.2 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 
@@ -73,7 +71,7 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 
 /* Cards: sized from both the screen width and the height left over after the bar, status and buttons */
 .route-line {
-  --cols: 4; --rows: 1; --reserve: 340px; --col-gap: clamp(12px, 2vw, 28px);
+  --cols: 2; --rows: 2; --reserve: 382px; --col-gap: 12px;
   --cw: min(calc((100% - (var(--cols) - 1) * var(--col-gap)) / var(--cols)),
             calc(((100dvh - var(--safe-y) - var(--reserve)) / var(--rows) - 34px) * 5 / 7));
   flex: 1; display: grid; grid-template-columns: repeat(var(--cols), max(84px, var(--cw)));
@@ -182,7 +180,7 @@ tr.is-off td { color: var(--muted); }
 .chips button { background: none; border: 0; width: 26px; height: 26px; border-radius: 50%; color: var(--muted); font-size: 16px; line-height: 1; }
 .chips button:hover { background: var(--line); color: var(--ink); }
 .opts { display: grid; gap: 10px; }
-.modes { border: 0; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.modes { border: 0; margin: 0; padding: 0; display: grid; gap: 10px; }
 .modes legend { padding: 0; margin-bottom: 8px; }
 .mode { position: relative; display: block; cursor: pointer; }
 .mode input { position: absolute; opacity: 0; pointer-events: none; }
@@ -201,14 +199,9 @@ summary { cursor: pointer; font: 700 16px var(--display); text-transform: upperc
 details ol { margin: 10px 0 0; padding-left: 20px; display: grid; gap: 6px; max-width: 65ch; }
 details p { max-width: 65ch; color: var(--muted); }
 
-@media (max-width: 640px) {
-  .route-line { --cols: 2; --rows: 2; --reserve: 382px; --col-gap: 12px; }
-  .sign .route { display: none; }
-}
-@media (max-width: 420px) {
-  .choices.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .meters { gap: 12px; }
-}
+.flip-btn { width: 100%; min-height: 62px; font-size: 24px; }
+.flip-btn:active { transform: scale(.98); }
+.meters { gap: 12px; }
 /* Moments: a correct card pulses green, a miss shakes and flashes red, getting off throws confetti and drives a bus past */
 .slot.hit .face { animation: hit .7s .45s ease-out both; }
 @keyframes hit { 0% { box-shadow: 0 0 0 0 rgba(70,196,106,.9); } 100% { box-shadow: 0 0 0 18px rgba(70,196,106,0); } }
@@ -302,7 +295,6 @@ details p { max-width: 65ch; color: var(--muted); }
   <header class="sign" aria-label="F the Bus">
     <h1>F the Bus</h1>
     <div class="sign-end">
-      <div class="route"><b>4</b>Express · Last stop: off the bus</div>
       <button class="sign-btn" id="restart" type="button" hidden>Restart</button>
     </div>
   </header>
@@ -452,7 +444,7 @@ details p { max-width: 65ch; color: var(--muted); }
     confirming = false;
     state.players.forEach(p => { p.drinks = 0; p.rides = 0; p.best = null; });
     state.starter = 0; state.deck = [];
-    if (horse()) { stopAuto(); state.race = null; state.screen = "bets"; save(); return render(); }
+    if (horse()) { state.race = null; state.screen = "bets"; save(); return render(); }
     newRound();
   }
 
@@ -460,7 +452,6 @@ details p { max-width: 65ch; color: var(--muted); }
   // The four aces race up the track. Each flip moves that suit's ace one spot. Once every ace has reached
   // sideline card k, card k turns over and the ace of its suit drops back one. First ace past the last card wins.
   const SUIT_KEYS = ["S", "H", "D", "C"];
-  let autoTimer = null;
   function ensureBets() {
     const bets = Array.isArray(state.bets) ? state.bets : [];
     state.bets = state.players.map((_, i) => bets[i] && SUIT_KEYS.includes(bets[i].suit) ? bets[i] : { suit: SUIT_KEYS[i % 4], amt: 2 });
@@ -478,7 +469,7 @@ details p { max-width: 65ch; color: var(--muted); }
   }
   function flip() {
     const r = state.race;
-    if (!r || r.winner) return stopAuto();
+    if (!r || r.winner) return;
     if (!r.deck.length) { r.deck = shuffle(r.discard); r.discard = []; }
     const c = r.deck.pop();
     r.discard.push(c); r.last = c; r.flips += 1; r.back = null;
@@ -502,19 +493,12 @@ details p { max-width: 65ch; color: var(--muted); }
   }
   function settle() {
     const r = state.race;
-    stopAuto();
     r.results = state.players.map((p, i) => {
       const b = state.bets[i] || { suit: "S", amt: 1 };
       const won = b.suit === r.winner;
       if (!won) p.drinks += b.amt; else p.rides += 1;
       return { name: p.name, suit: b.suit, amt: b.amt, won };
     });
-  }
-  function stopAuto() { if (autoTimer) { clearInterval(autoTimer); autoTimer = null; } }
-  function toggleAuto() {
-    if (autoTimer) stopAuto(); else { flip(); autoTimer = setInterval(flip, 900); }
-    const b = document.getElementById("auto");
-    if (b) { b.textContent = autoTimer ? "Stop auto" : "Auto"; b.setAttribute("aria-pressed", autoTimer ? "true" : "false"); }
   }
   const suitSym = k => SUITS.find(s => s.key === k).sym;
   const isRed = k => k === "H" || k === "D";
@@ -561,7 +545,7 @@ details p { max-width: 65ch; color: var(--muted); }
     }
     return `<section class="console race-console">
       <div class="draw">${drawHTML(r)}<p class="race-msg" id="race-msg" aria-live="polite">${esc(r.msg)}</p></div>
-      <div class="choices"><button class="choice" id="flip">Flip</button><button class="choice" id="auto" aria-pressed="${autoTimer ? "true" : "false"}">${autoTimer ? "Stop auto" : "Auto"}</button></div>
+      <button class="primary flip-btn" id="flip">Flip a card</button>
     </section>`;
   }
   function raceHTML() {
@@ -787,7 +771,6 @@ details p { max-width: 65ch; color: var(--muted); }
   }
 
   function render() {
-    if (state.screen !== "race") stopAuto();
     app.innerHTML = state.screen === "setup" ? setupHTML() : state.screen === "bets" ? betsHTML() : state.screen === "race" ? raceHTML() : playHTML();
     document.getElementById("restart").hidden = !["play", "race", "bets"].includes(state.screen);
     if (fx === "won") celebrate();
@@ -818,14 +801,13 @@ details p { max-width: 65ch; color: var(--muted); }
         state.screen = "play"; state.starter = 0; newRound(); return;
       case "start-race": return newRace();
       case "race-again": state.screen = "bets"; save(); return render();
-      case "flip": stopAuto(); { const a = document.getElementById("auto"); if (a) { a.textContent = "Auto"; a.setAttribute("aria-pressed", "false"); } } return flip();
-      case "auto": return toggleAuto();
+      case "flip": return flip();
       case "len-down": state.settings.trackLen = Math.max(5, state.settings.trackLen - 1); save(); return render();
       case "len-up": state.settings.trackLen = Math.min(10, state.settings.trackLen + 1); save(); return render();
       case "reset": state.players.forEach(p => { p.drinks = 0; p.rides = 0; p.best = null; }); save(); return render();
     }
   });
-  document.getElementById("restart").addEventListener("click", () => { stopAuto(); confirming = true; render(); });
+  document.getElementById("restart").addEventListener("click", () => { confirming = true; render(); });
   document.addEventListener("keydown", e => { if (e.key === "Escape" && confirming) { confirming = false; render(); } });
 
   // ---- celebration ----
