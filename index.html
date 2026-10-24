@@ -231,6 +231,56 @@ details p { max-width: 65ch; color: var(--muted); }
 @keyframes drive { 0% { transform: translateX(-170px); } 100% { transform: translateX(calc(100vw + 20px)); } }
 @keyframes bob { from { transform: translateY(0); } to { transform: translateY(-2px); } }
 
+/* Horse race: a vertical track. Sideline cards run up the left; four lanes, finish at the top */
+.track {
+  --rgap: 4px;
+  --row: clamp(30px, calc((100dvh - var(--safe-y) - 360px) / var(--rows) - var(--rgap)), 72px);
+  flex: 1; align-self: center; width: min(100%, 520px);
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0 8px; align-content: center;
+}
+.tcol { position: relative; display: grid; grid-template-rows: repeat(var(--rows), var(--row)); gap: var(--rgap); }
+.tcell { border-radius: 6px; display: grid; place-items: center; min-width: 0; }
+.tcell.lane { background: linear-gradient(90deg, transparent 46%, var(--line) 46%, var(--line) 54%, transparent 54%); opacity: .55; }
+.tcell.finish { background: repeating-conic-gradient(var(--ink) 0 25%, var(--asphalt) 0 50%) 0 0 / 12px 12px; opacity: .3; }
+.tcell.gate { border: 2px dashed var(--line); }
+.tcell.flag { font: 700 clamp(11px, 3vw, 14px)/1 var(--display); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.mini { height: 100%; width: min(100%, calc(var(--row) * 5 / 7)); perspective: 500px; container-type: inline-size; }
+.mini-face { display: grid; place-items: center; align-content: center; padding: 0; font: 700 34cqw/1 var(--mono); }
+.mini-face span { font-size: 44cqw; line-height: 1; }
+.mini .back::after, .draw-slot .back::after { font-size: 22cqw; }
+.horse {
+  position: absolute; left: 50%; bottom: 0; height: var(--row); width: min(100%, calc(var(--row) * 5 / 7));
+  container-type: inline-size; border-radius: 6px; background: var(--card); color: var(--card-ink); border: 1px solid #d9d5c8;
+  transform: translateX(-50%) translateY(calc(var(--p) * -1 * (var(--row) + var(--rgap))));
+  transition: transform .5s cubic-bezier(.3,1.35,.5,1); box-shadow: 0 6px 16px rgba(0,0,0,.35);
+}
+.hface { height: 100%; display: grid; place-items: center; align-content: center; font: 700 34cqw/1 var(--mono); }
+.hface span { font-size: 46cqw; line-height: 1; }
+.horse.red { color: var(--suit-red); }
+.horse.winner { box-shadow: 0 0 0 3px var(--bus), 0 0 24px rgba(245,179,1,.55); }
+.horse.hurt { animation: hurt .7s ease-out; }
+@keyframes hurt { 0%, 100% { box-shadow: 0 6px 16px rgba(0,0,0,.35); } 30% { box-shadow: 0 0 0 4px var(--miss), 0 0 20px rgba(239,90,95,.6); } }
+.race-console { gap: 12px; }
+.draw { display: flex; align-items: center; gap: 14px; min-height: 84px; }
+.draw-slot { flex: none; width: 60px; aspect-ratio: 5 / 7; perspective: 600px; container-type: inline-size; }
+.race-msg { margin: 0; flex: 1; min-width: 0; font-weight: 500; }
+.payouts { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.payouts li { display: flex; align-items: baseline; gap: 8px; padding: 8px 10px; border-radius: 8px; background: var(--asphalt); }
+.payouts .pay { margin-left: auto; font: 700 14px var(--mono); white-space: nowrap; }
+.payouts .win .pay { color: var(--ok); }
+.payouts .lose .pay { color: var(--miss); }
+.r { color: var(--suit-red); }
+.bets { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.bet { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; background: var(--asphalt); border: 1px solid var(--line); border-radius: 10px; }
+.bet-name { font-weight: 600; flex: 1 1 80px; min-width: 0; }
+.bet-suits { display: flex; gap: 6px; }
+.bsuit { width: 42px; height: 42px; border-radius: 8px; border: 2px solid var(--line); background: var(--panel); font-size: 22px; line-height: 1; }
+.bsuit.r { color: var(--suit-red); }
+.bsuit.on { border-color: var(--bus); background: rgba(245,179,1,.14); }
+.stepper { display: flex; align-items: center; gap: 4px; }
+.stepper button { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); font: 700 18px/1 var(--mono); }
+.stepper strong { min-width: 28px; text-align: center; font: 700 18px var(--mono); }
+
 /* Restart */
 .sign-end { display: flex; align-items: center; gap: 14px; }
 .sign-btn { background: transparent; border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font: 700 12px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
@@ -274,9 +324,11 @@ details p { max-width: 65ch; color: var(--muted); }
       stops: [["Red / Black", "Red/Blk"], ["Higher / Lower", "Hi/Lo"], ["Inside / Outside", "In/Out"], ["Suit", "Suit"]] },
     hilo: { name: "Higher or Lower", dots: ["S", "1", "2", "3"],
       stops: [["Start card", "Start"], ["Guess 1", "Guess 1"], ["Guess 2", "Guess 2"], ["Guess 3", "Guess 3"]] },
+    horse: { name: "Horse Race" },
   };
   const mode = () => MODES[state.settings.mode] ? state.settings.mode : "classic";
   const hilo = () => mode() === "hilo";
+  const horse = () => mode() === "horse";
   const STORE = "fthebus.v1";
 
   const app = document.getElementById("app");
@@ -291,7 +343,7 @@ details p { max-width: 65ch; color: var(--muted); }
       screen: "setup",
       players: ["Alex", "Sam", "Jordan"].map(newPlayer),
       sample: true,
-      settings: { acesHigh: true, tiesMiss: true, mode: "classic" },
+      settings: { acesHigh: true, tiesMiss: true, mode: "classic", trackLen: 7 },
       current: 0,
       starter: 0,
       deck: [],
@@ -400,7 +452,168 @@ details p { max-width: 65ch; color: var(--muted); }
     confirming = false;
     state.players.forEach(p => { p.drinks = 0; p.rides = 0; p.best = null; });
     state.starter = 0; state.deck = [];
+    if (horse()) { stopAuto(); state.race = null; state.screen = "bets"; save(); return render(); }
     newRound();
+  }
+
+  // ---- horse race ----
+  // The four aces race up the track. Each flip moves that suit's ace one spot. Once every ace has reached
+  // sideline card k, card k turns over and the ace of its suit drops back one. First ace past the last card wins.
+  const SUIT_KEYS = ["S", "H", "D", "C"];
+  let autoTimer = null;
+  function ensureBets() {
+    const bets = Array.isArray(state.bets) ? state.bets : [];
+    state.bets = state.players.map((_, i) => bets[i] && SUIT_KEYS.includes(bets[i].suit) ? bets[i] : { suit: SUIT_KEYS[i % 4], amt: 2 });
+  }
+  function shuffle(d) { for (let i = d.length - 1; i > 0; i--) { const j = rand(i + 1); [d[i], d[j]] = [d[j], d[i]]; } return d; }
+  function newRace() {
+    const len = state.settings.trackLen;
+    const deck = [];
+    for (const s of SUIT_KEYS) for (const r of RANKS) if (r !== "A") deck.push({ r, s });
+    shuffle(deck);
+    state.race = { len, side: deck.splice(0, len), sideUp: Array(len).fill(false), next: 1, deck, discard: [],
+      pos: { S: 0, H: 0, D: 0, C: 0 }, last: null, msg: "Tap Flip to start the race.", back: null, flips: 0, winner: null, results: null };
+    state.screen = "race";
+    save(); render();
+  }
+  function flip() {
+    const r = state.race;
+    if (!r || r.winner) return stopAuto();
+    if (!r.deck.length) { r.deck = shuffle(r.discard); r.discard = []; }
+    const c = r.deck.pop();
+    r.discard.push(c); r.last = c; r.flips += 1; r.back = null;
+    r.pos[c.s] += 1;
+    const msgs = [`${label(c)}: ${suitOf(c).name} move${r.pos[c.s] > r.len ? " past the last card" : ` up to ${r.pos[c.s]}`}.`];
+    if (r.pos[c.s] > r.len) {
+      r.winner = c.s;
+    } else {
+      while (r.next <= r.len && SUIT_KEYS.every(k => r.pos[k] >= r.next)) {
+        const sc = r.side[r.next - 1];
+        r.sideUp[r.next - 1] = true;
+        if (r.pos[sc.s] > 0) r.pos[sc.s] -= 1;
+        r.back = sc.s;
+        msgs.push(`Sideline card ${r.next} is ${label(sc)}. ${suitOf(sc).name} drop back to ${r.pos[sc.s]}.`);
+        r.next += 1;
+      }
+    }
+    r.msg = msgs.join(" ");
+    if (r.winner) settle();
+    save(); patchRace();
+  }
+  function settle() {
+    const r = state.race;
+    stopAuto();
+    r.results = state.players.map((p, i) => {
+      const b = state.bets[i] || { suit: "S", amt: 1 };
+      const won = b.suit === r.winner;
+      if (!won) p.drinks += b.amt; else p.rides += 1;
+      return { name: p.name, suit: b.suit, amt: b.amt, won };
+    });
+  }
+  function stopAuto() { if (autoTimer) { clearInterval(autoTimer); autoTimer = null; } }
+  function toggleAuto() {
+    if (autoTimer) stopAuto(); else { flip(); autoTimer = setInterval(flip, 900); }
+    const b = document.getElementById("auto");
+    if (b) { b.textContent = autoTimer ? "Stop auto" : "Auto"; b.setAttribute("aria-pressed", autoTimer ? "true" : "false"); }
+  }
+  const suitSym = k => SUITS.find(s => s.key === k).sym;
+  const isRed = k => k === "H" || k === "D";
+  const leader = r => SUIT_KEYS.reduce((a, k) => r.pos[k] > r.pos[a] ? k : a, "S");
+
+  function miniFace(c) { return `<div class="face mini-face${suitOf(c).red ? " red" : ""}">${c.r}<span>${suitOf(c).sym}</span></div>`; }
+  function drawHTML(r) {
+    if (!r.last) return `<div class="draw-slot"><div class="card"><div class="back"></div></div></div>`;
+    return `<div class="draw-slot"><div class="card deal up"><div class="back"></div>${miniFace(r.last)}</div></div>`;
+  }
+  function raceStatusHTML(r) {
+    const lead = leader(r), tie = SUIT_KEYS.filter(k => r.pos[k] === r.pos[lead]).length > 1;
+    const head = r.winner ? `${suitSym(r.winner)} ${suitOf({ s: r.winner }).name} win` : r.flips === 0 ? "They're at the gate" : tie ? "Neck and neck" : `${suitSym(lead)} ${suitOf({ s: lead }).name} lead`;
+    return `<div><span class="label">Horse Race · ${r.len} cards</span><p class="rider" id="race-head">${head}</p></div>
+      <div class="meters"><div class="meter"><span class="label">Flips</span><strong id="race-flips">${r.flips}</strong></div></div>`;
+  }
+  function trackHTML(r) {
+    const rows = r.len + 2;
+    let side = `<div class="tcol side"><div class="tcell flag">Finish</div>`;
+    for (let k = r.len; k >= 1; k--) {
+      const c = r.side[k - 1];
+      side += `<div class="tcell"><div class="mini" data-side="${k}"><div class="card${r.sideUp[k - 1] ? " up" : ""}"><div class="back"></div>${miniFace(c)}</div></div></div>`;
+    }
+    side += `<div class="tcell flag">Start</div></div>`;
+    const lanes = SUIT_KEYS.map(k => {
+      let cells = `<div class="tcell finish"></div>`;
+      for (let i = 0; i < r.len; i++) cells += `<div class="tcell lane"></div>`;
+      cells += `<div class="tcell gate"></div>`;
+      const cls = ["horse", isRed(k) ? "red" : "", r.winner === k ? "winner" : ""].join(" ").trim();
+      return `<div class="tcol">${cells}<div class="${cls}" data-h="${k}" style="--p:${r.pos[k]}" aria-label="Ace of ${suitOf({ s: k }).name}, spot ${r.pos[k]}"><div class="hface">A<span>${suitSym(k)}</span></div></div></div>`;
+    }).join("");
+    return `<section class="track" id="track" style="--rows:${rows}" aria-label="Race track">${side}${lanes}</section>`;
+  }
+  function raceConsoleHTML(r) {
+    if (r.winner) {
+      const res = r.results.map(x => `<li class="${x.won ? "win" : "lose"}"><b>${esc(x.name)}</b> backed <span class="${isRed(x.suit) ? "r" : ""}">${suitSym(x.suit)}</span> for ${x.amt}
+        <span class="pay">${x.won ? `hand out ${x.amt * 2}` : `drink ${x.amt}`}</span></li>`).join("");
+      return `<section class="console race-console" aria-live="polite">
+        <div class="verdict won"><span class="big${fx === "won" ? " slam" : ""}">${suitSym(r.winner)} ${esc(suitOf({ s: r.winner }).name)} win</span>
+          <p>Crossed the line after ${r.flips} flips. Losers drink their bet; winners hand out double.</p></div>
+        <ul class="payouts">${res}</ul>
+        <div class="row"><button class="primary" id="race-again">Race again</button><button class="ghost" id="edit">Change game</button></div>
+      </section>`;
+    }
+    return `<section class="console race-console">
+      <div class="draw">${drawHTML(r)}<p class="race-msg" id="race-msg" aria-live="polite">${esc(r.msg)}</p></div>
+      <div class="choices"><button class="choice" id="flip">Flip</button><button class="choice" id="auto" aria-pressed="${autoTimer ? "true" : "false"}">${autoTimer ? "Stop auto" : "Auto"}</button></div>
+    </section>`;
+  }
+  function raceHTML() {
+    const r = state.race;
+    const rows = state.players.map((p, i) => { const b = state.bets[i] || {};
+      return `<tr><td><span class="pname">${esc(p.name)}</span></td><td><span class="${isRed(b.suit) ? "r" : ""}">${b.suit ? suitSym(b.suit) : "–"}</span></td><td class="n">${b.amt ?? "–"}</td><td class="n">${p.drinks}</td></tr>`; }).join("");
+    return `${confirmHTML()}<div class="wrap" style="max-width:none"><div class="stage race-stage">
+      <section class="status" id="race-status">${raceStatusHTML(r)}</section>
+      ${trackHTML(r)}${raceConsoleHTML(r)}</div>
+      <section class="pax"><div class="pax-head"><span class="label">Bets</span><button class="ghost" id="edit">Edit players</button></div>
+      <div style="overflow-x:auto"><table><thead><tr><th>Name</th><th>Horse</th><th class="n">Bet</th><th class="n">Total drinks</th></tr></thead><tbody>${rows}</tbody></table></div></section>
+      ${rulesHTML()}</div>`;
+  }
+  // Update the live race in place so horses slide and sideline cards flip instead of re-rendering.
+  function patchRace() {
+    const r = state.race;
+    if (state.screen !== "race" || !document.getElementById("track") || r.winner) {
+      if (r && r.winner) { patchHorses(r); setTimeout(() => { fx = "won"; render(); }, calm() ? 0 : 650); return; }
+      return render();
+    }
+    patchHorses(r);
+    document.getElementById("race-status").innerHTML = raceStatusHTML(r);
+    document.getElementById("race-msg").textContent = r.msg;
+    document.querySelector(".draw-slot").outerHTML = drawHTML(r);
+  }
+  function patchHorses(r) {
+    for (const k of SUIT_KEYS) {
+      const h = document.querySelector(`.horse[data-h="${k}"]`);
+      if (!h) continue;
+      h.style.setProperty("--p", r.pos[k]);
+      h.setAttribute("aria-label", `Ace of ${suitOf({ s: k }).name}, spot ${r.pos[k]}`);
+      h.classList.toggle("hurt", r.back === k);
+      if (r.back === k) { h.classList.remove("hurt"); void h.offsetWidth; h.classList.add("hurt"); }
+    }
+    r.sideUp.forEach((up, i) => { const m = document.querySelector(`.mini[data-side="${i + 1}"] .card`); if (m) m.classList.toggle("up", up); });
+  }
+
+  function betsHTML() {
+    ensureBets();
+    const rows = state.players.map((p, i) => { const b = state.bets[i];
+      return `<li class="bet"><span class="bet-name">${esc(p.name)}</span>
+        <div class="bet-suits" role="group" aria-label="${esc(p.name)}'s horse">${SUIT_KEYS.map(k => `<button class="bsuit${b.suit === k ? " on" : ""}${isRed(k) ? " r" : ""}" data-bs="${i}:${k}" aria-pressed="${b.suit === k}" aria-label="${suitOf({ s: k }).name}">${suitSym(k)}</button>`).join("")}</div>
+        <div class="stepper" role="group" aria-label="${esc(p.name)}'s bet"><button data-ba="${i}:-1" aria-label="Bet less">−</button><strong>${b.amt}</strong><button data-ba="${i}:1" aria-label="Bet more">+</button></div></li>`; }).join("");
+    return `${confirmHTML()}<section class="console setup">
+      <h2>Place your bets</h2>
+      <p class="hint">Pick a horse and how many drinks you're betting. When the race ends, losers drink their bet and winners hand out double.</p>
+      <ul class="bets">${rows}</ul>
+      <div class="bet"><span class="bet-name">Track length</span><span class="hint">Sideline cards</span>
+        <div class="stepper" role="group" aria-label="Track length"><button id="len-down" aria-label="Shorter track">−</button><strong>${state.settings.trackLen}</strong><button id="len-up" aria-label="Longer track">+</button></div></div>
+      <div class="row"><button class="primary" id="start-race">Start the race</button><button class="ghost" id="edit">Back</button></div>
+      ${rulesHTML()}
+    </section>`;
   }
   function newRound() {
     state.players.forEach(p => { p.off = false; p.tries = 0; p.roundDrinks = 0; });
@@ -510,6 +723,12 @@ details p { max-width: 65ch; color: var(--muted); }
 
   function rulesHTML() {
     const tail = `Aces are ${state.settings.acesHigh ? "high" : "low"}. A tie with the card you're comparing against ${state.settings.tiesMiss ? "counts as a miss" : "is a free pass"}.`;
+    if (horse()) return `<details><summary>House rules: Horse Race</summary><ol>
+      <li>Everyone backs one of the four aces and bets 1 to 5 drinks.</li>
+      <li>Flip cards from the deck. The ace of that suit moves forward one spot.</li>
+      <li>Once every ace has reached a sideline card, that card turns over and the ace of its suit drops back one spot.</li>
+      <li>The first ace past the last sideline card wins.</li></ol>
+      <p>Losers drink what they bet. Winners hand out double their bet.</p></details>`;
     if (hilo()) return `<details><summary>House rules: Higher or Lower</summary>
       <p>Each turn starts with a free card dealt face up. Call higher or lower for the next card, then the next, comparing each one with the card before it. Get 3 right in a row and you're off the bus.</p>
       <p>Every miss is 1 drink. After a miss you pass to the next player, who starts again with a fresh start card. Get off the bus and you sit out until everyone else is off. ${tail}</p></details>`;
@@ -521,14 +740,20 @@ details p { max-width: 65ch; color: var(--muted); }
       <p>Every miss is 1 drink, whichever card you miss on. Players take turns. After a miss you drink and pass to the next player, who starts from card 1 with a fresh deal. Get off the bus and you sit out until everyone else is off. ${tail}</p></details>`;
   }
 
+  function confirmHTML() {
+    if (!confirming) return "";
+    const what = horse()
+      ? "Everyone's drink totals go back to zero and you go back to the betting screen. Players and bets stay."
+      : `Everyone's drinks, tries and best rides go back to zero. The same players stay on, and ${esc(state.players[0].name)} goes first.`;
+    return `<div class="confirm-back"><div class="confirm" role="dialog" aria-modal="true" aria-labelledby="rs-title">
+        <h2 id="rs-title">Restart the game?</h2><p>${what}</p>
+        <div class="row"><button class="primary" id="restart-yes">Restart</button><button class="ghost" id="restart-no">Keep playing</button></div>
+      </div></div>`;
+  }
+
   function playHTML() {
     const p = state.players[state.current];
-    const confirm = confirming ? `<div class="confirm-back"><div class="confirm" role="dialog" aria-modal="true" aria-labelledby="rs-title">
-        <h2 id="rs-title">Restart the game?</h2>
-        <p>Everyone's drinks, tries and best rides go back to zero. The same players stay on, and ${esc(state.players[0].name)} goes first.</p>
-        <div class="row"><button class="primary" id="restart-yes">Restart</button><button class="ghost" id="restart-no">Keep playing</button></div>
-      </div></div>` : "";
-    return `${confirm}${fx === "miss" ? '<div class="miss-flash"></div>' : ""}<div class="wrap" style="max-width:none"><div class="stage">
+    return `${confirmHTML()}${fx === "miss" ? '<div class="miss-flash"></div>' : ""}<div class="wrap" style="max-width:none"><div class="stage">
       <section class="status">
         <div><span class="label">${MODES[mode()].name} · on the bus</span><p class="rider${fx === "turn" ? " slide" : ""}">${esc(p.name)}</p></div>
         <div class="meters">
@@ -549,20 +774,22 @@ details p { max-width: 65ch; color: var(--muted); }
       <fieldset class="modes"><legend class="label">Game mode</legend>
         <label class="mode"><input type="radio" name="mode" value="classic" ${mode() === "classic" ? "checked" : ""}><span><b>Classic</b><small>Red or black, higher or lower, inside or outside, then the suit.</small></span></label>
         <label class="mode"><input type="radio" name="mode" value="hilo" ${mode() === "hilo" ? "checked" : ""}><span><b>Higher or Lower</b><small>Get 3 higher-or-lower calls right in a row.</small></span></label>
+        <label class="mode"><input type="radio" name="mode" value="horse" ${mode() === "horse" ? "checked" : ""}><span><b>Horse Race</b><small>Bet on an ace and flip cards to race them up the track.</small></span></label>
       </fieldset>
-      <div class="opts">
+      <div class="opts"${horse() ? " hidden" : ""}>
         <label class="opt"><input type="checkbox" id="aces" ${state.settings.acesHigh ? "checked" : ""}><span>Aces high<small>Off makes aces the lowest card.</small></span></label>
         <label class="opt"><input type="checkbox" id="ties" ${state.settings.tiesMiss ? "checked" : ""}><span>Ties are a miss<small>A card matching the one it's compared to means you drink. Off gives a free pass.</small></span></label>
       </div>
-      <div class="row"><button class="primary" id="go" ${state.players.length ? "" : "disabled"}>${state.players.some(p => p.tries) ? "Start a new round" : "Board the bus"}</button>
+      <div class="row"><button class="primary" id="go" ${state.players.length ? "" : "disabled"}>${horse() ? "Place your bets" : state.players.some(p => p.tries) ? "Start a new round" : "Board the bus"}</button>
       ${state.players.some(p => p.drinks || p.rides) ? '<button class="ghost" id="reset" type="button">Reset tallies</button>' : ""}</div>
       ${rulesHTML()}
     </section>`;
   }
 
   function render() {
-    app.innerHTML = state.screen === "setup" ? setupHTML() : playHTML();
-    document.getElementById("restart").hidden = state.screen !== "play";
+    if (state.screen !== "race") stopAuto();
+    app.innerHTML = state.screen === "setup" ? setupHTML() : state.screen === "bets" ? betsHTML() : state.screen === "race" ? raceHTML() : playHTML();
+    document.getElementById("restart").hidden = !["play", "race", "bets"].includes(state.screen);
     if (fx === "won") celebrate();
     fx = "";
     state.dealt = -1;
@@ -574,6 +801,8 @@ details p { max-width: 65ch; color: var(--muted); }
     const t = e.target.closest("button");
     if (!t) return;
     if (t.dataset.g) return guess(t.dataset.g);
+    if (t.dataset.bs) { const [i, k] = t.dataset.bs.split(":"); state.bets[+i].suit = k; save(); return render(); }
+    if (t.dataset.ba) { const [i, d] = t.dataset.ba.split(":").map(Number); const b = state.bets[i]; b.amt = Math.min(5, Math.max(1, b.amt + d)); save(); return render(); }
     if (t.dataset.rm !== undefined) {
       state.players.splice(+t.dataset.rm, 1);
       save(); return render();
@@ -583,11 +812,20 @@ details p { max-width: 65ch; color: var(--muted); }
       case "restart-no": confirming = false; return render();
       case "pass": return passTurn();
       case "edit": state.screen = "setup"; save(); return render();
-      case "go": if (state.players.length) { state.screen = "play"; state.starter = 0; newRound(); } return;
+      case "go":
+        if (!state.players.length) return;
+        if (horse()) { state.screen = "bets"; save(); return render(); }
+        state.screen = "play"; state.starter = 0; newRound(); return;
+      case "start-race": return newRace();
+      case "race-again": state.screen = "bets"; save(); return render();
+      case "flip": stopAuto(); { const a = document.getElementById("auto"); if (a) { a.textContent = "Auto"; a.setAttribute("aria-pressed", "false"); } } return flip();
+      case "auto": return toggleAuto();
+      case "len-down": state.settings.trackLen = Math.max(5, state.settings.trackLen - 1); save(); return render();
+      case "len-up": state.settings.trackLen = Math.min(10, state.settings.trackLen + 1); save(); return render();
       case "reset": state.players.forEach(p => { p.drinks = 0; p.rides = 0; p.best = null; }); save(); return render();
     }
   });
-  document.getElementById("restart").addEventListener("click", () => { confirming = true; render(); });
+  document.getElementById("restart").addEventListener("click", () => { stopAuto(); confirming = true; render(); });
   document.addEventListener("keydown", e => { if (e.key === "Escape" && confirming) { confirming = false; render(); } });
 
   // ---- celebration ----
@@ -654,6 +892,9 @@ details p { max-width: 65ch; color: var(--muted); }
     state.players = state.players.map(p => Object.assign(newPlayer(p.name), p));
     state.starter = state.starter || 0;
     state.settings.mode = state.settings.mode || "classic";
+    state.settings.trackLen = state.settings.trackLen || 7;
+    if (state.screen === "race" && !state.race) state.screen = "bets";
+    if (state.screen === "bets" || state.screen === "race") ensureBets();
     if (state.screen === "play" && (!state.players.length || !state.players[state.current] || !state.players[state.current].tries)) state.screen = "setup";
     state.dealt = -1;
     render();
