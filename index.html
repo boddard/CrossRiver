@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>F the Bus</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: a night-bus route. Four cards sit as four stops on one line; the rider's controls sit under the stop they're on, passengers ride below. */
+:root {
+  --asphalt: #14161b;
+  --panel: #1d2028;
+  --line: #333845;
+  --ink: #eef0f3;
+  --muted: #9aa1ae;
+  --bus: #f5b301;
+  --bus-ink: #1a1505;
+  --card: #f7f5ef;
+  --card-ink: #1b1d22;
+  --suit-red: #d93a3f;
+  --ok: #46c46a;
+  --miss: #ef5a5f;
+  --display: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+  --body: "Barlow", "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body {
+  margin: 0;
+  background: var(--asphalt);
+  color: var(--ink);
+  font: 16px/1.5 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+.wrap { max-width: 760px; margin: 0 auto; display: grid; gap: 22px; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--bus); outline-offset: 2px; }
+
+/* Destination sign */
+.sign {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  background: #0b0c0f; border: 2px solid var(--line); border-radius: 6px; padding: 10px 14px;
+}
+.sign h1 {
+  margin: 0; font: 900 clamp(30px, 8vw, 46px)/1 var(--display); letter-spacing: .02em; text-transform: uppercase;
+  color: var(--bus); text-shadow: 0 0 14px rgba(245,179,1,.35);
+}
+.sign .route { font: 700 12px/1.2 var(--mono); color: var(--bus); letter-spacing: .12em; text-transform: uppercase; opacity: .85; }
+.sign .route b { display: inline-block; background: var(--bus); color: var(--bus-ink); padding: 2px 6px; border-radius: 3px; margin-right: 6px; }
+
+.label { font: 600 12px/1.2 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+
+/* Status strip */
+.status { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
+.rider { font: 900 clamp(26px, 6vw, 34px)/1.05 var(--display); text-transform: uppercase; text-wrap: balance; margin: 2px 0 0; }
+.meters { display: flex; gap: 18px; }
+.meter { text-align: right; }
+.meter strong { display: block; font: 700 22px/1.1 var(--mono); font-variant-numeric: tabular-nums; }
+
+/* Route with stops */
+.route-line { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(8px, 2.4vw, 18px); }
+.route-line::before {
+  content: ""; position: absolute; left: 6%; right: 6%; top: 11px; height: 4px; border-radius: 2px;
+  background: repeating-linear-gradient(90deg, var(--line) 0 14px, transparent 14px 22px);
+}
+.stop { position: relative; display: grid; gap: 8px; justify-items: center; min-width: 0; }
+.dot { width: 26px; height: 26px; border-radius: 50%; background: var(--asphalt); border: 4px solid var(--line); position: relative; z-index: 1; display: grid; place-items: center; font: 700 11px var(--mono); color: var(--muted); }
+.stop.on .dot { border-color: var(--bus); color: var(--bus); }
+.stop.done .dot { background: var(--ok); border-color: var(--ok); color: var(--asphalt); }
+.stop.bust .dot { background: var(--miss); border-color: var(--miss); color: var(--asphalt); }
+.stop-name { font: 700 clamp(13px, 3.4vw, 17px)/1.05 var(--display); text-transform: uppercase; letter-spacing: .03em; text-align: center; text-wrap: balance; min-height: 2.1em; display: flex; align-items: flex-end; justify-content: center; }
+.stake { font: 500 11px/1 var(--mono); color: var(--muted); }
+
+/* Cards */
+.slot { width: 100%; max-width: 132px; aspect-ratio: 5 / 7; perspective: 700px; }
+.card { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform .5s cubic-bezier(.2,.7,.2,1); }
+.card.up { transform: rotateY(180deg); }
+.card.deal { animation: deal .55s cubic-bezier(.2,.7,.2,1); }
+@keyframes deal { from { transform: rotateY(0deg) translateY(-10px); } to { transform: rotateY(180deg); } }
+.face, .back { position: absolute; inset: 0; border-radius: 9px; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.back {
+  background: repeating-linear-gradient(135deg, var(--bus) 0 10px, #e2a400 10px 20px);
+  border: 3px solid #0b0c0f; box-shadow: inset 0 0 0 3px var(--bus);
+}
+.back::after { content: "BUS"; position: absolute; inset: 0; display: grid; place-items: center; font: 900 clamp(14px, 4vw, 22px)/1 var(--display); color: #0b0c0f; letter-spacing: .08em; }
+.slot.empty .back { background: transparent; border: 2px dashed var(--line); box-shadow: none; }
+.slot.empty .back::after { content: none; }
+.face {
+  transform: rotateY(180deg); background: var(--card); color: var(--card-ink);
+  border: 1px solid #d9d5c8; display: grid; grid-template-rows: auto 1fr auto; padding: 6px 7px;
+}
+.face.red { color: var(--suit-red); }
+.corner { font: 700 clamp(13px, 3.6vw, 19px)/1 var(--mono); }
+.corner.bot { justify-self: end; transform: rotate(180deg); }
+.pip { display: grid; place-items: center; font-size: clamp(30px, 9vw, 54px); line-height: 1; }
+.slot.wrong .face { box-shadow: 0 0 0 3px var(--miss); }
+.slot.right .face { box-shadow: 0 0 0 3px var(--ok); }
+
+/* Controls */
+.console { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 14px; }
+.prompt { margin: 0; font: 700 clamp(20px, 5vw, 26px)/1.15 var(--display); text-transform: uppercase; letter-spacing: .02em; text-wrap: balance; }
+.prompt .vs { color: var(--bus); }
+.choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.choices.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.choice {
+  border: 2px solid var(--line); background: var(--asphalt); border-radius: 8px; padding: 14px 8px;
+  font: 700 clamp(17px, 4.6vw, 22px)/1 var(--display); text-transform: uppercase; letter-spacing: .04em;
+  transition: border-color .15s, transform .1s;
+}
+.choice:hover { border-color: var(--bus); }
+.choice:active { transform: translateY(1px); }
+.choice.suit { font-size: clamp(26px, 7vw, 34px); padding: 10px 4px; }
+.choice .r { color: var(--miss); }
+.choice-red { border-color: rgba(239,90,95,.55); }
+.verdict { display: grid; gap: 4px; }
+.verdict .big { font: 900 clamp(34px, 10vw, 54px)/1 var(--display); text-transform: uppercase; }
+.verdict.miss .big { color: var(--miss); }
+.verdict.won .big { color: var(--bus); }
+.verdict p { margin: 0; color: var(--muted); }
+.primary {
+  background: var(--bus); color: var(--bus-ink); border: 0; border-radius: 8px; padding: 14px 18px;
+  font: 900 20px/1 var(--display); text-transform: uppercase; letter-spacing: .05em;
+}
+.primary:hover { filter: brightness(1.08); }
+.ghost { background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; font-weight: 600; color: var(--muted); }
+.ghost:hover { color: var(--ink); border-color: var(--muted); }
+.row { display: flex; flex-wrap: wrap; gap: 10px; }
+.flash { margin: 0; font-weight: 600; }
+.flash.ok { color: var(--ok); }
+
+/* Passengers */
+.pax { display: grid; gap: 8px; }
+.pax-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th { text-align: left; font: 600 11px/1.2 var(--body); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); }
+th.n, td.n { text-align: right; font-family: var(--mono); }
+td { padding: 9px 8px; border-bottom: 1px solid var(--line); }
+tr.current td { background: rgba(245,179,1,.08); }
+tr.current td:first-child { box-shadow: inset 3px 0 0 var(--bus); }
+.pname { background: none; border: 0; padding: 0; font-weight: 600; text-align: left; }
+.pname[disabled] { cursor: default; }
+.tag { font: 700 10px/1 var(--mono); background: var(--bus); color: var(--bus-ink); padding: 3px 5px; border-radius: 3px; margin-left: 8px; vertical-align: 2px; }
+.hint { font-size: 13px; color: var(--muted); margin: 0; }
+
+/* Setup */
+.setup { display: grid; gap: 18px; }
+.setup h2 { margin: 0; font: 900 28px/1 var(--display); text-transform: uppercase; }
+.add { display: flex; gap: 8px; }
+.add input {
+  flex: 1; min-width: 0; background: var(--asphalt); color: var(--ink); border: 2px solid var(--line); border-radius: 8px;
+  padding: 11px 12px; font: 500 16px var(--body);
+}
+.add button { flex: none; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.chips li { display: flex; align-items: center; gap: 6px; background: var(--asphalt); border: 1px solid var(--line); border-radius: 999px; padding: 6px 6px 6px 14px; font-weight: 600; }
+.chips button { background: none; border: 0; width: 26px; height: 26px; border-radius: 50%; color: var(--muted); font-size: 16px; line-height: 1; }
+.chips button:hover { background: var(--line); color: var(--ink); }
+.opts { display: grid; gap: 10px; }
+.opt { display: flex; gap: 10px; align-items: flex-start; }
+.opt input { width: 20px; height: 20px; accent-color: var(--bus); margin-top: 2px; flex: none; }
+.opt span small { display: block; color: var(--muted); font-size: 13px; }
+
+details { border-top: 1px solid var(--line); padding-top: 12px; }
+summary { cursor: pointer; font: 700 16px var(--display); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+details ol { margin: 10px 0 0; padding-left: 20px; display: grid; gap: 6px; max-width: 65ch; }
+details p { max-width: 65ch; color: var(--muted); }
+
+@media (max-width: 420px) {
+  .choices.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .meters { gap: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card, .choice { transition: none; }
+  .card.deal { animation: none; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="sign" aria-label="F the Bus">
+    <h1>F the Bus</h1>
+    <div class="route"><b>4</b>Express · Last stop: off the bus</div>
+  </header>
+  <main id="app"></main>
+</div>
+
+<script>
+(() => {
+  const SUITS = [
+    { key: "S", sym: "♠", name: "Spades", red: false },
+    { key: "H", sym: "♥", name: "Hearts", red: true },
+    { key: "D", sym: "♦", name: "Diamonds", red: true },
+    { key: "C", sym: "♣", name: "Clubs", red: false },
+  ];
+  const RANKS = ["2","3","4","5","6","7","8","9","10","J","Q","K","A"];
+  const STOPS = ["Red or Black", "Higher or Lower", "Inside or Outside", "Pick the Suit"];
+  const STORE = "fthebus.v1";
+
+  const app = document.getElementById("app");
+  let state;
+
+  function fresh() {
+    return {
+      screen: "setup",
+      players: ["Alex", "Sam", "Jordan"].map(newPlayer),
+      sample: true,
+      settings: { acesHigh: true, tiesMiss: true },
+      current: 0,
+      deck: [],
+      row: [],
+      stage: 0,
+      phase: "guess",
+      attempt: 1,
+      rideDrinks: 0,
+      lastGood: "",
+      dealt: -1,
+    };
+  }
+  function newPlayer(name) { return { name, drinks: 0, rides: 0, best: null }; }
+
+  function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) {} }
+  function load() {
+    try { const s = JSON.parse(localStorage.getItem(STORE)); if (s && s.players) return s; } catch (e) {}
+    return null;
+  }
+
+  // ---- deck ----
+  function rand(n) {
+    if (window.crypto && crypto.getRandomValues) { const a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] % n; }
+    return Math.floor(Math.random() * n);
+  }
+  function shuffledDeck(exclude) {
+    const skip = new Set(exclude.map(c => c.r + c.s));
+    const d = [];
+    for (const s of SUITS) for (const r of RANKS) if (!skip.has(r + s.key)) d.push({ r, s: s.key });
+    for (let i = d.length - 1; i > 0; i--) { const j = rand(i + 1); [d[i], d[j]] = [d[j], d[i]]; }
+    return d;
+  }
+  function draw() {
+    if (!state.deck.length) state.deck = shuffledDeck(state.row);
+    return state.deck.pop();
+  }
+  const suitOf = c => SUITS.find(s => s.key === c.s);
+  const value = c => c.r === "A" ? (state.settings.acesHigh ? 14 : 1) : ({ J: 11, Q: 12, K: 13 }[c.r] || +c.r);
+  const label = c => c.r + suitOf(c).sym;
+
+  // ---- game ----
+  function judge(stage, guess, card) {
+    const v = value(card), ties = state.settings.tiesMiss;
+    if (stage === 0) return (guess === "red") === suitOf(card).red;
+    if (stage === 1) {
+      const a = value(state.row[0]);
+      if (v === a) return !ties;
+      return guess === "higher" ? v > a : v < a;
+    }
+    if (stage === 2) {
+      const lo = Math.min(value(state.row[0]), value(state.row[1]));
+      const hi = Math.max(value(state.row[0]), value(state.row[1]));
+      if (v === lo || v === hi) return !ties;
+      const inside = v > lo && v < hi;
+      return guess === "inside" ? inside : !inside;
+    }
+    return card.s === guess;
+  }
+
+  function guess(g) {
+    if (state.phase !== "guess") return;
+    const card = draw();
+    const stage = state.stage;
+    state.row[stage] = card;
+    state.dealt = stage;
+    const ok = judge(stage, g, card);
+    const p = state.players[state.current];
+    if (!ok) {
+      const n = stage + 1;
+      p.drinks += n;
+      state.rideDrinks += n;
+      state.phase = "miss";
+    } else if (stage === 3) {
+      p.rides += 1;
+      if (p.best === null || state.attempt < p.best) p.best = state.attempt;
+      state.phase = "won";
+    } else {
+      state.stage += 1;
+      state.lastGood = label(card) + ". Card " + (stage + 1) + " is good.";
+    }
+    save(); render();
+  }
+
+  function restartRow() {
+    state.row = []; state.stage = 0; state.phase = "guess"; state.attempt += 1; state.lastGood = ""; state.dealt = -1;
+    save(); render();
+  }
+  function startRide(idx) {
+    state.current = idx; state.row = []; state.stage = 0; state.phase = "guess";
+    state.attempt = 1; state.rideDrinks = 0; state.lastGood = ""; state.dealt = -1;
+    save(); render();
+  }
+  const rideUntouched = () => state.phase === "guess" && state.stage === 0 && state.attempt === 1 && !state.row.length;
+
+  // ---- render ----
+  const esc = s => String(s).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+
+  function cardHTML(i) {
+    const c = state.row[i];
+    const slotCls = ["slot"];
+    if (!c) slotCls.push(i === state.stage && state.phase === "guess" ? "" : "empty");
+    let face = "";
+    if (c) {
+      const s = suitOf(c);
+      const bust = state.phase === "miss" && i === state.stage;
+      slotCls.push(bust ? "wrong" : (state.phase === "won" ? "right" : ""));
+      face = `<div class="face${s.red ? " red" : ""}" aria-hidden="true">
+        <span class="corner">${c.r}${s.sym}</span><span class="pip">${s.sym}</span><span class="corner bot">${c.r}${s.sym}</span></div>`;
+    }
+    const cardCls = c ? (i === state.dealt ? "card deal up" : "card up") : "card";
+    const aria = c ? `${c.r === "A" ? "Ace" : c.r} of ${suitOf(c).name}` : "Face-down card";
+    return `<div class="${slotCls.join(" ").trim()}" role="img" aria-label="${aria}"><div class="${cardCls}"><div class="back"></div>${face}</div></div>`;
+  }
+
+  function stopsHTML() {
+    return `<section class="route-line" aria-label="The four cards">${STOPS.map((name, i) => {
+      let cls = "stop";
+      if (state.phase === "miss" && i === state.stage) cls += " bust";
+      else if (i < state.stage || state.phase === "won") cls += " done";
+      else if (i === state.stage) cls += " on";
+      return `<div class="${cls}"><span class="dot">${i + 1}</span><span class="stop-name">${name}</span>${cardHTML(i)}<span class="stake">${i + 1} drink${i ? "s" : ""}</span></div>`;
+    }).join("")}</section>`;
+  }
+
+  function consoleHTML() {
+    const p = state.players[state.current];
+    if (state.phase === "miss") {
+      const n = state.stage + 1;
+      const c = state.row[state.stage];
+      return `<section class="console" aria-live="polite">
+        <div class="verdict miss"><span class="big">Drink ${n}</span>
+          <p>${esc(label(c))} on card ${n}. ${esc(p.name)} is still on the bus. Back to card 1.</p></div>
+        <div class="row"><button class="primary" id="again">Deal again</button></div>
+      </section>`;
+    }
+    if (state.phase === "won") {
+      const next = (state.current + 1) % state.players.length;
+      return `<section class="console" aria-live="polite">
+        <div class="verdict won"><span class="big">Off the bus</span>
+          <p>${esc(p.name)} got off on attempt ${state.attempt} after ${state.rideDrinks} drink${state.rideDrinks === 1 ? "" : "s"}.</p></div>
+        <div class="row"><button class="primary" id="next">Next rider: ${esc(state.players[next].name)}</button>
+        <button class="ghost" id="same">${esc(p.name)} rides again</button></div>
+      </section>`;
+    }
+    const r = state.row;
+    let prompt, choices;
+    if (state.stage === 0) {
+      prompt = "Red or black?";
+      choices = `<div class="choices"><button class="choice choice-red" data-g="red"><span class="r">Red</span></button><button class="choice" data-g="black">Black</button></div>`;
+    } else if (state.stage === 1) {
+      prompt = `Higher or lower than <span class="vs">${esc(label(r[0]))}</span>?`;
+      choices = `<div class="choices"><button class="choice" data-g="higher">Higher ↑</button><button class="choice" data-g="lower">Lower ↓</button></div>`;
+    } else if (state.stage === 2) {
+      prompt = `Inside or outside <span class="vs">${esc(label(r[0]))}</span> and <span class="vs">${esc(label(r[1]))}</span>?`;
+      choices = `<div class="choices"><button class="choice" data-g="inside">Inside</button><button class="choice" data-g="outside">Outside</button></div>`;
+    } else {
+      prompt = "Pick the suit to get off";
+      choices = `<div class="choices four">${SUITS.map(s => `<button class="choice suit" data-g="${s.key}" aria-label="${s.name}">${s.red ? `<span class="r">${s.sym}</span>` : s.sym}</button>`).join("")}</div>`;
+    }
+    const flash = state.lastGood ? `<p class="flash ok">${esc(state.lastGood)}</p>` : "";
+    return `<section class="console">${flash}<h2 class="prompt">${prompt}</h2>${choices}</section>`;
+  }
+
+  function paxHTML() {
+    const canSwitch = rideUntouched();
+    const rows = state.players.map((p, i) => `<tr class="${i === state.current ? "current" : ""}">
+      <td><button class="pname" data-p="${i}" ${canSwitch ? "" : "disabled"}>${esc(p.name)}</button>${i === state.current ? '<span class="tag">RIDING</span>' : ""}</td>
+      <td class="n">${p.drinks}</td><td class="n">${p.rides}</td><td class="n">${p.best ?? "–"}</td></tr>`).join("");
+    return `<section class="pax">
+      <div class="pax-head"><span class="label">Passengers</span><button class="ghost" id="edit">Edit players</button></div>
+      <div style="overflow-x:auto"><table><thead><tr><th>Name</th><th class="n">Drinks</th><th class="n">Off the bus</th><th class="n">Best</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <p class="hint">${canSwitch ? "Tap a name to put them on the bus." : "Finish this ride to switch riders."} Best is the fewest attempts it took to get off.</p>
+    </section>`;
+  }
+
+  function rulesHTML() {
+    return `<details><summary>House rules</summary><ol>
+      <li><b>Red or black.</b> Miss and drink 1.</li>
+      <li><b>Higher or lower</b> than card 1. Miss and drink 2.</li>
+      <li><b>Inside or outside</b> cards 1 and 2. Miss and drink 3.</li>
+      <li><b>Pick the suit.</b> Miss and drink 4. Hit it and you're off the bus.</li></ol>
+      <p>Any miss sends you back to card 1 with a fresh deal. Aces are ${state.settings.acesHigh ? "high" : "low"}. A tie with an earlier card ${state.settings.tiesMiss ? "counts as a miss" : "is a free pass"}.</p></details>`;
+  }
+
+  function playHTML() {
+    const p = state.players[state.current];
+    return `<div class="wrap" style="max-width:none">
+      <section class="status">
+        <div><span class="label">On the bus</span><p class="rider">${esc(p.name)}</p></div>
+        <div class="meters">
+          <div class="meter"><span class="label">Attempt</span><strong>${state.attempt}</strong></div>
+          <div class="meter"><span class="label">Drinks this ride</span><strong>${state.rideDrinks}</strong></div>
+        </div>
+      </section>
+      ${stopsHTML()}${consoleHTML()}${paxHTML()}${rulesHTML()}</div>`;
+  }
+
+  function setupHTML() {
+    const chips = state.players.map((p, i) => `<li>${esc(p.name)}<button data-rm="${i}" aria-label="Remove ${esc(p.name)}">×</button></li>`).join("");
+    return `<section class="console setup">
+      <h2>Who's riding?</h2>
+      ${state.sample ? '<p class="hint">These are example names. Adding your first player replaces them.</p>' : ""}
+      <form class="add" id="addform"><input id="pname" maxlength="20" placeholder="Add a player" autocomplete="off" aria-label="Player name"><button class="ghost" type="submit">Add</button></form>
+      <ul class="chips">${chips}</ul>
+      <div class="opts">
+        <label class="opt"><input type="checkbox" id="aces" ${state.settings.acesHigh ? "checked" : ""}><span>Aces high<small>Off makes aces the lowest card.</small></span></label>
+        <label class="opt"><input type="checkbox" id="ties" ${state.settings.tiesMiss ? "checked" : ""}><span>Ties are a miss<small>A card matching the one it's compared to means you drink. Off gives a free pass.</small></span></label>
+      </div>
+      <div class="row"><button class="primary" id="go" ${state.players.length ? "" : "disabled"}>Board the bus</button>
+      ${state.players.some(p => p.drinks || p.rides) ? '<button class="ghost" id="reset" type="button">Reset tallies</button>' : ""}</div>
+      ${rulesHTML()}
+    </section>`;
+  }
+
+  function render() {
+    app.innerHTML = state.screen === "setup" ? setupHTML() : playHTML();
+  }
+
+  // ---- events ----
+  app.addEventListener("click", e => {
+    const t = e.target.closest("button");
+    if (!t) return;
+    if (t.dataset.g) return guess(t.dataset.g);
+    if (t.dataset.rm !== undefined) {
+      state.players.splice(+t.dataset.rm, 1);
+      if (state.current >= state.players.length) state.current = 0;
+      save(); return render();
+    }
+    if (t.dataset.p !== undefined && rideUntouched()) return startRide(+t.dataset.p);
+    switch (t.id) {
+      case "again": return restartRow();
+      case "next": return startRide((state.current + 1) % state.players.length);
+      case "same": return startRide(state.current);
+      case "edit": state.screen = "setup"; save(); return render();
+      case "go": if (state.players.length) { state.screen = "play"; startRide(Math.min(state.current, state.players.length - 1)); } return;
+      case "reset": state.players.forEach(p => { p.drinks = 0; p.rides = 0; p.best = null; }); save(); return render();
+    }
+  });
+  app.addEventListener("submit", e => {
+    e.preventDefault();
+    const input = document.getElementById("pname");
+    const name = input.value.trim();
+    if (!name) return;
+    if (state.sample) { state.players = []; state.sample = false; }
+    state.players.push(newPlayer(name));
+    save(); render();
+    document.getElementById("pname").focus();
+  });
+  app.addEventListener("change", e => {
+    if (e.target.id === "aces") state.settings.acesHigh = e.target.checked;
+    if (e.target.id === "ties") state.settings.tiesMiss = e.target.checked;
+    save();
+  });
+
+  function start(data) {
+    state = (data && data.state) || load() || fresh();
+    state.dealt = -1;
+    render();
+  }
+  window.claude?.hot?.snapshot?.(() => ({ state }));
+  window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
+</body>
+</html>
