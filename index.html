@@ -144,8 +144,9 @@ th.n, td.n { text-align: right; font-family: var(--mono); }
 td { padding: 9px 8px; border-bottom: 1px solid var(--line); }
 tr.current td { background: rgba(245,179,1,.08); }
 tr.current td:first-child { box-shadow: inset 3px 0 0 var(--bus); }
-.pname { background: none; border: 0; padding: 0; font-weight: 600; text-align: left; }
-.pname[disabled] { cursor: default; }
+.pname { font-weight: 600; }
+.tag.off { background: var(--line); color: var(--muted); }
+tr.is-off td { color: var(--muted); }
 .tag { font: 700 10px/1 var(--mono); background: var(--bus); color: var(--bus-ink); padding: 3px 5px; border-radius: 3px; margin-left: 8px; vertical-align: 2px; }
 .hint { font-size: 13px; color: var(--muted); margin: 0; }
 
@@ -213,17 +214,16 @@ details p { max-width: 65ch; color: var(--muted); }
       sample: true,
       settings: { acesHigh: true, tiesMiss: true },
       current: 0,
+      starter: 0,
       deck: [],
       row: [],
       stage: 0,
       phase: "guess",
-      attempt: 1,
-      rideDrinks: 0,
       lastGood: "",
       dealt: -1,
     };
   }
-  function newPlayer(name) { return { name, drinks: 0, rides: 0, best: null }; }
+  function newPlayer(name) { return { name, drinks: 0, rides: 0, best: null, tries: 0, roundDrinks: 0, off: false }; }
 
   function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) {} }
   function load() {
@@ -281,11 +281,12 @@ details p { max-width: 65ch; color: var(--muted); }
     if (!ok) {
       const n = stage + 1;
       p.drinks += n;
-      state.rideDrinks += n;
+      p.roundDrinks += n;
       state.phase = "miss";
     } else if (stage === 3) {
       p.rides += 1;
-      if (p.best === null || state.attempt < p.best) p.best = state.attempt;
+      p.off = true;
+      if (p.best === null || p.tries < p.best) p.best = p.tries;
       state.phase = "won";
     } else {
       state.stage += 1;
@@ -294,16 +295,28 @@ details p { max-width: 65ch; color: var(--muted); }
     save(); render();
   }
 
-  function restartRow() {
-    state.row = []; state.stage = 0; state.phase = "guess"; state.attempt += 1; state.lastGood = ""; state.dealt = -1;
+  // Turns rotate after every miss or get-off. Players who are off sit out until the next round.
+  function nextUp(from) {
+    const n = state.players.length;
+    for (let k = 1; k <= n; k++) { const i = (from + k) % n; if (!state.players[i].off) return i; }
+    return -1;
+  }
+  function beginTurn(idx) {
+    state.current = idx; state.players[idx].tries += 1;
+    state.row = []; state.stage = 0; state.phase = "guess"; state.lastGood = ""; state.dealt = -1;
     save(); render();
   }
-  function startRide(idx) {
-    state.current = idx; state.row = []; state.stage = 0; state.phase = "guess";
-    state.attempt = 1; state.rideDrinks = 0; state.lastGood = ""; state.dealt = -1;
-    save(); render();
+  function newRound() {
+    state.players.forEach(p => { p.off = false; p.tries = 0; p.roundDrinks = 0; });
+    const first = state.starter % state.players.length;
+    state.starter = first + 1;
+    beginTurn(first);
   }
-  const rideUntouched = () => state.phase === "guess" && state.stage === 0 && state.attempt === 1 && !state.row.length;
+  function passTurn() {
+    const i = nextUp(state.current);
+    if (i === -1) return newRound();
+    beginTurn(i);
+  }
 
   // ---- render ----
   const esc = s => String(s).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
@@ -337,22 +350,28 @@ details p { max-width: 65ch; color: var(--muted); }
 
   function consoleHTML() {
     const p = state.players[state.current];
+    const next = nextUp(state.current);
+    const passLabel = next === state.current ? "Deal again" : next === -1 ? "Start a new round" : `Pass to ${esc(state.players[next].name)}`;
     if (state.phase === "miss") {
       const n = state.stage + 1;
       const c = state.row[state.stage];
+      const after = next === state.current ? "Back to card 1." : `${esc(state.players[next].name)} is up next.`;
       return `<section class="console" aria-live="polite">
         <div class="verdict miss"><span class="big">Drink ${n}</span>
-          <p>${esc(label(c))} on card ${n}. ${esc(p.name)} is still on the bus. Back to card 1.</p></div>
-        <div class="row"><button class="primary" id="again">Deal again</button></div>
+          <p>${esc(label(c))} on card ${n}. ${esc(p.name)} is still on the bus. ${after}</p></div>
+        <div class="row"><button class="primary" id="pass">${passLabel}</button></div>
       </section>`;
     }
     if (state.phase === "won") {
-      const next = (state.current + 1) % state.players.length;
+      let note = "";
+      if (next === -1 && state.players.length > 1) {
+        const worst = state.players.reduce((a, b) => b.roundDrinks > a.roundDrinks ? b : a);
+        note = ` Everyone's off. ${esc(p.name)} was last off, and ${esc(worst.name)} drank the most this round (${worst.roundDrinks}).`;
+      }
       return `<section class="console" aria-live="polite">
         <div class="verdict won"><span class="big">Off the bus</span>
-          <p>${esc(p.name)} got off on attempt ${state.attempt} after ${state.rideDrinks} drink${state.rideDrinks === 1 ? "" : "s"}.</p></div>
-        <div class="row"><button class="primary" id="next">Next rider: ${esc(state.players[next].name)}</button>
-        <button class="ghost" id="same">${esc(p.name)} rides again</button></div>
+          <p>${esc(p.name)} got off on try ${p.tries} after ${p.roundDrinks} drink${p.roundDrinks === 1 ? "" : "s"}.${note}</p></div>
+        <div class="row"><button class="primary" id="pass">${passLabel}</button></div>
       </section>`;
     }
     const r = state.row;
@@ -375,14 +394,16 @@ details p { max-width: 65ch; color: var(--muted); }
   }
 
   function paxHTML() {
-    const canSwitch = rideUntouched();
-    const rows = state.players.map((p, i) => `<tr class="${i === state.current ? "current" : ""}">
-      <td><button class="pname" data-p="${i}" ${canSwitch ? "" : "disabled"}>${esc(p.name)}</button>${i === state.current ? '<span class="tag">RIDING</span>' : ""}</td>
-      <td class="n">${p.drinks}</td><td class="n">${p.rides}</td><td class="n">${p.best ?? "–"}</td></tr>`).join("");
+    const rows = state.players.map((p, i) => {
+      const tag = i === state.current && state.phase !== "won" ? '<span class="tag">RIDING</span>' : p.off ? '<span class="tag off">OFF</span>' : "";
+      return `<tr class="${i === state.current ? "current" : ""}${p.off ? " is-off" : ""}">
+      <td><span class="pname">${esc(p.name)}</span>${tag}</td>
+      <td class="n">${p.roundDrinks}</td><td class="n">${p.drinks}</td><td class="n">${p.best ?? "–"}</td></tr>`;
+    }).join("");
     return `<section class="pax">
       <div class="pax-head"><span class="label">Passengers</span><button class="ghost" id="edit">Edit players</button></div>
-      <div style="overflow-x:auto"><table><thead><tr><th>Name</th><th class="n">Drinks</th><th class="n">Off the bus</th><th class="n">Best</th></tr></thead><tbody>${rows}</tbody></table></div>
-      <p class="hint">${canSwitch ? "Tap a name to put them on the bus." : "Finish this ride to switch riders."} Best is the fewest attempts it took to get off.</p>
+      <div style="overflow-x:auto"><table><thead><tr><th>Name</th><th class="n">This round</th><th class="n">Total</th><th class="n">Best</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <p class="hint">Turns go down the list. A miss passes the bus to the next player, and anyone who gets off sits out until the next round. Drinks columns count drinks; Best is the fewest tries it took to get off.</p>
     </section>`;
   }
 
@@ -392,7 +413,7 @@ details p { max-width: 65ch; color: var(--muted); }
       <li><b>Higher or lower</b> than card 1. Miss and drink 2.</li>
       <li><b>Inside or outside</b> cards 1 and 2. Miss and drink 3.</li>
       <li><b>Pick the suit.</b> Miss and drink 4. Hit it and you're off the bus.</li></ol>
-      <p>Any miss sends you back to card 1 with a fresh deal. Aces are ${state.settings.acesHigh ? "high" : "low"}. A tie with an earlier card ${state.settings.tiesMiss ? "counts as a miss" : "is a free pass"}.</p></details>`;
+      <p>Players take turns. After a miss you drink and pass to the next player, who starts from card 1 with a fresh deal. Get off the bus and you sit out until everyone else is off. Aces are ${state.settings.acesHigh ? "high" : "low"}. A tie with an earlier card ${state.settings.tiesMiss ? "counts as a miss" : "is a free pass"}.</p></details>`;
   }
 
   function playHTML() {
@@ -401,8 +422,8 @@ details p { max-width: 65ch; color: var(--muted); }
       <section class="status">
         <div><span class="label">On the bus</span><p class="rider">${esc(p.name)}</p></div>
         <div class="meters">
-          <div class="meter"><span class="label">Attempt</span><strong>${state.attempt}</strong></div>
-          <div class="meter"><span class="label">Drinks this ride</span><strong>${state.rideDrinks}</strong></div>
+          <div class="meter"><span class="label">Try</span><strong>${p.tries}</strong></div>
+          <div class="meter"><span class="label">Drinks this round</span><strong>${p.roundDrinks}</strong></div>
         </div>
       </section>
       ${stopsHTML()}${consoleHTML()}${paxHTML()}${rulesHTML()}</div>`;
@@ -419,7 +440,7 @@ details p { max-width: 65ch; color: var(--muted); }
         <label class="opt"><input type="checkbox" id="aces" ${state.settings.acesHigh ? "checked" : ""}><span>Aces high<small>Off makes aces the lowest card.</small></span></label>
         <label class="opt"><input type="checkbox" id="ties" ${state.settings.tiesMiss ? "checked" : ""}><span>Ties are a miss<small>A card matching the one it's compared to means you drink. Off gives a free pass.</small></span></label>
       </div>
-      <div class="row"><button class="primary" id="go" ${state.players.length ? "" : "disabled"}>Board the bus</button>
+      <div class="row"><button class="primary" id="go" ${state.players.length ? "" : "disabled"}>${state.players.some(p => p.tries) ? "Start a new round" : "Board the bus"}</button>
       ${state.players.some(p => p.drinks || p.rides) ? '<button class="ghost" id="reset" type="button">Reset tallies</button>' : ""}</div>
       ${rulesHTML()}
     </section>`;
@@ -436,16 +457,12 @@ details p { max-width: 65ch; color: var(--muted); }
     if (t.dataset.g) return guess(t.dataset.g);
     if (t.dataset.rm !== undefined) {
       state.players.splice(+t.dataset.rm, 1);
-      if (state.current >= state.players.length) state.current = 0;
       save(); return render();
     }
-    if (t.dataset.p !== undefined && rideUntouched()) return startRide(+t.dataset.p);
     switch (t.id) {
-      case "again": return restartRow();
-      case "next": return startRide((state.current + 1) % state.players.length);
-      case "same": return startRide(state.current);
+      case "pass": return passTurn();
       case "edit": state.screen = "setup"; save(); return render();
-      case "go": if (state.players.length) { state.screen = "play"; startRide(Math.min(state.current, state.players.length - 1)); } return;
+      case "go": if (state.players.length) { state.screen = "play"; state.starter = 0; newRound(); } return;
       case "reset": state.players.forEach(p => { p.drinks = 0; p.rides = 0; p.best = null; }); save(); return render();
     }
   });
@@ -467,6 +484,9 @@ details p { max-width: 65ch; color: var(--muted); }
 
   function start(data) {
     state = (data && data.state) || load() || fresh();
+    state.players = state.players.map(p => Object.assign(newPlayer(p.name), p));
+    state.starter = state.starter || 0;
+    if (state.screen === "play" && (!state.players.length || !state.players[state.current] || !state.players[state.current].tries)) state.screen = "setup";
     state.dealt = -1;
     render();
   }
