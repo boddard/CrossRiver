@@ -95,8 +95,12 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 .stop.on .slot:not(.empty) .back { box-shadow: inset 0 0 0 3px var(--bus), 0 0 0 3px rgba(245,179,1,.25), 0 10px 30px rgba(245,179,1,.18); }
 .card { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform .5s cubic-bezier(.2,.7,.2,1); }
 .card.up { transform: rotateY(180deg); }
-.card.deal { animation: deal .55s cubic-bezier(.2,.7,.2,1); }
-@keyframes deal { from { transform: rotateY(0deg) translateY(-10px); } to { transform: rotateY(180deg); } }
+.card.deal { animation: deal .6s cubic-bezier(.2,.7,.2,1); }
+@keyframes deal {
+  0% { transform: translateY(-36px) scale(.9) rotateY(0deg); opacity: 0; }
+  35% { transform: translateY(0) scale(1.04) rotateY(0deg); opacity: 1; }
+  100% { transform: translateY(0) scale(1) rotateY(180deg); }
+}
 .face, .back { position: absolute; inset: 0; border-radius: 7cqw; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
 .back {
   background: repeating-linear-gradient(135deg, var(--bus) 0 10px, #e2a400 10px 20px);
@@ -129,7 +133,7 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
   transition: border-color .15s, transform .1s;
 }
 @media (hover: hover) { .choice:hover { border-color: var(--bus); } }
-.choice:active { transform: translateY(1px); }
+.choice:active { transform: scale(.96); }
 .choice.suit { font-size: clamp(26px, 7vw, 34px); padding: 10px 4px; }
 .choice .r { color: var(--miss); }
 .choice-red { border-color: rgba(239,90,95,.55); }
@@ -195,9 +199,41 @@ details p { max-width: 65ch; color: var(--muted); }
   .choices.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .meters { gap: 12px; }
 }
+/* Moments: a correct card pulses green, a miss shakes and flashes red, getting off throws confetti and drives a bus past */
+.slot.hit .face { animation: hit .7s .45s ease-out both; }
+@keyframes hit { 0% { box-shadow: 0 0 0 0 rgba(70,196,106,.9); } 100% { box-shadow: 0 0 0 18px rgba(70,196,106,0); } }
+.slot.shake { animation: shake .5s .5s ease-in-out both; }
+@keyframes shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-9px) rotate(-3deg); } 40% { transform: translateX(8px) rotate(2deg); } 60% { transform: translateX(-6px); } 80% { transform: translateX(4px); } }
+.miss-flash { position: fixed; inset: 0; pointer-events: none; z-index: 20; background: radial-gradient(ellipse at center, transparent 40%, rgba(239,90,95,.45)); animation: flash .9s .45s ease-out both; }
+@keyframes flash { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
+.slam { display: inline-block; animation: slam .45s .5s cubic-bezier(.2,1.6,.4,1) both; }
+@keyframes slam { 0% { transform: scale(2.2); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+.stop.enter .slot { animation: rise .45s calc(var(--i) * 80ms) cubic-bezier(.2,.7,.2,1) both; }
+@keyframes rise { 0% { transform: translateY(24px); opacity: 0; } 100% { transform: none; opacity: 1; } }
+.stop.cheer .slot { animation: cheer .6s calc(.5s + var(--i) * 90ms) ease-in-out both; }
+@keyframes cheer { 0%, 100% { transform: none; } 40% { transform: translateY(-16px) rotate(-3deg); } 70% { transform: translateY(2px); } }
+.rider.slide { animation: slide .45s cubic-bezier(.2,.7,.2,1) both; }
+@keyframes slide { 0% { transform: translateX(-28px); opacity: 0; } 100% { transform: none; opacity: 1; } }
+.console.pop { animation: rise .35s .35s ease-out both; }
+.fx-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 25; }
+.fx-bus { position: fixed; left: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); width: 150px; z-index: 30; pointer-events: none; animation: drive 2.2s .4s cubic-bezier(.45,0,.55,1) both; }
+.fx-bus g { animation: bob .22s ease-in-out infinite alternate; }
+@keyframes drive { 0% { transform: translateX(-170px); } 100% { transform: translateX(calc(100vw + 20px)); } }
+@keyframes bob { from { transform: translateY(0); } to { transform: translateY(-2px); } }
+
+/* Restart */
+.sign-end { display: flex; align-items: center; gap: 14px; }
+.sign-btn { background: transparent; border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font: 700 12px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.sign-btn:hover { color: var(--bus); border-color: var(--bus); }
+.confirm-back { position: fixed; inset: 0; z-index: 40; background: rgba(8,9,12,.72); display: grid; place-items: center; padding: 16px; animation: fade .2s ease-out both; }
+.confirm { width: min(420px, 100%); background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; display: grid; gap: 14px; animation: rise .25s ease-out both; }
+.confirm h2 { margin: 0; font: 900 28px/1 var(--display); text-transform: uppercase; }
+.confirm p { margin: 0; color: var(--muted); }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
 @media (prefers-reduced-motion: reduce) {
-  .card, .choice { transition: none; }
-  .card.deal { animation: none; }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .fx-bus, .fx-canvas, .miss-flash { display: none; }
 }
 </style>
 </head>
@@ -205,7 +241,10 @@ details p { max-width: 65ch; color: var(--muted); }
 <div class="wrap">
   <header class="sign" aria-label="F the Bus">
     <h1>F the Bus</h1>
-    <div class="route"><b>4</b>Express · Last stop: off the bus</div>
+    <div class="sign-end">
+      <div class="route"><b>4</b>Express · Last stop: off the bus</div>
+      <button class="sign-btn" id="restart" type="button" hidden>Restart</button>
+    </div>
   </header>
   <main id="app"></main>
 </div>
@@ -224,6 +263,10 @@ details p { max-width: 65ch; color: var(--muted); }
 
   const app = document.getElementById("app");
   let state;
+  // One-shot animation cue for the next render: "", "turn", "good", "miss" or "won".
+  let fx = "";
+  let confirming = false;
+  const calm = () => window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   function fresh() {
     return {
@@ -300,12 +343,15 @@ details p { max-width: 65ch; color: var(--muted); }
       p.drinks += 1;
       p.roundDrinks += 1;
       state.phase = "miss";
+      fx = "miss";
     } else if (stage === 3) {
       p.rides += 1;
       p.off = true;
       if (p.best === null || p.tries < p.best) p.best = p.tries;
       state.phase = "won";
+      fx = "won";
     } else {
+      fx = "good";
       state.stage += 1;
       state.lastGood = label(card) + ". Card " + (stage + 1) + " is good.";
     }
@@ -321,7 +367,14 @@ details p { max-width: 65ch; color: var(--muted); }
   function beginTurn(idx) {
     state.current = idx; state.players[idx].tries += 1;
     state.row = []; state.stage = 0; state.phase = "guess"; state.lastGood = ""; state.dealt = -1;
+    fx = "turn";
     save(); render();
+  }
+  function restartGame() {
+    confirming = false;
+    state.players.forEach(p => { p.drinks = 0; p.rides = 0; p.best = null; });
+    state.starter = 0; state.deck = [];
+    newRound();
   }
   function newRound() {
     state.players.forEach(p => { p.off = false; p.tries = 0; p.roundDrinks = 0; });
@@ -347,6 +400,8 @@ details p { max-width: 65ch; color: var(--muted); }
       const s = suitOf(c);
       const bust = state.phase === "miss" && i === state.stage;
       slotCls.push(bust ? "wrong" : (state.phase === "won" ? "right" : ""));
+      if (bust && fx === "miss") slotCls.push("shake");
+      if (fx === "good" && i === state.dealt) slotCls.push("hit");
       face = `<div class="face${s.red ? " red" : ""}" aria-hidden="true">
         <span class="corner">${c.r}${s.sym}</span><span class="pip">${s.sym}</span><span class="corner bot">${c.r}${s.sym}</span></div>`;
     }
@@ -357,11 +412,11 @@ details p { max-width: 65ch; color: var(--muted); }
 
   function stopsHTML() {
     return `<section class="route-line" aria-label="The four cards">${STOPS.map((name, i) => {
-      let cls = "stop";
+      let cls = "stop" + (fx === "turn" ? " enter" : fx === "won" ? " cheer" : "");
       if (state.phase === "miss" && i === state.stage) cls += " bust";
       else if (i < state.stage || state.phase === "won") cls += " done";
       else if (i === state.stage) cls += " on";
-      return `<div class="${cls}"><div class="stop-head"><span class="dot">${i + 1}</span><span class="stop-name"><span class="long">${name[0]}</span><span class="short">${name[1]}</span></span></div>${cardHTML(i)}</div>`;
+      return `<div class="${cls}" style="--i:${i}"><div class="stop-head"><span class="dot">${i + 1}</span><span class="stop-name"><span class="long">${name[0]}</span><span class="short">${name[1]}</span></span></div>${cardHTML(i)}</div>`;
     }).join("")}</section>`;
   }
 
@@ -374,7 +429,7 @@ details p { max-width: 65ch; color: var(--muted); }
       const c = state.row[state.stage];
       const after = next === state.current ? "Back to card 1." : `${esc(state.players[next].name)} is up next.`;
       return `<section class="console" aria-live="polite">
-        <div class="verdict miss"><span class="big">Drink</span>
+        <div class="verdict miss"><span class="big${fx === "miss" ? " slam" : ""}">Drink</span>
           <p>${esc(label(c))} on card ${n}. ${esc(p.name)} is still on the bus. ${after}</p></div>
         <div class="row"><button class="primary" id="pass">${passLabel}</button></div>
       </section>`;
@@ -386,7 +441,7 @@ details p { max-width: 65ch; color: var(--muted); }
         note = ` Everyone's off. ${esc(p.name)} was last off, and ${esc(worst.name)} drank the most this round (${worst.roundDrinks}).`;
       }
       return `<section class="console" aria-live="polite">
-        <div class="verdict won"><span class="big">Off the bus</span>
+        <div class="verdict won"><span class="big${fx === "won" ? " slam" : ""}">Off the bus</span>
           <p>${esc(p.name)} got off on try ${p.tries} after ${p.roundDrinks} drink${p.roundDrinks === 1 ? "" : "s"}.${note}</p></div>
         <div class="row"><button class="primary" id="pass">${passLabel}</button></div>
       </section>`;
@@ -435,9 +490,14 @@ details p { max-width: 65ch; color: var(--muted); }
 
   function playHTML() {
     const p = state.players[state.current];
-    return `<div class="wrap" style="max-width:none"><div class="stage">
+    const confirm = confirming ? `<div class="confirm-back"><div class="confirm" role="dialog" aria-modal="true" aria-labelledby="rs-title">
+        <h2 id="rs-title">Restart the game?</h2>
+        <p>Everyone's drinks, tries and best rides go back to zero. The same players stay on, and ${esc(state.players[0].name)} goes first.</p>
+        <div class="row"><button class="primary" id="restart-yes">Restart</button><button class="ghost" id="restart-no">Keep playing</button></div>
+      </div></div>` : "";
+    return `${confirm}${fx === "miss" ? '<div class="miss-flash"></div>' : ""}<div class="wrap" style="max-width:none"><div class="stage">
       <section class="status">
-        <div><span class="label">On the bus</span><p class="rider">${esc(p.name)}</p></div>
+        <div><span class="label">On the bus</span><p class="rider${fx === "turn" ? " slide" : ""}">${esc(p.name)}</p></div>
         <div class="meters">
           <div class="meter"><span class="label">Try</span><strong>${p.tries}</strong></div>
           <div class="meter"><span class="label">Drinks</span><strong>${p.roundDrinks}</strong></div>
@@ -465,6 +525,11 @@ details p { max-width: 65ch; color: var(--muted); }
 
   function render() {
     app.innerHTML = state.screen === "setup" ? setupHTML() : playHTML();
+    document.getElementById("restart").hidden = state.screen !== "play";
+    if (fx === "won") celebrate();
+    fx = "";
+    state.dealt = -1;
+    if (confirming) document.getElementById("restart-yes").focus();
   }
 
   // ---- events ----
@@ -477,12 +542,59 @@ details p { max-width: 65ch; color: var(--muted); }
       save(); return render();
     }
     switch (t.id) {
+      case "restart-yes": return restartGame();
+      case "restart-no": confirming = false; return render();
       case "pass": return passTurn();
       case "edit": state.screen = "setup"; save(); return render();
       case "go": if (state.players.length) { state.screen = "play"; state.starter = 0; newRound(); } return;
       case "reset": state.players.forEach(p => { p.drinks = 0; p.rides = 0; p.best = null; }); save(); return render();
     }
   });
+  document.getElementById("restart").addEventListener("click", () => { confirming = true; render(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && confirming) { confirming = false; render(); } });
+
+  // ---- celebration ----
+  function celebrate() {
+    if (calm()) return;
+    const bus = document.createElement("div");
+    bus.innerHTML = `<svg class="fx-bus" viewBox="0 0 150 64" aria-hidden="true"><g>
+      <rect x="4" y="6" width="138" height="44" rx="9" fill="#f5b301" stroke="#0b0c0f" stroke-width="3"/>
+      <rect x="14" y="13" width="20" height="15" rx="2" fill="#0b0c0f"/><rect x="40" y="13" width="20" height="15" rx="2" fill="#0b0c0f"/>
+      <rect x="66" y="13" width="20" height="15" rx="2" fill="#0b0c0f"/><rect x="92" y="13" width="20" height="15" rx="2" fill="#0b0c0f"/>
+      <rect x="120" y="13" width="16" height="22" rx="2" fill="#0b0c0f"/><rect x="4" y="34" width="112" height="4" fill="#0b0c0f"/>
+      <circle cx="32" cy="52" r="10" fill="#0b0c0f"/><circle cx="32" cy="52" r="4" fill="#9aa1ae"/>
+      <circle cx="112" cy="52" r="10" fill="#0b0c0f"/><circle cx="112" cy="52" r="4" fill="#9aa1ae"/></g></svg>`;
+    const svg = bus.firstElementChild;
+    document.body.appendChild(svg);
+    setTimeout(() => svg.remove(), 3000);
+
+    const c = document.createElement("canvas");
+    c.className = "fx-canvas";
+    document.body.appendChild(c);
+    const dpr = window.devicePixelRatio || 1, W = innerWidth, H = innerHeight;
+    c.width = W * dpr; c.height = H * dpr;
+    const g = c.getContext("2d"); g.scale(dpr, dpr);
+    const colors = ["#f5b301", "#46c46a", "#f7f5ef", "#ef5a5f", "#e2a400"];
+    const bits = Array.from({ length: 150 }, () => ({
+      x: W / 2 + (Math.random() - .5) * W * .3, y: H * .5,
+      vx: (Math.random() - .5) * 16, vy: -(Math.random() * 15 + 7),
+      w: 6 + Math.random() * 6, h: 4 + Math.random() * 4,
+      r: Math.random() * 6, vr: (Math.random() - .5) * .4, col: colors[Math.floor(Math.random() * colors.length)],
+    }));
+    const t0 = performance.now() + 450;
+    (function frame(now) {
+      if (now < t0) return requestAnimationFrame(frame);
+      const t = now - t0;
+      g.clearRect(0, 0, W, H);
+      g.globalAlpha = t > 1600 ? Math.max(0, 1 - (t - 1600) / 600) : 1;
+      for (const b of bits) {
+        b.vy += .45; b.vx *= .99; b.x += b.vx; b.y += b.vy; b.r += b.vr;
+        g.save(); g.translate(b.x, b.y); g.rotate(b.r); g.fillStyle = b.col; g.fillRect(-b.w / 2, -b.h / 2, b.w, b.h); g.restore();
+      }
+      if (t < 2200) requestAnimationFrame(frame); else c.remove();
+    })(performance.now());
+  }
+
   app.addEventListener("submit", e => {
     e.preventDefault();
     const input = document.getElementById("pname");
