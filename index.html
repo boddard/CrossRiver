@@ -279,9 +279,8 @@ details p { max-width: 65ch; color: var(--muted); }
     const ok = judge(stage, g, card);
     const p = state.players[state.current];
     if (!ok) {
-      const n = stage + 1;
-      p.drinks += n;
-      p.roundDrinks += n;
+      p.drinks += 1;
+      p.roundDrinks += 1;
       state.phase = "miss";
     } else if (stage === 3) {
       p.rides += 1;
@@ -344,7 +343,7 @@ details p { max-width: 65ch; color: var(--muted); }
       if (state.phase === "miss" && i === state.stage) cls += " bust";
       else if (i < state.stage || state.phase === "won") cls += " done";
       else if (i === state.stage) cls += " on";
-      return `<div class="${cls}"><span class="dot">${i + 1}</span><span class="stop-name">${name}</span>${cardHTML(i)}<span class="stake">${i + 1} drink${i ? "s" : ""}</span></div>`;
+      return `<div class="${cls}"><span class="dot">${i + 1}</span><span class="stop-name">${name}</span>${cardHTML(i)}<span class="stake">miss: 1 drink</span></div>`;
     }).join("")}</section>`;
   }
 
@@ -357,7 +356,7 @@ details p { max-width: 65ch; color: var(--muted); }
       const c = state.row[state.stage];
       const after = next === state.current ? "Back to card 1." : `${esc(state.players[next].name)} is up next.`;
       return `<section class="console" aria-live="polite">
-        <div class="verdict miss"><span class="big">Drink ${n}</span>
+        <div class="verdict miss"><span class="big">Drink</span>
           <p>${esc(label(c))} on card ${n}. ${esc(p.name)} is still on the bus. ${after}</p></div>
         <div class="row"><button class="primary" id="pass">${passLabel}</button></div>
       </section>`;
@@ -409,11 +408,11 @@ details p { max-width: 65ch; color: var(--muted); }
 
   function rulesHTML() {
     return `<details><summary>House rules</summary><ol>
-      <li><b>Red or black.</b> Miss and drink 1.</li>
-      <li><b>Higher or lower</b> than card 1. Miss and drink 2.</li>
-      <li><b>Inside or outside</b> cards 1 and 2. Miss and drink 3.</li>
-      <li><b>Pick the suit.</b> Miss and drink 4. Hit it and you're off the bus.</li></ol>
-      <p>Players take turns. After a miss you drink and pass to the next player, who starts from card 1 with a fresh deal. Get off the bus and you sit out until everyone else is off. Aces are ${state.settings.acesHigh ? "high" : "low"}. A tie with an earlier card ${state.settings.tiesMiss ? "counts as a miss" : "is a free pass"}.</p></details>`;
+      <li><b>Red or black.</b></li>
+      <li><b>Higher or lower</b> than card 1.</li>
+      <li><b>Inside or outside</b> cards 1 and 2.</li>
+      <li><b>Pick the suit.</b> Hit it and you're off the bus.</li></ol>
+      <p>Every miss is 1 drink, whichever card you miss on. Players take turns. After a miss you drink and pass to the next player, who starts from card 1 with a fresh deal. Get off the bus and you sit out until everyone else is off. Aces are ${state.settings.acesHigh ? "high" : "low"}. A tie with an earlier card ${state.settings.tiesMiss ? "counts as a miss" : "is a free pass"}.</p></details>`;
   }
 
   function playHTML() {
