@@ -275,7 +275,7 @@ details p { max-width: 65ch; color: var(--muted); }
 .stepper strong { min-width: 28px; text-align: center; font: 700 18px var(--mono); }
 
 /* Restart */
-.sign-end { display: flex; align-items: center; gap: 14px; }
+.sign-end { display: flex; align-items: center; gap: 8px; }
 .sign-btn { background: transparent; border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font: 700 12px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
 .sign-btn:hover { color: var(--bus); border-color: var(--bus); }
 .confirm-back { position: fixed; inset: 0; z-index: 40; background: rgba(8,9,12,.72); display: grid; place-items: center; padding: 16px; animation: fade .2s ease-out both; }
@@ -295,6 +295,7 @@ details p { max-width: 65ch; color: var(--muted); }
   <header class="sign" aria-label="F the Bus">
     <h1>F the Bus</h1>
     <div class="sign-end">
+      <button class="sign-btn" id="menu" type="button" hidden>Menu</button>
       <button class="sign-btn" id="restart" type="button" hidden>Restart</button>
     </div>
   </header>
@@ -751,7 +752,8 @@ details p { max-width: 65ch; color: var(--muted); }
   function setupHTML() {
     const chips = state.players.map((p, i) => `<li>${esc(p.name)}<button data-rm="${i}" aria-label="Remove ${esc(p.name)}">×</button></li>`).join("");
     return `<section class="console setup">
-      <h2>Who's riding?</h2>
+      <h2>Main menu</h2>
+      <span class="label">Players</span>
       ${state.sample ? '<p class="hint">These are example names. Adding your first player replaces them.</p>' : ""}
       <form class="add" id="addform"><input id="pname" maxlength="20" placeholder="Add a player" autocomplete="off" aria-label="Player name"><button class="ghost" type="submit">Add</button></form>
       <ul class="chips">${chips}</ul>
@@ -773,6 +775,7 @@ details p { max-width: 65ch; color: var(--muted); }
   function render() {
     app.innerHTML = state.screen === "setup" ? setupHTML() : state.screen === "bets" ? betsHTML() : state.screen === "race" ? raceHTML() : playHTML();
     document.getElementById("restart").hidden = !["play", "race", "bets"].includes(state.screen);
+    document.getElementById("menu").hidden = state.screen === "setup";
     if (fx === "won") celebrate();
     fx = "";
     state.dealt = -1;
@@ -808,6 +811,8 @@ details p { max-width: 65ch; color: var(--muted); }
     }
   });
   document.getElementById("restart").addEventListener("click", () => { confirming = true; render(); });
+  // Menu goes straight to the setup screen. Scores are kept; picking a mode there starts a fresh round or race.
+  document.getElementById("menu").addEventListener("click", () => { confirming = false; state.screen = "setup"; save(); render(); scrollTo(0, 0); });
   document.addEventListener("keydown", e => { if (e.key === "Escape" && confirming) { confirming = false; render(); } });
 
   // ---- celebration ----
