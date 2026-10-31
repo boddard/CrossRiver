@@ -11,7 +11,7 @@ const SUITS = {
 };
 const SUIT_KEYS = ["S", "H", "D", "C"];
 const RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
-const MODES = ["classic", "hilo", "horse"];
+const MODES = ["classic", "hilo", "horse", "kings"];
 const MAX_PLAYERS = 16;
 const GIVE_ON_OFF = 3; // drinks a player hands out when they get off the bus
 // Bubble colours, picked in join order so neighbours differ.
@@ -173,6 +173,79 @@ function guess(room, g) {
 // ---- Horse race ----
 // Each flip moves that suit's ace one spot. Once every ace has reached sideline card k, card k turns
 // over and the ace of its suit drops back one (never below the start). First ace past the last card wins.
+// ---- Kings Cup ----
+// Players take turns drawing from a ring of 52 cards. Each rank has a rule; the phones run the
+// interactive ones (races to tap, picking who drinks, mates, rules). The 4th King drinks the cup.
+const KINGS_RACE_MS = 6000;   // how long everyone has to tap for Heaven and Floor
+const KINGS_PICK_MS = 20000;  // a drawer who doesn't pick (or make a rule) in time is skipped
+function newKings(room) {
+  room.kings = {
+    id: token(4), deck: deck(), last: null, drawer: (room.players.find(p => p.connected) || room.players[0]).id,
+    kings: 0, rules: [], mates: [], qm: null, pending: null, claim: null, over: null, draws: 0,
+    msg: "Swipe to draw the first card.",
+  };
+  room.screen = "kings";
+  bump(room, "kings");
+}
+// A drink in Kings Cup also hits anyone mated to the drinker (and their mates, once each).
+function kOwe(room, p, n, why) {
+  const seen = new Set();
+  const go = (q, reason) => {
+    if (!q || seen.has(q.id)) return;
+    seen.add(q.id);
+    q.drinks += n; owe(q, n, reason);
+    for (const m of room.kings.mates) if (m.includes(q.id)) go(player(room, m[0] === q.id ? m[1] : m[0]), `Mate of ${q.name}`);
+  };
+  go(p, why);
+}
+const KING_RACE = { 4: "Floor", 7: "Heaven" };
+const KING_PICK = { 2: "you", 8: "mate", 9: "rhyme", 10: "categories" };
+function kingsDraw(room, by) {
+  const k = room.kings, p = player(room, by);
+  const c = k.deck.pop();
+  k.last = c; k.draws += 1; k.claim = null;
+  k.drawer = nextFlipper(room, by);
+  const r = c.r;
+  if (r === "A") { room.players.forEach(q => kOwe(room, q, 1, "Waterfall")); k.msg = "Waterfall! Everyone drinks."; }
+  else if (r === "3") { kOwe(room, p, 1, "Drew a 3"); k.msg = `${p.name} drinks.`; }
+  else if (KING_RACE[r]) { k.pending = { type: "race", word: KING_RACE[r], by, at: Date.now(), taps: {} }; k.msg = `${KING_RACE[r]}! Last to tap drinks.`; }
+  else if (KING_PICK[r]) { k.pending = { type: "pick", why: KING_PICK[r], by, at: Date.now() }; k.msg = `${p.name} is choosing.`; }
+  else if (r === "5" || r === "6") { k.claim = { rank: r, claimed: [] }; k.msg = r === "5" ? "Guys drink." : "Girls drink."; }
+  else if (r === "J") { k.pending = { type: "rule", by, at: Date.now() }; k.msg = `${p.name} is making a rule.`; }
+  else if (r === "Q") { k.qm = by; k.msg = `${p.name} is the Question Master.`; }
+  else if (r === "K") {
+    k.kings += 1;
+    if (k.kings >= 4) { k.over = by; kOwe(room, p, 1, "Drank the Kings Cup"); k.msg = `${p.name} drinks the Kings Cup!`; }
+    else k.msg = `${p.name} pours into the cup. ${4 - k.kings} King${4 - k.kings === 1 ? "" : "s"} left.`;
+  }
+  bump(room, k.over ? "kingscup" : "draw", -1, { by });
+}
+function kingsRaceEnd(room) {
+  const k = room.kings, race = k.pending;
+  const live = room.players.filter(p => p.connected || race.taps[p.id]);
+  let losers = live.filter(p => !race.taps[p.id]);
+  if (!losers.length && live.length) {
+    const slowest = Math.max(...live.map(p => race.taps[p.id]));
+    losers = live.filter(p => race.taps[p.id] === slowest);
+  }
+  losers.forEach(p => kOwe(room, p, 1, `Last to ${race.word}`));
+  k.pending = null;
+  k.msg = losers.length ? `${losers.map(p => p.name).join(" & ")} ${losers.length === 1 ? "was" : "were"} last to ${race.word}.` : "";
+  bump(room, "raced", -1, { losers: losers.map(p => p.id), word: race.word });
+}
+function kingsPick(room, to) {
+  const k = room.kings, pk = k.pending, by = player(room, pk.by), target = player(room, to);
+  k.pending = null;
+  if (pk.why === "mate") {
+    if (!k.mates.some(m => m.includes(pk.by) && m.includes(to))) k.mates.push([pk.by, to]);
+    k.msg = `${by.name} and ${target.name} are mates.`;
+  } else {
+    kOwe(room, target, 1, pk.why === "you" ? `${by.name} picked you` : pk.why === "rhyme" ? "Failed the rhyme" : "Failed the category");
+    k.msg = `${target.name} drinks.`;
+  }
+  bump(room, "picked", -1, { by: pk.by, to, why: pk.why });
+}
+
 function newRace(room) {
   const len = room.settings.trackLen;
   const d = deck({ aces: false });
@@ -237,6 +310,13 @@ function removePlayer(room, id) {
   if (room.hostId === id) { room.hostId = null; reassignHost(room); }
   if (!room.players.length) return;
   if (room.race && room.race.flipper === id) room.race.flipper = (room.players[i] || room.players[0]).id;
+  if (room.kings) {
+    const k = room.kings;
+    if (k.drawer === id) k.drawer = (room.players[i] || room.players[0]).id;
+    k.mates = k.mates.filter(m => !m.includes(id));
+    if (k.qm === id) k.qm = null;
+    if (k.pending && k.pending.by === id) k.pending = null;
+  }
   if (room.starter > i) room.starter -= 1;
   if (wasCurrent) {
     if (next && next !== id) beginTurn(room, next); else newRound(room);
@@ -283,6 +363,7 @@ function act(room, pid, msg) {
       if (hostOnly()) return hostOnly();
       if (!room.players.length) return "Add a player first.";
       if (room.settings.mode === "horse") { room.screen = "bets"; bump(room, "screen"); return null; }
+      if (room.settings.mode === "kings") { newKings(room); return null; }
       room.starter = 0; newRound(room); return null;
     case "menu":
       if (hostOnly()) return hostOnly();
@@ -296,6 +377,7 @@ function act(room, pid, msg) {
       room.starter = 0; room.deck = [];
       if (room.screen === "awards") { room.screen = "lobby"; bump(room, "screen"); return null; }
       if (room.settings.mode === "horse") { room.race = null; room.screen = "bets"; bump(room, "screen"); return null; }
+      if (room.settings.mode === "kings") { newKings(room); return null; }
       if (room.screen === "play") newRound(room); else bump(room, "screen");
       return null;
     case "guess": {
@@ -354,6 +436,54 @@ function act(room, pid, msg) {
     case "awards":
       if (hostOnly()) return hostOnly();
       room.screen = "awards"; bump(room, "screen"); return null;
+    case "draw": {
+      const k = room.kings;
+      if (room.screen !== "kings" || !k || k.over) return "The game is over.";
+      if (k.pending) return "Finish the last card first.";
+      const d = player(room, k.drawer);
+      if (d && pid !== d.id && !(host && !d.connected)) return `It's ${d.name}'s draw.`;
+      kingsDraw(room, d ? d.id : pid); return null;
+    }
+    case "pick": {
+      const k = room.kings, pk = k && k.pending;
+      if (!pk || pk.type !== "pick" || pk.by !== pid) return "Nothing to pick.";
+      const to = player(room, msg.to);
+      if (!to || ((pk.why === "you" || pk.why === "mate") && to.id === pid)) return "Pick someone else.";
+      kingsPick(room, to.id); return null;
+    }
+    case "tap": {
+      const k = room.kings, race = k && k.pending;
+      if (!race || race.type !== "race") return null;
+      if (!race.taps[pid]) race.taps[pid] = Date.now();
+      if (room.players.filter(p => p.connected).every(p => race.taps[p.id])) kingsRaceEnd(room);
+      return null;
+    }
+    case "rule": {
+      const k = room.kings, pk = k && k.pending;
+      if (!pk || pk.type !== "rule" || pk.by !== pid) return "It's not your rule to make.";
+      const text = cleanName(String(msg.text || "").slice(0, 80)).slice(0, 60) || "";
+      if (!text) return "Type a rule first.";
+      k.rules = [...k.rules, { text, by: pid }].slice(-5);
+      k.pending = null; k.msg = `New rule: ${text}`;
+      bump(room, "ruled", -1, { by: pid }); return null;
+    }
+    case "claim": {
+      const k = room.kings;
+      if (!k || !k.claim || k.claim.claimed.includes(pid)) return null;
+      k.claim.claimed.push(pid);
+      kOwe(room, me, 1, k.claim.rank === "5" ? "Guys drink" : "Girls drink");
+      return null;
+    }
+    case "catch": {
+      const k = room.kings, to = player(room, msg.to);
+      if (!k || k.qm !== pid) return "Only the Question Master can do that.";
+      if (!to || to.id === pid) return "Pick someone else.";
+      kOwe(room, to, 1, `Answered ${me.name}'s question`);
+      return null;
+    }
+    case "kingsAgain":
+      if (hostOnly()) return hostOnly();
+      newKings(room); return null;
     case "raceAgain":
       if (hostOnly()) return hostOnly();
       room.screen = "bets"; bump(room, "screen"); return null;
@@ -377,6 +507,10 @@ function publicState(room) {
       id: r.id, len: r.len, side: r.side.map((c, i) => r.sideUp[i] ? c : null), sideUp: r.sideUp,
       pos: r.pos, last: r.last, msg: r.msg, back: r.back, flips: r.flips, winner: r.winner, results: r.results, flipper: r.flipper,
     },
+    kings: room.kings && (({ deck: d, pending: pk, ...k }) => ({
+      ...k, left: d.length,
+      pending: pk && { ...pk, taps: pk.taps ? Object.keys(pk.taps) : undefined, msLeft: pk.type === "race" ? Math.max(0, pk.at + KINGS_RACE_MS - Date.now()) : undefined },
+    }))(room.kings),
     ev: room.ev,
   };
 }
@@ -387,10 +521,11 @@ const AUTO_PASS_MS = 4200;
 const OFFLINE_SKIP_MS = 15000;
 // Each card gets 5 seconds. The clock starts once the previous card's animation has had time to play.
 const TURN_MS = 5000;
-const CLOCK_GRACE = { good: 1800, turn: 1300, flip: 900, race: 1000 };
+const CLOCK_GRACE = { good: 1800, turn: 1300, flip: 900, race: 1000, draw: 1800, raced: 1500, picked: 1500, ruled: 1500, kings: 1000 };
 const deadline = room => (room.phaseAt || 0) + TURN_MS + (CLOCK_GRACE[room.ev.type] || 0);
 function clockRunning(room) {
   if (room.screen === "play") return room.phase === "guess" && !!player(room, room.current);
+  if (room.screen === "kings") return !!room.kings && !room.kings.over && !room.kings.pending;
   return room.screen === "race" && !!room.race && !room.race.winner;
 }
 // Out of time on a card: it counts as a miss.
@@ -403,6 +538,23 @@ function timeout(room) {
   bump(room, "miss", stage, { by: p.id, timeout: true });
 }
 function tick(room, now = Date.now()) {
+  const k = room.kings;
+  if (room.screen === "kings" && k && !k.over) {
+    const pk = k.pending;
+    if (pk && pk.type === "race" && now - pk.at >= KINGS_RACE_MS) { kingsRaceEnd(room); return true; }
+    if (pk && (pk.type === "pick" || pk.type === "rule") && now - pk.at >= KINGS_PICK_MS) {
+      if (pk.type === "pick") {
+        const pool = room.players.filter(p => p.id !== pk.by || pk.why === "rhyme" || pk.why === "categories");
+        if (pool.length) { kingsPick(room, pool[rand(pool.length)].id); return true; }
+      }
+      k.pending = null; k.msg = "Too slow. Next card."; bump(room, "picked", -1, { by: pk.by }); return true;
+    }
+    if (pk) return false;
+    const d = player(room, k.drawer);
+    if (d && !d.connected && room.players.some(p => p.connected) && now - (d.offlineAt || now) >= 8000) { k.drawer = nextFlipper(room, d.id); return true; }
+    if (d && d.connected && now >= deadline(room)) { kingsDraw(room, d.id); return true; }  // too slow: the card draws for them
+    return false;
+  }
   const r = room.race;
   if (room.screen === "race" && r && !r.winner) {
     const f = player(room, r.flipper);
@@ -423,7 +575,7 @@ function tick(room, now = Date.now()) {
 
 // Actions that depend on what the player saw. A tap sent against an older state (double tap, or two
 // players flipping at once) is dropped instead of being applied to the next card.
-const SEQ_CHECKED = new Set(["guess", "pass", "skip", "flip", "startRace", "raceAgain", "start", "restart", "menu"]);
+const SEQ_CHECKED = new Set(["guess", "pass", "skip", "flip", "draw", "startRace", "raceAgain", "kingsAgain", "start", "restart", "menu"]);
 const isStale = (room, msg) => SEQ_CHECKED.has(msg && msg.a) && Number.isInteger(msg.seq) && msg.seq !== room.ev.seq;
 
 module.exports = { tick, createRoom, addPlayer, removePlayer, setConnected, reassignHost, cleanName, act, isStale, publicState, player, SUIT_KEYS, MAX_PLAYERS };

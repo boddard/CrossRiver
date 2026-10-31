@@ -5,6 +5,7 @@ The F the Bus drinking game, built for phones. Three modes:
 - **Classic**: red or black, higher or lower, inside or outside, then the suit. Every miss is 1 drink and passes the bus to the next player.
 - **Higher or Lower**: a free start card, then 3 higher-or-lower calls in a row to get off.
 - **Horse Race**: bet drinks on one of the four aces and flip cards to race them up the track.
+- **Kings Cup** (online version): take turns drawing from a ring of cards. Each rank has a rule, and the phones run the interactive ones: races to tap for Heaven and Floor, picking who drinks, mates, rules shown on every phone, and the Question Master. The 4th King drinks the cup.
 
 There are two versions:
 

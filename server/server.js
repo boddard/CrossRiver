@@ -183,7 +183,8 @@ wss.on("connection", ws => {
       // p runs 0-2: 0-1 turns the card to edge-on, 1-2 turns it face up (after the server has dealt it).
       const p = Math.max(0, Math.min(2, Number(msg.p) || 0));
       const riding = room.screen === "play" && room.phase === "guess" && room.current === ws.pid;
-      const flipping = room.screen === "race" && room.race && !room.race.winner && room.race.flipper === ws.pid;
+      const flipping = (room.screen === "race" && room.race && !room.race.winner && room.race.flipper === ws.pid)
+        || (room.screen === "kings" && room.kings && !room.kings.over && !room.kings.pending && room.kings.drawer === ws.pid);
       const finishing = room.ev.by === ws.pid && Date.now() - (room.phaseAt || 0) < 8000; // turning the card they just drew
       if (!riding && !flipping && !finishing) return;
       const g = riding && typeof msg.g === "string" && /^[a-zSHDC]{1,8}$/.test(msg.g) ? msg.g : undefined;
@@ -195,7 +196,10 @@ wss.on("connection", ws => {
     }
     if (msg.t === "nudge") {
       const to = game.player(room, msg.to);
-      if (!to || to.id === ws.pid || room.screen !== "play" || room.current !== to.id || room.phase !== "guess") return;
+      const k = room.kings;
+      const slow = (room.screen === "play" && room.current === to.id && room.phase === "guess")
+        || (room.screen === "kings" && k && !k.over && ((!k.pending && k.drawer === to.id) || (k.pending && k.pending.by === to.id && k.pending.type !== "race")));
+      if (!to || to.id === ws.pid || !slow) return;
       if (!allow(ws, "nudge:" + to.id, 1, 10000)) return send(ws, { t: "error", msg: `You can nudge ${to.name} again in a few seconds.` });
       return toRoom(room.code, { t: "nudge", from: ws.pid, to: to.id });
     }

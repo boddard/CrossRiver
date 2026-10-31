@@ -87,6 +87,33 @@ button:active { transform: scale(.97); }
 .drink-card .big { font: 900 clamp(56px, 18vw, 84px)/.95 var(--display); text-transform: uppercase; color: var(--miss); }
 .drink-why { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; color: var(--muted); font-weight: 600; }
 .drink-card .primary { min-height: 72px; font-size: 28px; }
+/* Kings Cup: a ring of face-down cards around the cup, which fills as Kings are drawn */
+.ring { position: relative; width: 70vw; aspect-ratio: 1; --R: 30vw; }
+@supports (width: 1cqw) { .ring { width: min(100cqw, 100cqh); --R: min(43cqw, 43cqh); } }
+.rc { position: absolute; left: 50%; top: 50%; width: 7.5%; aspect-ratio: 5 / 7; translate: -50% -50%;
+  transform: rotate(var(--a)) translateY(calc(-1 * var(--R))); border-radius: 3px; border: 1px solid #0b0c0f;
+  background: repeating-linear-gradient(135deg, var(--bus) 0 4px, #e2a400 4px 8px); box-shadow: 0 2px 4px rgba(0,0,0,.4); }
+.cup { position: absolute; left: 50%; top: 50%; width: 36%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%;
+  border: 3px solid var(--line); background: var(--asphalt); overflow: hidden; display: grid; place-items: center; align-content: center; }
+.cup-in { position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--fill) * 100%); background: linear-gradient(#f7d77a, #d99a00); transition: height .8s cubic-bezier(.3,1.3,.5,1); }
+.cup-in::before { content: ""; position: absolute; left: 0; right: 0; top: -6px; height: 10px; background: #fff7e0; border-radius: 50%; opacity: calc(var(--fill) * 4); }
+.cup b, .cup small { position: relative; z-index: 1; text-shadow: 0 1px 3px #000; }
+.cup b { font: 900 clamp(22px, 7vw, 34px)/1 var(--display); }
+.cup small { font: 700 10px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink); }
+.kc-card { display: flex; align-items: center; gap: 14px; text-align: left; }
+.kc-rank { flex: none; width: 58px; aspect-ratio: 5 / 7; border-radius: 8px; background: var(--card); color: var(--card-ink); display: grid; place-items: center; font: 800 22px/1 var(--mono); }
+.kc-rank.red { color: var(--suit-red); }
+.kc-card b { display: block; font: 900 24px/1 var(--display); text-transform: uppercase; color: var(--bus); }
+.kc-card p { margin: 4px 0 0; color: var(--muted); font-size: 14px; line-height: 1.35; }
+.kc-rules { margin: 0; font-size: 13px; color: var(--ink); background: var(--asphalt); border: 1px dashed var(--line); border-radius: 8px; padding: 6px 10px; }
+.kc-picks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.kc-pick { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 10px; font-weight: 600; text-align: left; overflow: hidden; }
+.kc-pick .av { width: 28px; height: 28px; font-size: 14px; flex: none; }
+.tapbig { width: 100%; min-height: 96px !important; font-size: 34px !important; animation: pop .5s cubic-bezier(.2,1.6,.4,1) both; }
+.kc-ruleform { display: flex; gap: 8px; }
+.kc-ruleform input { flex: 1; min-width: 0; background: var(--asphalt); color: var(--ink); border: 2px solid var(--line); border-radius: 10px; padding: 10px 12px; font: 500 16px var(--body); }
+.tagmini { position: absolute; bottom: 12px; right: 2px; font-size: 13px; line-height: 1; z-index: 2; }
+.tagmini.qm { right: auto; left: 2px; }
 .install { display: grid; gap: 6px; padding: 12px 14px; border-radius: 10px; border: 1px dashed var(--line); background: var(--asphalt); }
 .install b { font: 900 18px/1 var(--display); text-transform: uppercase; color: var(--bus); }
 .install p { margin: 0; color: var(--muted); font-size: 14px; }
@@ -591,6 +618,23 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     hilo: { name: "Higher or Lower", blurb: "Get 3 higher-or-lower calls right in a row.", dots: ["S", "1", "2", "3"],
       stops: [["Start card", "Start"], ["Guess 1", "Guess 1"], ["Guess 2", "Guess 2"], ["Guess 3", "Guess 3"]] },
     horse: { name: "Horse Race", blurb: "Bet on an ace and take turns flipping cards to race them up the track." },
+    kings: { name: "Kings Cup", blurb: "Take turns drawing from the ring. Every card has a rule; the 4th King drinks the cup." },
+  };
+  // Kings Cup rules by rank: [title, what happens]
+  const KC = {
+    A: ["Waterfall", "Everyone drinks. Start with the drawer and don't stop until the person before you does."],
+    2: ["You", "Pick someone to drink."],
+    3: ["Me", "The drawer drinks."],
+    4: ["Floor", "Last to tap the floor drinks!"],
+    5: ["Guys", "All guys drink. Tap That's me if that's you."],
+    6: ["Girls", "All girls drink. Tap That's me if that's you."],
+    7: ["Heaven", "Last to point to the sky drinks!"],
+    8: ["Mate", "Pick a mate. Whenever one of you drinks, so does the other."],
+    9: ["Rhyme", "Say a word, then go round rhyming. First to fail drinks."],
+    10: ["Categories", "Pick a category, then go round naming things in it. First to fail drinks."],
+    J: ["Make a rule", "Make a rule everyone has to follow for the rest of the game."],
+    Q: ["Questions", "Question Master: anyone who answers your question drinks."],
+    K: ["King", "Pour some of your drink into the cup. The 4th King drinks it all."],
   };
   const REACTIONS = ["🍺", "😂", "🔥", "😱", "👏", "🤮"];
   const CALLS = { red: "Red", black: "Black", higher: "Higher", lower: "Lower", inside: "Inside", outside: "Outside", S: "♠ Spades", H: "♥ Hearts", D: "♦ Diamonds", C: "♣ Clubs" };
@@ -634,6 +678,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
   const mode = () => S.settings.mode;
   const hilo = () => mode() === "hilo";
   const horse = () => mode() === "horse";
+  const kings = () => mode() === "kings";
   const byId = id => S.players.find(p => p.id === id);
   const amHost = () => S && S.hostId === me;
   const nameOf = id => { const p = byId(id); return p ? esc(p.name) : "Someone"; };
@@ -855,6 +900,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
   function flipLabel(by) {
     const mine = by === me, name = plainName(by);
     if (S && S.screen === "race") return mine ? "Your flip" : `${name}'s flip`;
+    if (S && S.screen === "kings") return mine ? "Your draw" : `${name}'s draw`;
     const g = mine ? armed : remote && remote.g;
     return g ? `${mine ? "You call" : `${name} calls`} ${CALLS[g] || g}` : mine ? "Your card" : `${name}'s card`;
   }
@@ -907,6 +953,12 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
       else { sfx.drum(); suspense.timer = setTimeout(reveal, REVEAL_MS); }
       return render();
     }
+    // Kings Cup: the card's rule shows once the giant card has landed.
+    if (fresh && S.screen === "kings" && S.kings && (fx === "draw" || fx === "kingscup") && flip && flip.by === S.ev.by) {
+      const f = fx;
+      faceArrived(S.kings.last, () => { const keep = fx; fx = f; cue(prev); fx = keep; render(); });
+      return render();
+    }
     // Horse race: the horses move straight away; the callouts wait for the giant card to land.
     if (fresh && S.screen === "race" && S.race && (fx === "flip" || fx === "won") && flip && flip.by === S.ev.by) {
       const f = fx;
@@ -929,6 +981,29 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
   }
   // Sounds and callouts for events that don't go through a reveal.
   function cue(prev) {
+    if (S.screen === "kings" && S.kings) {
+      const k = S.kings, c = k.last, by = S.ev.by;
+      if (fx === "draw" && c) {
+        const bad = c.r === "A" || (c.r === "3" && by === me);
+        takeover(`${c.r} · ${KC[c.r][0]}`, bad ? "miss" : "turn");
+        if (c.r === "4" || c.r === "7") { sfx.buzz(); buzz([80, 40, 80]); } else sfx.chime();
+      }
+      if (fx === "kingscup") { takeover(by === me ? "Drink the Kings Cup!" : `${plainName(by)} drinks the cup!`, "miss"); sfx.horn(); celebrate(); }
+      if (fx === "raced") {
+        const lost = (S.ev.losers || []).includes(me);
+        takeover(lost ? `Last to ${S.ev.word}! Drink` : `${(S.ev.losers || []).map(plainName).join(" & ") || "Nobody"} drink${(S.ev.losers || []).length === 1 ? "s" : ""}`, lost ? "miss" : "");
+        lost ? sfx.gulp() : sfx.pop();
+      }
+      if (fx === "picked" && S.ev.to) {
+        if (S.ev.why === "mate") takeover(S.ev.to === me ? `You're ${plainName(by)}'s mate` : by === me ? `${plainName(S.ev.to)} is your mate` : `${plainName(by)} & ${plainName(S.ev.to)} are mates`, "turn");
+        else if (S.ev.to === me) { takeover("Drink!", "miss"); sfx.gulp(); }
+      }
+      if (fx === "ruled") { takeover("New rule!", "turn"); sfx.chime(); }
+      const myDraw = !k.over && !k.pending && k.drawer === me;
+      if (myDraw && !wasMyFlip && prev && prev.screen === "kings") { sfx.chime(); buzz(80); }
+      wasMyFlip = myDraw;
+      return;
+    }
     if (fx === "miss" && S.ev.timeout) {
       const mine = S.ev.by === me;
       if (mine && flip && flip.by === me) { big.hide(); flip = null; drag = null; pendingFlip = null; }
@@ -986,7 +1061,8 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
   // Buzz (where phones allow it) and retitle the tab when the bus comes to you.
   function turnAlert() {
     const mine = !!S && S.screen === "play" && S.current === me && S.phase === "guess";
-    const flipping = !!S && S.screen === "race" && S.race && !S.race.winner && S.race.flipper === me;
+    const flipping = !!S && ((S.screen === "race" && S.race && !S.race.winner && S.race.flipper === me)
+      || (S.screen === "kings" && S.kings && !S.kings.over && !S.kings.pending && S.kings.drawer === me));
     if (mine && !wasMyTurn) buzz([120, 60, 120]);
     document.title = mine ? "Your turn · F the Bus" : flipping ? "Your flip · F the Bus" : TITLE;
     wasMyTurn = mine;
@@ -1076,16 +1152,25 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     </section>`;
   }
 
+  // Whoever the room is waiting on right now: the rider, the flipper, the drawer, or a Kings Cup picker.
+  function slowpoke() {
+    if (S.screen === "play" && S.phase === "guess") return S.current;
+    if (S.screen === "race" && S.race && !S.race.winner) return S.race.flipper;
+    const k = S.screen === "kings" && S.kings;
+    if (k && !k.over) return !k.pending ? k.drawer : k.pending.type !== "race" ? k.pending.by : null;
+    return null;
+  }
+
   // ---- player bar ----
   function crewHTML() {
     const mine = byId(me);
     const giving = mine && mine.give > 0;
-    const riderId = S.screen === "play" && S.phase === "guess" ? S.current : S.screen === "race" && S.race && !S.race.winner ? S.race.flipper : null;
+    const riderId = slowpoke();
     const bubs = S.players.map(p => {
       const cls = ["bub", p.id === riderId ? "riding" : "", p.connected ? "" : "away", S.screen === "play" && p.off ? "out" : "", giving && p.id !== me ? "target" : ""].filter(Boolean).join(" ");
       const what = giving && p.id !== me ? `Give ${p.name} a drink` : p.id === riderId && p.id !== me ? `Nudge ${p.name}` : p.name;
       return `<button class="${cls}" data-bub="${p.id}" style="--c:${p.color}" aria-label="${esc(what)}">
-        ${p.owe ? `<span class="owe" title="Owes ${plural(p.owe, "drink")}">🍺${p.owe}</span>` : ""}<span class="av">${esc(initial(p.name))}</span><span class="bn">${p.id === me ? "You" : esc(p.name)}</span>${p.id === S.hostId ? '<span class="crown">★</span>' : ""}</button>`;
+        ${p.owe ? `<span class="owe" title="Owes ${plural(p.owe, "drink")}">🍺${p.owe}</span>` : ""}<span class="av">${esc(initial(p.name))}</span><span class="bn">${p.id === me ? "You" : esc(p.name)}</span>${p.id === S.hostId ? '<span class="crown">★</span>' : ""}${S.screen === "kings" && S.kings ? `${S.kings.mates.some(m => m.includes(p.id)) ? '<span class="tagmini">🔗</span>' : ""}${S.kings.qm === p.id ? '<span class="tagmini qm">❓</span>' : ""}` : ""}</button>`;
     }).join("");
     const note = giving ? `<p class="give-note">Hand out ${plural(mine.give, "drink")}: tap a player</p>` : "";
     const tray = trayOpen ? `<div class="tray" role="group" aria-label="Reactions">${REACTIONS.map((e, i) => `<button class="rx" data-rx="${i}" aria-label="React ${e}">${e}</button>`).join("")}</div>` : "";
@@ -1103,13 +1188,13 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     const modes = amHost()
       ? `<fieldset class="modes"><legend class="label">Game mode</legend>${Object.entries(MODES).map(([k, m]) =>
           `<label class="mode"><input type="radio" name="mode" value="${k}" ${mode() === k ? "checked" : ""}><span><b>${m.name}</b><small>${m.blurb}</small></span></label>`).join("")}</fieldset>
-        <div class="opts"${horse() ? " hidden" : ""}>
+        <div class="opts"${horse() || kings() ? " hidden" : ""}>
           <label class="opt"><input type="checkbox" id="aces" ${S.settings.acesHigh ? "checked" : ""}><span>Aces high<small>Off makes aces the lowest card.</small></span></label>
           <label class="opt"><input type="checkbox" id="ties" ${S.settings.tiesMiss ? "checked" : ""}><span>Ties are a miss<small>A card matching the one it's compared to means you drink. Off gives a free pass.</small></span></label>
         </div>`
       : `<div class="field"><span class="label">Game mode</span><div class="mode-read"><b>${MODES[mode()].name}</b><p class="hint">${MODES[mode()].blurb}</p></div></div>`;
     const go = amHost()
-      ? `<button class="primary wide" id="start">${horse() ? "Place your bets" : "Start the game"}</button>`
+      ? `<button class="primary wide" id="start">${horse() ? "Place your bets" : kings() ? "Start Kings Cup" : "Start the game"}</button>`
       : `<p class="waiting">Waiting for <b>${nameOf(S.hostId)}</b> to start the game.</p>`;
     return `${confirmHTML()}<section class="console setup">
       <div class="roomcode"><div><span class="label">Room code</span><br><strong>${esc(S.code)}</strong></div>
@@ -1367,6 +1452,59 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     </section>`;
   }
 
+  // ---- Kings Cup ----
+  let catchOpen = false;
+  function ringHTML(k) {
+    let cards = "";
+    for (let i = 0; i < k.left; i++) cards += `<span class="rc" style="--a:${(i * 360 / 52).toFixed(2)}deg"></span>`;
+    return `<div class="table-area"><div class="ring" aria-label="${plural(k.left, "card")} left in the ring">${cards}
+      <div class="cup" style="--fill:${Math.min(4, k.kings) / 4}"><span class="cup-in"></span><b>${k.kings}/4</b><small>Kings</small></div></div></div>`;
+  }
+  function pickButtons(attr, exclude) {
+    return `<div class="kc-picks">${S.players.filter(p => !exclude.includes(p.id)).map(p => `<button class="ghost kc-pick" data-${attr}="${p.id}">
+      <span class="av" style="--c:${p.color}">${esc(initial(p.name))}</span>${p.id === me ? "Me" : esc(p.name)}</button>`).join("")}</div>`;
+  }
+  function kingsConsoleHTML(k) {
+    const rules = k.rules.length ? `<p class="kc-rules">📜 ${k.rules.map(r => esc(r.text)).join(" · ")}</p>` : "";
+    if (k.over) {
+      return `<section class="console" aria-live="polite">
+        <div class="verdict miss"><span class="big slam">Kings Cup!</span><p>${k.over === me ? "You drink" : `${nameOf(k.over)} drinks`} the cup.</p></div>
+        ${amHost() ? '<div class="row"><button class="primary" id="kings-again">Play again</button><button class="ghost" id="to-menu">Change game</button></div>'
+          : `<p class="waiting">Waiting for <b>${nameOf(S.hostId)}</b>.</p>`}</section>`;
+    }
+    const pk = k.pending, mine = pk && pk.by === me;
+    if (pk && pk.type === "race") {
+      const tapped = (pk.taps || []).includes(me);
+      return `<section class="console">
+        <div class="autopass" data-key="r${S.ev.seq}" style="--ms:${pk.msLeft}ms" aria-hidden="true"><span></span></div>
+        ${tapped ? `<p class="waiting">Done! Waiting for the slowpokes…</p>` : `<button class="primary tapbig" id="kc-tap">${pk.word === "Heaven" ? "☝️ Heaven" : "✋ Floor"}</button>`}</section>`;
+    }
+    if (pk && pk.type === "pick") {
+      const ask = { you: "Pick who drinks", mate: "Pick your mate", rhyme: "Who failed the rhyme?", categories: "Who failed?" }[pk.why];
+      return `<section class="console">${rules}<h2 class="prompt">${mine ? ask : `${nameOf(pk.by)}: ${ask.toLowerCase()}`}</h2>
+        ${mine ? pickButtons("kc-pick", pk.why === "you" || pk.why === "mate" ? [me] : []) : `<p class="waiting">Tap <b>${nameOf(pk.by)}</b> at the top to hurry them up.</p>`}</section>`;
+    }
+    if (pk && pk.type === "rule") {
+      return `<section class="console">${rules}<h2 class="prompt">${mine ? "Make a rule" : `${nameOf(pk.by)} is making a rule`}</h2>
+        ${mine ? `<form class="kc-ruleform" id="kc-ruleform"><input id="kc-rule" maxlength="60" placeholder="e.g. No first names" autocomplete="off" enterkeyhint="done"><button class="primary" type="submit">Set</button></form>` : ""}</section>`;
+    }
+    const c = k.last;
+    const card = c ? `<div class="kc-card"><span class="kc-rank${suitOf(c).red ? " red" : ""}">${c.r}${suitOf(c).sym}</span><div><b>${KC[c.r][0]}</b><p>${esc(k.msg)}</p></div></div>`
+      : `<p class="waiting">${esc(k.msg)}</p>`;
+    const claim = k.claim && !k.claim.claimed.includes(me) ? `<button class="ghost" id="kc-claim">That's me 🍺</button>` : "";
+    const qm = k.qm === me ? (catchOpen ? `<p class="waiting">Who answered your question?</p>${pickButtons("kc-catch", [me])}` : `<button class="ghost" id="kc-catch-open">Caught someone answering ❓</button>`) : "";
+    return `<section class="console">${card}${claim}${qm}${rules}</section>`;
+  }
+  function kingsHTML() {
+    const k = S.kings, pk = k.pending;
+    const head = k.over ? "Kings Cup!" : pk && pk.type === "race" ? `${pk.word}!` : pk ? `${pk.by === me ? "You're" : `${nameOf(pk.by)}'s`} up`
+      : k.drawer === me ? "Your draw" : `${nameOf(k.drawer)}'s draw`;
+    return `${confirmHTML()}<div class="frame">
+      ${crewHTML()}
+      <section class="status"><p class="turn-head${!pk && k.drawer === me && !k.over ? " mine" : ""}">${head}</p>${!pk && !k.over ? clockHTML() : ""}</section>
+      ${ringHTML(k)}${kingsConsoleHTML(k)}</div>`;
+  }
+
   // ---- end of night ----
   // Party awards. Each one only shows when someone actually earned it.
   function awardsHTML() {
@@ -1420,6 +1558,9 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
   // ---- shared ----
   function rulesHTML() {
     const tail = `Aces are ${S.settings.acesHigh ? "high" : "low"}. A tie with the card you're comparing against ${S.settings.tiesMiss ? "counts as a miss" : "is a free pass"}.`;
+    if (kings()) return `<details><summary>House rules: Kings Cup</summary><ol>
+      ${Object.entries(KC).sort((a, b) => "A2345678910JQK".indexOf(a[0]) - "A2345678910JQK".indexOf(b[0])).map(([r, [t, d]]) => `<li><b>${r} · ${t}.</b> ${d}</li>`).join("")}</ol>
+      <p>Take turns drawing by swiping across the screen. Anyone mated to a drinker drinks too.</p></details>`;
     if (horse()) return `<details><summary>House rules: Horse Race</summary><ol>
       <li>Everyone backs one of the four aces and bets 1 to 5 drinks.</li>
       <li>Players take turns flipping a card from the deck. The ace of that suit moves forward one spot.</li>
@@ -1483,13 +1624,14 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     // A new screen (lobby to game, game to awards) starts at the top; updates within a screen keep their place.
     const screen = S ? S.screen : "join";
     if (screen !== lastScreen) { lastScreen = screen; scrollTo(0, 0); }
-    document.documentElement.classList.toggle("framed", screen === "play" || (screen === "race" && !!S.race));
+    document.documentElement.classList.toggle("framed", screen === "play" || (screen === "race" && !!S.race) || (screen === "kings" && !!S.kings));
     document.documentElement.classList.toggle("swipe-turn", !!canSwipe());
     paint(!S ? joinHTML()
       : S.screen === "lobby" ? lobbyHTML()
       : S.screen === "bets" ? betsHTML()
       : S.screen === "race" && S.race ? raceHTML()
       : S.screen === "awards" ? awardsHTML()
+      : S.screen === "kings" && S.kings ? kingsHTML()
       : playHTML());
     document.getElementById("more").hidden = !S;
     animateHorses();
@@ -1513,6 +1655,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
   // its face into view. Let go after halfway and it finishes at your speed; let go before and it springs back.
   let drag = null, lastDragSent = 0;
   const canSwipe = () => S && !pendingFlip && !flip && ((S.screen === "play" && S.current === me && S.phase === "guess" && armed && !suspense)
+    || (S.screen === "kings" && S.kings && !S.kings.over && !S.kings.pending && S.kings.drawer === me)
     || (S.screen === "race" && S.race && !S.race.winner && S.race.flipper === me));
   const halfWidth = () => Math.max(120, innerWidth / 2);
   function sendTurn(p, dir, extra = {}, force = false) {
@@ -1526,7 +1669,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     flip.committed = true;
     sfx.flip();
     sendTurn(1, flip.dir, {}, true);
-    if (S.screen === "play") act("guess", { g: armed }); else act("flip");
+    if (S.screen === "play") act("guess", { g: armed }); else if (S.screen === "kings") act("draw"); else act("flip");
   }
   // Degrees per millisecond, from the last ~100ms of finger movement.
   function fingerSpeed(d) {
@@ -1602,13 +1745,15 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     if (t.dataset.bub) {
       const id = t.dataset.bub, mine = byId(me);
       if (mine && mine.give > 0 && id !== me) return act("give", { to: id });
-      const riderId = S.screen === "play" && S.phase === "guess" ? S.current : S.screen === "race" && S.race && !S.race.winner ? S.race.flipper : null;
+      const riderId = slowpoke();
       if (id === riderId && id !== me) return send({ t: "nudge", to: id });
       return;
     }
     if (t.dataset.bs) return act("setBet", { suit: t.dataset.bs });
     if (t.dataset.ba) return act("setBet", { delta: +t.dataset.ba });
     if (t.dataset.kick) return act("kick", { id: t.dataset.kick });
+    if (t.dataset.kcPick) return act("pick", { to: t.dataset.kcPick });
+    if (t.dataset.kcCatch) { catchOpen = false; return act("catch", { to: t.dataset.kcCatch }); }
     switch (t.id) {
       case "create": {
         const name = (document.getElementById("name").value || "").trim();
@@ -1640,10 +1785,19 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
       case "flip": return act("flip");
       case "len-down": return act("setTrackLen", { delta: -1 });
       case "len-up": return act("setTrackLen", { delta: 1 });
+      case "kc-tap": sfx.pop(); buzz(40); return act("tap");
+      case "kc-claim": sfx.gulp(); return act("claim");
+      case "kc-catch-open": catchOpen = true; return render();
+      case "kings-again": return act("kingsAgain");
     }
   });
   app.addEventListener("submit", e => {
     e.preventDefault();
+    if (e.target.id === "kc-ruleform") {
+      const text = document.getElementById("kc-rule").value.trim();
+      if (!text) return toast("Type a rule first.");
+      return act("rule", { text });
+    }
     const name = document.getElementById("name").value.trim();
     const code = document.getElementById("code").value.toUpperCase().replace(/[^A-Z]/g, "");
     if (!name) { toast("Enter your name first."); return document.getElementById("name").focus(); }
