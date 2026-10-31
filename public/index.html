@@ -131,17 +131,47 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 html.framed, html.framed body { overflow: hidden; height: 100%; }
 html.framed body { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--pad-y)); }
 .frame {
+  height: calc(100vh - var(--safe-y) - 2 * var(--pad-y) - var(--sign-h) - var(--gap));   /* older iOS */
   height: calc(100dvh - var(--safe-y) - 2 * var(--pad-y) - var(--sign-h) - var(--gap));
-  display: grid; grid-template-rows: auto 48px minmax(0, 1fr) 236px; gap: 10px;
+  display: grid; grid-template-rows: auto 40px minmax(0, 1fr) clamp(150px, 30%, 220px); gap: 8px;
 }
-.frame.race { grid-template-rows: auto 48px minmax(0, 1fr) 196px; }
+.frame.race { grid-template-rows: auto 40px minmax(0, 1fr) clamp(140px, 25%, 190px); }
+.frame > .console { padding: 12px 14px; gap: 10px; }
+.frame .turn-head { font-size: clamp(26px, 8vw, 40px); }
+.frame .choice { min-height: clamp(52px, 8vh, 72px); }
+/* Short screens (Safari with its bars, small iPhones): slimmer bars so the cards keep the space */
+@media (max-height: 700px) {
+  :root { --sign-h: 40px; --pad-y: 6px; }
+  .sign h1 { font-size: 24px; }
+  .av { width: 30px; height: 30px; font-size: 15px; }
+  .bn { display: none; }
+  .bub { width: 38px; }
+  .react-btn { width: 36px; height: 36px; font-size: 18px; }
+  .frame .prompt { font-size: 20px; }
+  .frame .verdict .big { font-size: 34px; }
+  .clock-num { font-size: 30px; }
+}
 .frame > .status { min-height: 0; align-items: center; }
 .frame > .console { height: 100%; margin: 0; overflow-y: auto; align-content: center; }
 .table-area { container-type: size; min-height: 0; display: grid; place-items: center; }
+/* Cards keep a 5:7 shape and size to the space they're given: a 2x2 grid when there's height to spare,
+   one row of four when the space is short and wide. */
 .route-line {
-  --col-gap: 12px; --row-gap: 12px; --head: 30px;
-  --cw: min(calc((100cqw - var(--col-gap)) / 2), calc((100cqh - var(--row-gap) - 2 * var(--head)) / 2 * 5 / 7));
-  display: grid; grid-template-columns: repeat(2, var(--cw)); justify-content: center; align-content: center; gap: var(--row-gap) var(--col-gap);
+  --col-gap: 10px; --row-gap: 10px; --head: 30px;
+  display: grid; grid-template-columns: repeat(2, minmax(0, min(36vw, 24vh))); /* older iOS */
+  justify-content: center; align-content: center; gap: var(--row-gap) var(--col-gap);
+}
+@supports (width: 1cqw) {
+  .route-line {
+    --cw: min(calc((100cqw - var(--col-gap)) / 2), calc((100cqh - var(--row-gap) - 2 * var(--head)) / 2 * 5 / 7));
+    grid-template-columns: repeat(2, var(--cw));
+  }
+  @container (max-height: 310px) {
+    .route-line {
+      --cw: min(calc((100cqw - 3 * var(--col-gap)) / 4), calc((100cqh - var(--head)) * 5 / 7));
+      grid-template-columns: repeat(4, var(--cw));
+    }
+  }
 }
 .stop { display: grid; grid-template-rows: 22px auto; gap: 8px; justify-items: center; min-width: 0; container-type: inline-size; }
 .stop-name .short { display: none; }
@@ -178,9 +208,9 @@ html.framed body { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(-
   border: 1px solid #d9d5c8; display: grid; grid-template-rows: auto 1fr auto; padding: 6cqw 7cqw;
 }
 .face.red { color: var(--suit-red); }
-.corner { font: 700 15cqw/1 var(--mono); letter-spacing: -.04em; }
+.corner { font: 700 14px/1 var(--mono); font-size: 15cqw; letter-spacing: -.04em; }
 .corner.bot { justify-self: end; transform: rotate(180deg); }
-.pip { display: grid; place-items: center; font-size: 42cqw; line-height: 1; }
+.pip { display: grid; place-items: center; font-size: 40px; font-size: 42cqw; line-height: 1; }
 .slot.wrong .face { box-shadow: 0 0 0 3px var(--miss); }
 .slot.right .face { box-shadow: 0 0 0 3px var(--ok); }
 
@@ -292,9 +322,10 @@ details p { max-width: 65ch; color: var(--muted); }
 
 /* Horse race: a vertical track. Sideline cards run up the left; four lanes, finish at the top */
 .track {
-  --rgap: 4px;
+  --rgap: 3px;
+  --row: min(60px, calc((100vh - 420px) / var(--rows)));  /* older iOS */
   --row: min(72px, calc((100cqh - (var(--rows) - 1) * var(--rgap) - 14px) / var(--rows)));
-  width: min(100cqw, 520px);
+  width: 100%; width: min(100cqw, 520px);
   display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0 8px; align-content: center;
 }
 .tcol { position: relative; display: grid; grid-template-rows: repeat(var(--rows), var(--row)); gap: var(--rgap); }
