@@ -750,7 +750,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     }
     if (m.t === "nudge") {
       if (m.to === me) { takeover("Hurry up!", "nudge"); sfx.buzz(); buzz([200, 80, 200]); }
-      else floatUp(`<b>${m.from === me ? "You" : nameOf(m.from)} → ${nameOf(m.to)}: hurry up!</b>`, m.from, true);
+      else { takeover(`${m.from === me ? "You" : plainName(m.from)} → ${plainName(m.to)}: hurry up!`, "nudge"); sfx.pop(); }
       flash(m.to, "hit");
       return;
     }
@@ -930,14 +930,14 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     if (m.by === me || !S) return;
     if (m.seq !== S.ev.seq && !(flip && flip.by === m.by)) return;
     const callChanged = !remote || remote.g !== m.g;
-    remote = { by: m.by, g: m.g !== undefined ? m.g : remote && remote.g, p: m.p, dir: m.dir || 1, t: m.t };
+    remote = { by: m.by, g: m.g !== undefined ? m.g : remote && remote.g, p: m.p, dir: m.dir || 1, t: m.ms };
     if (callChanged && m.g) { sfx.pop(); render(); }
     if (m.p > 0 && !flip) { flip = { by: m.by, dir: remote.dir, committed: false, faceKnown: false, done: false }; big.show(flipLabel(m.by)); }
     if (!flip || flip.by !== m.by || flip.done) return;
     if (m.p >= 2) return finishFlip(m.spd || 260);
     if (m.p === 0 && !flip.committed) {
-      big.turn(0, m.t || 200);
-      const f = flip; setTimeout(() => { if (flip === f && !f.committed) { big.hide(); flip = null; } }, (m.t || 200) + 30);
+      big.turn(0, m.ms || 200);
+      const f = flip; setTimeout(() => { if (flip === f && !f.committed) { big.hide(); flip = null; } }, (m.ms || 200) + 30);
       return;
     }
     flip.dir = remote.dir;
@@ -1488,7 +1488,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     const now = Date.now();
     if (!force && now - lastDragSent < 50) return;
     lastDragSent = now;
-    send({ t: "drag", p, dir, g: S.screen === "play" ? armed : undefined, ...extra }, true);
+    send({ ...extra, t: "drag", p, dir, g: S.screen === "play" ? armed : undefined }, true);
   }
   function commitFlip() {
     pendingFlip = { dir: flip.dir, t: 0 };
@@ -1537,7 +1537,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     if (!d.started || !flip || flip.by !== me || flip.done) return;
     if (!flip.committed) {
       big.turn(0, 200);
-      sendTurn(0, flip.dir, { t: 200 }, true);
+      sendTurn(0, flip.dir, { ms: 200 }, true);
       const f = flip; setTimeout(() => { if (flip === f) { big.hide(); flip = null; } }, 230);
       return;
     }

@@ -189,8 +189,9 @@ wss.on("connection", ws => {
       const g = riding && typeof msg.g === "string" && /^[a-zSHDC]{1,8}$/.test(msg.g) ? msg.g : undefined;
       const dir = Number(msg.dir) < 0 ? -1 : 1;
       const spd = Number.isFinite(+msg.spd) && msg.spd ? Math.round(Math.min(600, Math.max(100, +msg.spd))) : undefined;
-      const t = Number.isFinite(+msg.t) && msg.t ? Math.round(Math.min(500, Math.max(40, +msg.t))) : undefined;
-      return toRoom(room.code, { t: "drag", by: ws.pid, p, g, dir, spd, t, seq: room.ev.seq });
+      // "ms" is the turn's animation time; it can't be called "t", which is the message type.
+      const ms = Number.isFinite(+msg.ms) && msg.ms ? Math.round(Math.min(500, Math.max(40, +msg.ms))) : undefined;
+      return toRoom(room.code, { t: "drag", by: ws.pid, p, g, dir, spd, ms, seq: room.ev.seq });
     }
     if (msg.t === "nudge") {
       const to = game.player(room, msg.to);
