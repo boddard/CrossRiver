@@ -13,6 +13,8 @@ const HOST = process.env.HOST || "0.0.0.0";
 const MAX_ROOMS = 500;
 const IDLE_ROOM_MS = 6 * 60 * 60 * 1000;   // drop a room after 6h with no activity
 const EMPTY_ROOM_MS = 30 * 60 * 1000;      // or 30 min after everyone has disconnected
+const OFFLINE_GRACE_MS = 5000;             // show a player offline only after 5s without a connection
+const HOST_GRACE_MS = 30000;               // hand the host role on after 30s offline
 
 const INDEX = path.join(__dirname, "..", "public", "index.html");
 let indexHtml = fs.readFileSync(INDEX);
@@ -45,16 +47,37 @@ const server = http.createServer((req, res) => {
   res.end("Not found\n");
 });
 
-const wss = new WebSocketServer({ server, path: "/ws", maxPayload: 4096 });
+// Compress state messages over ~1 KB; mobile data and slow links benefit most.
+const wss = new WebSocketServer({ server, path: "/ws", maxPayload: 4096, perMessageDeflate: { threshold: 1024 } });
 
 function send(ws, msg) { if (ws.readyState === 1) ws.send(JSON.stringify(msg)); }
+// Several changes in the same tick (a join plus a reconnect, say) go out as one state message.
+const pending = new Set();
 function broadcast(code) {
-  const room = rooms.get(code);
-  const set = sockets.get(code);
-  if (!room || !set) return;
-  const data = JSON.stringify({ t: "state", state: game.publicState(room) });
-  for (const ws of set) if (ws.readyState === 1) ws.send(data);
+  if (pending.has(code)) return;
+  pending.add(code);
+  setImmediate(() => {
+    pending.delete(code);
+    const room = rooms.get(code);
+    const set = sockets.get(code);
+    if (!room || !set) return;
+    const data = JSON.stringify({ t: "state", state: game.publicState(room) });
+    for (const ws of set) if (ws.readyState === 1) ws.send(data);
+  });
 }
+function toRoom(code, msg) {
+  const data = JSON.stringify(msg);
+  for (const ws of sockets.get(code) || []) if (ws.readyState === 1) ws.send(data);
+}
+// Allow short bursts of reactions but not a flood: at most `max` in the last `ms`.
+function allow(ws, key, max, ms) {
+  const now = Date.now();
+  const list = (ws[key] = (ws[key] || []).filter(t => now - t < ms));
+  if (list.length >= max) return false;
+  list.push(now); return true;
+}
+const REACTIONS = 6;
+const online = (code, pid) => [...(sockets.get(code) || [])].some(s => s.pid === pid);
 function attach(ws, code, pid) {
   ws.room = code; ws.pid = pid;
   if (!sockets.has(code)) sockets.set(code, new Set());
@@ -66,8 +89,20 @@ function detach(ws) {
   const set = sockets.get(code);
   if (!set) return;
   set.delete(ws);
-  const room = rooms.get(code);
-  if (room && pid && ![...set].some(s => s.pid === pid)) { game.setConnected(room, pid, false); broadcast(code); }
+  if (!pid) return;
+  // Wait out short drops (phone locked, page reload) before telling the room.
+  setTimeout(() => {
+    const room = rooms.get(code);
+    if (!room || online(code, pid) || !game.player(room, pid)) return;
+    game.setConnected(room, pid, false);
+    broadcast(code);
+    if (room.hostId === pid) setTimeout(() => {
+      const r = rooms.get(code);
+      if (!r || online(code, pid) || r.hostId !== pid) return;
+      game.reassignHost(r);
+      broadcast(code);
+    }, HOST_GRACE_MS - OFFLINE_GRACE_MS);
+  }, OFFLINE_GRACE_MS);
 }
 
 function hello(ws, msg) {
@@ -109,6 +144,7 @@ wss.on("connection", ws => {
     let msg;
     try { msg = JSON.parse(raw); } catch (e) { return; }
     if (!msg || typeof msg !== "object") return;
+    if (msg.t === "ping") return send(ws, { t: "pong" });
     if (msg.t === "hello") return hello(ws, msg);
     const room = ws.room && rooms.get(ws.room);
     if (!room) return send(ws, { t: "error", msg: "You're not in a room.", code: "no_room" });
@@ -120,14 +156,42 @@ wss.on("connection", ws => {
       if (!room.players.length) { rooms.delete(code); sockets.delete(code); } else broadcast(code);
       return;
     }
+    if (msg.t === "react") {
+      const e = Number(msg.e);
+      if (!Number.isInteger(e) || e < 0 || e >= REACTIONS || !allow(ws, "reacts", 6, 3000)) return;
+      const p = game.player(room, ws.pid);
+      if (p) p.reacts += 1;
+      return toRoom(room.code, { t: "react", from: ws.pid, e });
+    }
+    // Live swipe progress from the rider (or the horse race flipper), so everyone watches the card lift.
+    if (msg.t === "drag") {
+      if (!allow(ws, "drag", 30, 1000)) return;
+      const p = Math.max(0, Math.min(1, Number(msg.p) || 0));
+      const riding = room.screen === "play" && room.phase === "guess" && room.current === ws.pid;
+      const flipping = room.screen === "race" && room.race && !room.race.winner && room.race.flipper === ws.pid;
+      if (!riding && !flipping) return;
+      const g = riding && typeof msg.g === "string" && /^[a-zSHDC]{1,8}$/.test(msg.g) ? msg.g : undefined;
+      return toRoom(room.code, { t: "drag", by: ws.pid, p, g, seq: room.ev.seq });
+    }
+    if (msg.t === "nudge") {
+      const to = game.player(room, msg.to);
+      if (!to || to.id === ws.pid || room.screen !== "play" || room.current !== to.id || room.phase !== "guess") return;
+      if (!allow(ws, "nudge:" + to.id, 1, 10000)) return send(ws, { t: "error", msg: `You can nudge ${to.name} again in a few seconds.` });
+      return toRoom(room.code, { t: "nudge", from: ws.pid, to: to.id });
+    }
     if (msg.t === "act") {
+      if (game.isStale(room, msg)) return send(ws, { t: "stale", state: game.publicState(room) });
       const err = game.act(room, ws.pid, msg);
       if (err) return send(ws, { t: "error", msg: err });
+      if (msg.a === "give") toRoom(room.code, { t: "gift", from: ws.pid, to: msg.to });
       broadcast(room.code);
     }
   });
   ws.on("close", () => { if (ws.room) detach(ws); });
 });
+
+// Move turns on by themselves (auto-pass after a result, skip riders who've dropped).
+setInterval(() => { for (const [code, room] of rooms) if (game.tick(room)) broadcast(code); }, 250).unref();
 
 // Drop dead connections and stale rooms.
 setInterval(() => {

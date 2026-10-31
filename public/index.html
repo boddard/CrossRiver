@@ -70,7 +70,7 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 
 /* Cards: sized from both the screen width and the height left over after the bar, status and buttons */
 .route-line {
-  --cols: 2; --rows: 2; --reserve: 382px; --col-gap: 12px;
+  --cols: 2; --rows: 2; --reserve: 450px; --col-gap: 12px;
   --cw: min(calc((100% - (var(--cols) - 1) * var(--col-gap)) / var(--cols)),
             calc(((100dvh - var(--safe-y) - var(--reserve)) / var(--rows) - 34px) * 5 / 7));
   flex: 1; display: grid; grid-template-columns: repeat(var(--cols), max(84px, var(--cw)));
@@ -226,7 +226,7 @@ details p { max-width: 65ch; color: var(--muted); }
 /* Horse race: a vertical track. Sideline cards run up the left; four lanes, finish at the top */
 .track {
   --rgap: 4px;
-  --row: clamp(30px, calc((100dvh - var(--safe-y) - 360px) / var(--rows) - var(--rgap)), 72px);
+  --row: clamp(28px, calc((100dvh - var(--safe-y) - 428px) / var(--rows) - var(--rgap)), 72px);
   flex: 1; align-self: center; width: min(100%, 520px);
   display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0 8px; align-content: center;
 }
@@ -321,6 +321,113 @@ details p { max-width: 65ch; color: var(--muted); }
   padding: calc(env(safe-area-inset-top, 0px) + 8px) max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px));
   background: var(--miss); color: #fff; font-weight: 600; font-size: 14px;
 }
+.layer { display: contents; }
+.sign-btn.icon { width: 34px; height: 30px; padding: 0; display: grid; place-items: center; }
+.sign-btn.icon svg { width: 18px; height: 18px; }
+.sign-end { gap: 6px; }
+
+/* Player bar: everyone in the room as a bubble; the rider glows, tap to nudge or hand out drinks */
+.crew { position: relative; display: grid; gap: 6px; }
+.crew-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.crew-list { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; min-width: 0; flex: 1; padding: 4px 2px 2px; }
+.crew-list::-webkit-scrollbar { display: none; }
+.bub { flex: none; position: relative; display: grid; justify-items: center; gap: 3px; width: 52px; background: none; border: 0; padding: 0; }
+.av {
+  width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--c); color: #111; font: 900 18px/1 var(--display); box-shadow: 0 0 0 2px var(--asphalt), 0 0 0 4px transparent;
+  transition: box-shadow .2s, opacity .2s, transform .2s;
+}
+.bn { max-width: 52px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 11px/1.1 var(--body); color: var(--muted); }
+.bub.riding .av { box-shadow: 0 0 0 2px var(--asphalt), 0 0 0 4px var(--bus); animation: glow 1.6s ease-in-out infinite; }
+.bub.riding .bn { color: var(--bus); }
+.bub.away .av { opacity: .35; filter: grayscale(1); }
+.bub.out .av::after { content: "OFF"; position: absolute; top: 24px; font: 700 8px/1 var(--mono); background: var(--line); color: var(--ink); padding: 2px 3px; border-radius: 3px; }
+.bub .crown { position: absolute; top: -2px; right: 4px; font-size: 11px; color: var(--bus); }
+.bub.target .av { box-shadow: 0 0 0 2px var(--asphalt), 0 0 0 4px var(--ok); animation: wiggle 1s ease-in-out infinite; }
+.bub.pop .av { animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+.bub.hit .av { animation: shake .5s ease-in-out; }
+@keyframes glow { 50% { box-shadow: 0 0 0 2px var(--asphalt), 0 0 0 4px var(--bus), 0 0 16px 4px rgba(245,179,1,.45); } }
+@keyframes wiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-6deg); } 75% { transform: rotate(6deg); } }
+@keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.25); } 100% { transform: scale(1); } }
+.give-note { margin: 0; padding: 8px 12px; border-radius: 8px; background: rgba(70,196,106,.14); border: 1px solid rgba(70,196,106,.5); font-weight: 600; text-align: center; animation: rise .3s ease-out both; }
+.react-btn { flex: none; width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--line); background: var(--panel); font-size: 22px; line-height: 1; }
+.react-btn[aria-expanded="true"] { border-color: var(--bus); }
+.tray { position: absolute; right: 0; top: calc(100% + 4px); z-index: 30; display: flex; gap: 4px; padding: 6px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,.45); animation: rise .2s ease-out both; }
+.rx { width: 42px; height: 42px; border-radius: 50%; border: 0; background: none; font-size: 24px; line-height: 1; }
+.rx:active { transform: scale(1.3); }
+
+/* Reactions and callouts float up every phone */
+.floats { position: fixed; inset: 0; pointer-events: none; z-index: 45; overflow: hidden; }
+.float { position: absolute; bottom: 14%; display: grid; justify-items: center; gap: 2px; transform: translateX(-50%); animation: floatup 2.6s ease-out forwards; }
+.float b { font-size: 40px; line-height: 1; }
+.float small { font: 700 11px/1 var(--body); background: rgba(0,0,0,.6); color: #fff; padding: 3px 6px; border-radius: 999px; white-space: nowrap; }
+.float.note b { font: 900 18px/1.1 var(--display); text-transform: uppercase; background: var(--panel); border: 1px solid var(--line); color: var(--ink); padding: 6px 10px; border-radius: 8px; white-space: nowrap; }
+@keyframes floatup { 0% { transform: translate(-50%, 20px) scale(.6); opacity: 0; } 12% { transform: translate(-50%, 0) scale(1.1); opacity: 1; } 80% { opacity: 1; } 100% { transform: translate(-50%, -55vh) scale(1); opacity: 0; } }
+
+/* Full-screen callouts: YOUR TURN, KIM DRINKS!, HURRY UP! */
+.takeover { position: fixed; inset: 0; z-index: 48; pointer-events: none; display: grid; place-items: center; padding: 0 16px; background: radial-gradient(ellipse at center, rgba(0,0,0,.55), rgba(0,0,0,.15) 70%); }
+.takeover span { font: 900 clamp(48px, 16vw, 92px)/.95 var(--display); text-transform: uppercase; text-align: center; text-wrap: balance; color: var(--bus); text-shadow: 0 4px 0 #000, 0 0 40px rgba(245,179,1,.5); }
+.takeover.miss span { color: var(--miss); text-shadow: 0 4px 0 #000, 0 0 40px rgba(239,90,95,.55); }
+.takeover.gift span, .takeover.nudge span { color: var(--ink); }
+.takeover.show { animation: takeover 1.7s ease-out forwards; }
+.takeover.show span { animation: slam .45s cubic-bezier(.2,1.6,.4,1) both; }
+@keyframes takeover { 0% { opacity: 0; } 8% { opacity: 1; } 75% { opacity: 1; } 100% { opacity: 0; } }
+
+/* Suspense: the rider's call hangs on every screen before the card turns */
+.console.calling { text-align: center; justify-items: center; }
+.call-by { margin: 0; color: var(--muted); font-weight: 600; }
+.call { margin: 0; font: 900 clamp(40px, 12vw, 60px)/1 var(--display); text-transform: uppercase; color: var(--bus); animation: slam .35s cubic-bezier(.2,1.6,.4,1) both; }
+.drum { display: flex; gap: 8px; }
+.drum span { width: 10px; height: 10px; border-radius: 50%; background: var(--bus); animation: drum .5s ease-in-out infinite alternate; }
+.drum span:nth-child(2) { animation-delay: .15s; } .drum span:nth-child(3) { animation-delay: .3s; }
+@keyframes drum { from { transform: translateY(0); opacity: .4; } to { transform: translateY(-8px); opacity: 1; } }
+.slot.calling .back { animation: suspense .35s ease-in-out infinite alternate; }
+@keyframes suspense { from { transform: translateY(0) rotate(-1deg); } to { transform: translateY(-6px) rotate(1deg); } }
+
+/* The bus moves on by itself: a bar runs down until the next rider's turn */
+.autopass { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.autopass span { display: block; height: 100%; background: var(--bus); transform-origin: left; animation: drain var(--ms) linear forwards; }
+@keyframes drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.nudge-hint { display: block; font-size: 13px; color: var(--muted); font-weight: 500; }
+
+/* End-of-night awards */
+.awards { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.award { display: grid; gap: 4px; padding: 14px 16px; border-radius: 12px; background: var(--asphalt); border: 1px solid var(--line); animation: rise .5s calc(var(--i) * 120ms) cubic-bezier(.2,.7,.2,1) both; }
+.award strong { font: 900 28px/1 var(--display); text-transform: uppercase; color: var(--bus); }
+.award:first-child { border-color: var(--bus); }
+
+/* Swipe to flip: your card lifts with your finger; everyone else sees it lift live */
+.slot.armed, .slot.calling, .draw-slot.armed, .draw-slot.calling {
+  transform: translateY(calc(var(--lift, 0) * -56px)) rotate(calc(var(--lift, 0) * -5deg));
+  transition: transform .18s ease-out; touch-action: none;
+}
+.slot.armed { cursor: grab; }
+.slot.armed .back, .draw-slot.armed .back { box-shadow: inset 0 0 0 3px var(--bus), 0 0 0 3px rgba(245,179,1,.35), 0 0 30px rgba(245,179,1,.35); }
+.dragging { transition: none !important; }
+.swipe-hint { position: absolute; left: 50%; bottom: -4px; transform: translate(-50%, 100%); white-space: nowrap; font: 700 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--bus); animation: nudgeup 1.1s ease-in-out infinite; pointer-events: none; }
+.slot, .draw-slot { position: relative; }
+@keyframes nudgeup { 0%, 100% { transform: translate(-50%, 100%); } 50% { transform: translate(-50%, calc(100% - 6px)); } }
+.slot.launch { transform: translateY(-70px) scale(1.04); transition: transform .25s ease-out; }
+.choice.picked { border-color: var(--bus); background: rgba(245,179,1,.14); color: var(--bus); }
+.flip-row { display: flex; gap: 10px; align-items: center; }
+.flip-row .ghost { flex: none; }
+
+/* Horse race: backers ride on their horse, your lane is tinted, horses jump and stumble */
+.tcol.mine { --lanec: var(--c); }
+.tcell.lane { background: linear-gradient(90deg, transparent 46%, var(--lanec, var(--line)) 46%, var(--lanec, var(--line)) 54%, transparent 54%); }
+.riders { position: absolute; left: 50%; top: calc(100% + 2px); transform: translateX(-50%); display: flex; gap: 1px; pointer-events: none; }
+.rdot { width: 11px; height: 11px; border-radius: 50%; background: var(--c); color: #111; font: 800 7px/11px var(--body); text-align: center; box-shadow: 0 0 0 1px var(--asphalt); }
+.horse.leader { box-shadow: 0 0 0 2px var(--bus), 0 6px 16px rgba(0,0,0,.35); }
+.horse.jump .hface { animation: gallop .5s cubic-bezier(.3,1.4,.5,1); }
+@keyframes gallop { 0% { transform: translateY(0); } 35% { transform: translateY(-12px) rotate(-8deg); } 70% { transform: translateY(2px) rotate(3deg); } 100% { transform: none; } }
+.horse.hurt .hface { animation: stumble .6s ease-in-out; }
+@keyframes stumble { 0%, 100% { transform: none; } 20% { transform: rotate(14deg) translateX(4px); } 50% { transform: rotate(-10deg); } 80% { transform: rotate(5deg); } }
+.deck-row { display: flex; align-items: center; gap: 12px; min-height: 84px; }
+.deck-row .draw-slot { width: 60px; }
+.flipper-line { margin: 0; font-weight: 600; }
+.flipper-line b { color: var(--bus); }
+/* While a tap is on its way to the server, the game buttons dim and ignore further taps */
+.busy :is([data-g], #pass, #skip, #flip, #start, #start-race, #race-again) { opacity: .55; pointer-events: none; }
 .toast {
   position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 20px); z-index: 60; transform: translateX(-50%);
   width: min(440px, calc(100% - 32px)); padding: 12px 16px; border-radius: 10px;
@@ -333,6 +440,7 @@ details p { max-width: 65ch; color: var(--muted); }
   <header class="sign" aria-label="F the Bus">
     <h1>F the Bus</h1>
     <div class="sign-end">
+      <button class="sign-btn icon" id="sound" type="button" aria-label="Sound on" aria-pressed="true"></button>
       <button class="sign-btn" id="menu" type="button" hidden>Menu</button>
       <button class="sign-btn" id="restart" type="button" hidden>Restart</button>
     </div>
@@ -341,6 +449,8 @@ details p { max-width: 65ch; color: var(--muted); }
 </div>
 <div class="banner" id="banner" hidden>Reconnecting…</div>
 <div class="toast" id="toast" role="status" hidden></div>
+<div class="floats" id="floats" aria-hidden="true"></div>
+<div class="takeover" id="takeover" aria-live="assertive" hidden><span></span></div>
 
 <script>
 (() => {
@@ -356,18 +466,28 @@ details p { max-width: 65ch; color: var(--muted); }
       stops: [["Red / Black", "Red/Blk"], ["Higher / Lower", "Hi/Lo"], ["Inside / Outside", "In/Out"], ["Suit", "Suit"]] },
     hilo: { name: "Higher or Lower", blurb: "Get 3 higher-or-lower calls right in a row.", dots: ["S", "1", "2", "3"],
       stops: [["Start card", "Start"], ["Guess 1", "Guess 1"], ["Guess 2", "Guess 2"], ["Guess 3", "Guess 3"]] },
-    horse: { name: "Horse Race", blurb: "Bet on an ace and flip cards to race them up the track." },
+    horse: { name: "Horse Race", blurb: "Bet on an ace and take turns flipping cards to race them up the track." },
   };
+  const REACTIONS = ["🍺", "😂", "🔥", "😱", "👏", "🤮"];
+  const CALLS = { red: "Red", black: "Black", higher: "Higher", lower: "Lower", inside: "Inside", outside: "Outside", S: "♠ Spades", H: "♥ Hearts", D: "♦ Diamonds", C: "♣ Clubs" };
+  const REVEAL_MS = 700;  // everyone holds on the call this long before the card turns
+  const SWIPE_PX = 70;    // how far a card must be pushed up to flip it
   const STORE = "fthebus.online.v1";
 
   const app = document.getElementById("app");
   // S is the room state the server last sent; the server is the only source of truth.
   let S = null, me = null, ws = null, connected = false, retry = 0, retryTimer = null;
   let fx = "", dealt = -1, lastSeq = null, confirming = false, toastTimer = null;
+  let pendingTimer = null, lastMsgAt = 0, wasMyTurn = false, wasMyFlip = false;
+  let suspense = null;   // the server has answered; everyone holds on the call for REVEAL_MS
+  let armed = null;      // the call I've picked and am about to swipe for
+  let remote = null;     // the rider's (or flipper's) call and live swipe, seen from another phone
+  let trayOpen = false, trayTimer = null, prevPos = null;
+  const TITLE = document.title;
   const calm = () => window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  // Name, room and seat token survive reloads so a phone that locks rejoins its seat.
-  let session = { name: "", room: "", token: "" };
+  // Name, room, seat token and mute survive reloads so a phone that locks rejoins its seat.
+  let session = { name: "", room: "", token: "", muted: false };
   try { Object.assign(session, JSON.parse(localStorage.getItem(STORE)) || {}); } catch (e) {}
   const saveSession = () => { try { localStorage.setItem(STORE, JSON.stringify(session)); } catch (e) {} };
   const linkRoom = (new URLSearchParams(location.search).get("room") || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4);
@@ -385,14 +505,90 @@ details p { max-width: 65ch; color: var(--muted); }
   const horse = () => mode() === "horse";
   const byId = id => S.players.find(p => p.id === id);
   const amHost = () => S && S.hostId === me;
-  const host = () => byId(S.hostId);
   const nameOf = id => { const p = byId(id); return p ? esc(p.name) : "Someone"; };
+  const plainName = id => { const p = byId(id); return p ? p.name : "Someone"; };
   const youTag = id => id === me ? ' <span class="tag you">YOU</span>' : "";
+  const initial = name => (Array.from(String(name).trim())[0] || "?").toUpperCase();
+  const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+  const buzz = pattern => { try { navigator.vibrate && navigator.vibrate(pattern); } catch (e) {} };
 
+  // ---- sound: small synthesized effects, no audio files ----
+  let ac = null;
+  function audio() {
+    if (session.muted) return null;
+    try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; }
+    if (ac.state === "suspended") ac.resume();
+    return ac;
+  }
+  function tone(freq, dur, type = "sine", vol = .18, at = 0, slide) {
+    const c = audio(); if (!c) return;
+    const t = c.currentTime + at, o = c.createOscillator(), g = c.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(g).connect(c.destination); o.start(t); o.stop(t + dur + .02);
+  }
+  function noise(dur, vol = .2, freq = 2000, at = 0) {
+    const c = audio(); if (!c) return;
+    const t = c.currentTime + at, len = Math.floor(c.sampleRate * dur), buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    const src = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
+    src.buffer = buf; f.type = "bandpass"; f.frequency.value = freq; g.gain.value = vol;
+    src.connect(f).connect(g).connect(c.destination); src.start(t);
+  }
+  const sfx = {
+    flip: () => noise(.09, .35, 2600),
+    ding: () => { tone(880, .14, "triangle", .16); tone(1320, .22, "triangle", .14, .08); },
+    gulp: () => { tone(260, .12, "sine", .3, 0, 140); tone(220, .12, "sine", .3, .16, 120); tone(200, .16, "sine", .3, .32, 100); },
+    horn: () => { tone(392, .32, "square", .08); tone(494, .32, "square", .07); tone(392, .55, "square", .08, .38); tone(494, .55, "square", .07, .38); },
+    chime: () => [660, 880, 1175].forEach((f, i) => tone(f, .2, "triangle", .16, i * .1)),
+    pop: () => tone(520, .07, "sine", .1, 0, 900),
+    buzz: () => tone(110, .45, "sawtooth", .1),
+    drum: () => { for (let i = 0; i < 6; i++) noise(.05, .12 + i * .02, 700, i * .1); },
+    gallop: () => { noise(.04, .2, 500); noise(.04, .2, 450, .09); },
+    bump: () => tone(160, .2, "square", .1, 0, 70),
+  };
+  function soundIcon() {
+    const b = document.getElementById("sound");
+    b.innerHTML = session.muted
+      ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="m22 9-6 6M16 9l6 6"/></svg>'
+      : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg>';
+    b.setAttribute("aria-label", session.muted ? "Sound off" : "Sound on");
+    b.setAttribute("aria-pressed", session.muted ? "false" : "true");
+  }
+
+  // ---- shared moments ----
   function toast(msg) {
     const t = document.getElementById("toast");
     t.textContent = msg; t.hidden = false;
     clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 3500);
+  }
+  let takeoverTimer = null;
+  function takeover(text, kind = "") {
+    const el = document.getElementById("takeover");
+    el.querySelector("span").textContent = text;
+    el.className = `takeover ${kind}`; el.hidden = false;
+    void el.offsetWidth; el.classList.add("show");
+    clearTimeout(takeoverTimer); takeoverTimer = setTimeout(() => { el.hidden = true; }, 1750);
+  }
+  // Float a reaction or note up the screen from above the sender's bubble.
+  function floatUp(html, fromId, note = false) {
+    const layer = document.getElementById("floats");
+    const el = document.createElement("span");
+    el.className = "float" + (note ? " note" : "");
+    el.innerHTML = html;
+    const b = fromId && document.querySelector(`.bub[data-bub="${fromId}"]`);
+    const r = b && b.getBoundingClientRect();
+    const x = r && r.width ? r.left + r.width / 2 : innerWidth * (.25 + Math.random() * .5);
+    el.style.left = `${Math.min(innerWidth - 40, Math.max(40, x + (Math.random() - .5) * 30))}px`;
+    layer.appendChild(el);
+    setTimeout(() => el.remove(), 2700);
+  }
+  function flash(id, cls) {
+    const b = document.querySelector(`.bub[data-bub="${id}"]`);
+    if (!b) return;
+    b.classList.remove(cls); void b.offsetWidth; b.classList.add(cls);
+    setTimeout(() => b.classList.remove(cls), 600);
   }
 
   // ---- connection ----
@@ -401,20 +597,42 @@ details p { max-width: 65ch; color: var(--muted); }
     if (ws && (ws.readyState === 0 || ws.readyState === 1)) return;
     ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws`);
     ws.onopen = () => {
-      connected = true; retry = 0; banner();
+      connected = true; retry = 0; lastMsgAt = Date.now(); banner();
       if (session.room && session.token) send({ t: "hello", room: session.room, token: session.token, name: session.name });
       else render();
     };
-    ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch (err) { return; } onMessage(m); };
+    ws.onmessage = e => { lastMsgAt = Date.now(); let m; try { m = JSON.parse(e.data); } catch (err) { return; } onMessage(m); };
     ws.onclose = () => {
-      connected = false; banner();
+      connected = false; clearPending(); banner();
       retryTimer = setTimeout(connect, Math.min(8000, 500 * 2 ** retry++));
     };
   }
-  function send(m) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); else toast("Not connected yet. Hang on a second."); }
-  const act = (a, extra = {}) => send({ t: "act", a, ...extra });
+  function send(m, quiet = false) {
+    if (ws && ws.readyState === 1) { ws.send(JSON.stringify(m)); return true; }
+    if (!quiet) toast("Not connected yet. Hang on a second.");
+    return false;
+  }
+  // Every game action carries the state version this phone saw, so the server can drop double taps.
+  function act(a, extra = {}) {
+    if (!send({ t: "act", a, seq: S ? S.ev.seq : undefined, ...extra })) return;
+    app.classList.add("busy");
+    clearTimeout(pendingTimer); pendingTimer = setTimeout(clearPending, 4000);
+  }
+  function clearPending() { clearTimeout(pendingTimer); app.classList.remove("busy"); }
+  // A connection can die silently when a phone sleeps. Ping every 10s; reconnect after 25s of silence.
+  setInterval(() => {
+    if (!ws || ws.readyState !== 1) return;
+    if (Date.now() - lastMsgAt > 25000) { ws.close(); return; }
+    send({ t: "ping" }, true);
+  }, 10000);
+  window.addEventListener("online", connect);
+  window.addEventListener("pageshow", e => { if (e.persisted) connect(); });
   function banner() { document.getElementById("banner").hidden = connected || !session.room; }
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) { if (!connected) connect(); keepAwake(); } });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) return;
+    if (!connected) connect(); else if (Date.now() - lastMsgAt > 12000) ws.close();
+    keepAwake();
+  });
 
   function onMessage(m) {
     if (m.t === "welcome") {
@@ -422,26 +640,142 @@ details p { max-width: 65ch; color: var(--muted); }
       history.replaceState(null, "", `?room=${m.room}`);
       return;
     }
-    if (m.t === "state") {
-      const prev = S;
-      S = m.state;
-      const fresh = lastSeq !== null && S.ev.seq !== lastSeq;
-      fx = fresh ? S.ev.type : ""; dealt = fresh ? S.ev.dealt : -1;
-      lastSeq = S.ev.seq;
-      if (S.screen === "race" && prev && prev.screen === "race" && prev.race && S.race && prev.race.id === S.race.id && document.getElementById("track")) return patchRace();
-      return render();
+    if (m.t === "pong") return;
+    if (m.t === "stale") { clearPending(); m.t = "state"; }
+    if (m.t === "state") return onState(m.state);
+    if (m.t === "react") {
+      floatUp(`<b>${REACTIONS[m.e] || ""}</b><small>${m.from === me ? "You" : nameOf(m.from)}</small>`, m.from);
+      flash(m.from, "pop"); sfx.pop();
+      return;
     }
+    if (m.t === "nudge") {
+      if (m.to === me) { takeover("Hurry up!", "nudge"); sfx.buzz(); buzz([200, 80, 200]); }
+      else floatUp(`<b>${m.from === me ? "You" : nameOf(m.from)} → ${nameOf(m.to)}: hurry up!</b>`, m.from, true);
+      flash(m.to, "hit");
+      return;
+    }
+    if (m.t === "gift") {
+      if (m.to === me) { takeover(`${plainName(m.from)} gave you a drink!`, "gift"); sfx.gulp(); buzz(150); }
+      else floatUp(`<b>${m.from === me ? "You" : nameOf(m.from)} → ${nameOf(m.to)} 🍺</b>`, m.to, true);
+      flash(m.to, "hit");
+      return;
+    }
+    if (m.t === "drag") return onDrag(m);
     if (m.t === "error") {
+      clearPending();
       if (m.code === "no_room" || m.code === "need_name") { leaveLocal(); if (m.code === "need_name") return toast(m.msg); }
       return toast(m.msg);
     }
     if (m.t === "left") return leaveLocal();
   }
+
+  function onState(next) {
+    clearPending();
+    const prev = S;
+    S = next;
+    const fresh = lastSeq !== null && S.ev.seq !== lastSeq;
+    lastSeq = S.ev.seq;
+    fx = fresh ? S.ev.type : ""; dealt = fresh ? S.ev.dealt : -1;
+    if (fresh) remote = null;
+    if (S.screen !== "play" || S.current !== me || S.phase !== "guess" || (prev && prev.stage !== S.stage)) armed = null;
+    if (suspense && S.ev.seq !== suspense.seq) { clearTimeout(suspense.timer); suspense = null; }
+    turnAlert();
+    // A guess just landed: hold on the call for everyone, then turn the card.
+    if (fresh && S.screen === "play" && S.ev.call && ["good", "miss", "won"].includes(fx)) {
+      suspense = { seq: S.ev.seq, fx, dealt, call: S.ev.call, lastGood: prev ? prev.lastGood : "", timer: setTimeout(reveal, REVEAL_MS) };
+      fx = ""; dealt = -1;
+      sfx.drum();
+      return render();
+    }
+    if (fresh) cue(prev);
+    render();
+  }
+  function reveal() {
+    const s = suspense; suspense = null;
+    if (!S || !s || S.ev.seq !== s.seq) return;
+    fx = s.fx; dealt = s.dealt;
+    const p = byId(S.ev.by), mine = S.ev.by === me, name = p ? p.name : "Someone";
+    sfx.flip();
+    if (s.fx === "miss") { setTimeout(() => { takeover(mine ? "Drink!" : `${name} drinks!`, "miss"); sfx.gulp(); if (mine) buzz(250); }, 350); }
+    else if (s.fx === "won") { setTimeout(() => { takeover(mine ? "You're off!" : `${name} is off!`, "won"); sfx.horn(); }, 350); }
+    else setTimeout(sfx.ding, 250);
+    render();
+  }
+  // Sounds and callouts for events that don't go through a reveal.
+  function cue(prev) {
+    if (fx === "turn" && S.current === me) { takeover("Your turn", "turn"); sfx.chime(); }
+    if (S.screen !== "race" || !S.race) return;
+    const r = S.race;
+    if (fx === "flip" || fx === "won") {
+      sfx.flip();
+      if (r.back) setTimeout(sfx.bump, 300); else setTimeout(sfx.gallop, 150);
+      if (r.back) floatUp(`<b>${suitSym(r.back)} ${suitName(r.back)} knocked back!</b>`, null, true);
+    }
+    if (fx === "won") {
+      const mine = (r.results || []).find(x => x.id === me);
+      setTimeout(() => {
+        sfx.horn();
+        if (!mine) takeover(`${suitSym(r.winner)} ${suitName(r.winner)} win!`, "won");
+        else if (mine.won) takeover(`You win! Hand out ${mine.amt * 2}`, "won");
+        else takeover(`${suitName(r.winner)} win. Drink ${mine.amt}`, "miss");
+      }, 700);
+    }
+    const myFlip = !r.winner && r.flipper === me;
+    if (myFlip && !wasMyFlip && prev && prev.screen === "race") { sfx.chime(); buzz(80); }
+    wasMyFlip = myFlip;
+  }
+  // Live swipe from another phone: show the call straight away, then lift the card with their finger.
+  function onDrag(m) {
+    if (m.by === me || !S || m.seq !== S.ev.seq) return;
+    const callChanged = !remote || remote.g !== m.g;
+    remote = { by: m.by, g: m.g, p: m.p };
+    if (callChanged) { if (m.g) sfx.pop(); render(); }
+    const el = document.getElementById("swipe-card");
+    if (el) { el.classList.add("calling"); el.style.setProperty("--lift", m.p); }
+  }
   function leaveLocal() {
-    S = null; me = null; lastSeq = null; confirming = false;
+    S = null; me = null; lastSeq = null; confirming = false; armed = null; remote = null; suspense = null;
     session.room = ""; session.token = ""; saveSession();
     history.replaceState(null, "", location.pathname);
     banner(); render();
+  }
+
+  // Buzz (where phones allow it) and retitle the tab when the bus comes to you.
+  function turnAlert() {
+    const mine = !!S && S.screen === "play" && S.current === me && S.phase === "guess";
+    const flipping = !!S && S.screen === "race" && S.race && !S.race.winner && S.race.flipper === me;
+    if (mine && !wasMyTurn) buzz([120, 60, 120]);
+    document.title = mine ? "Your turn · F the Bus" : flipping ? "Your flip · F the Bus" : TITLE;
+    wasMyTurn = mine;
+  }
+
+  // Update the page in place: only nodes that changed are touched, so scroll position, open sections and
+  // focus survive updates, and CSS transitions (card flips, horses moving) play on the existing elements.
+  // Nodes with a data-key are replaced when the key changes, so one-shot animations replay.
+  function morph(cur, next) {
+    if (cur.nodeType !== next.nodeType || cur.nodeName !== next.nodeName
+        || (cur.nodeType === 1 && (cur.getAttribute("data-key") || "") !== (next.getAttribute("data-key") || ""))) { cur.replaceWith(next); return; }
+    if (cur.nodeType === 3) { if (cur.data !== next.data) cur.data = next.data; return; }
+    if (cur.nodeType !== 1) return;
+    for (const { name } of [...cur.attributes]) {
+      if (!next.hasAttribute(name) && !(name === "open" && cur.nodeName === "DETAILS")) cur.removeAttribute(name);
+    }
+    for (const { name, value } of [...next.attributes]) if (cur.getAttribute(name) !== value) cur.setAttribute(name, value);
+    if (cur.nodeName === "INPUT") {
+      if (cur.type === "checkbox" || cur.type === "radio") cur.checked = next.hasAttribute("checked");
+      return;
+    }
+    morphChildren(cur, next);
+  }
+  function morphChildren(cur, next) {
+    const a = [...cur.childNodes], b = [...next.childNodes];
+    b.forEach((n, i) => { if (i < a.length) morph(a[i], n); else cur.appendChild(n); });
+    for (let i = b.length; i < a.length; i++) a[i].remove();
+  }
+  function paint(html) {
+    const t = document.createElement("template");
+    t.innerHTML = html;
+    morphChildren(app, t.content);
   }
 
   // Keep the screen on during a game; harmless where the browser refuses.
@@ -473,10 +807,29 @@ details p { max-width: 65ch; color: var(--muted); }
     </section>`;
   }
 
+  // ---- player bar ----
+  function crewHTML() {
+    const mine = byId(me);
+    const giving = mine && mine.give > 0;
+    const riderId = S.screen === "play" && S.phase === "guess" ? S.current : S.screen === "race" && S.race && !S.race.winner ? S.race.flipper : null;
+    const bubs = S.players.map(p => {
+      const cls = ["bub", p.id === riderId ? "riding" : "", p.connected ? "" : "away", S.screen === "play" && p.off ? "out" : "", giving && p.id !== me ? "target" : ""].filter(Boolean).join(" ");
+      const what = giving && p.id !== me ? `Give ${p.name} a drink` : p.id === riderId && p.id !== me ? `Nudge ${p.name}` : p.name;
+      return `<button class="${cls}" data-bub="${p.id}" style="--c:${p.color}" aria-label="${esc(what)}">
+        <span class="av">${esc(initial(p.name))}</span><span class="bn">${p.id === me ? "You" : esc(p.name)}</span>${p.id === S.hostId ? '<span class="crown">★</span>' : ""}</button>`;
+    }).join("");
+    const note = giving ? `<p class="give-note">Hand out ${plural(mine.give, "drink")}: tap a player</p>` : "";
+    const tray = trayOpen ? `<div class="tray" role="group" aria-label="Reactions">${REACTIONS.map((e, i) => `<button class="rx" data-rx="${i}" aria-label="React ${e}">${e}</button>`).join("")}</div>` : "";
+    return `<section class="crew" aria-label="Players">${note}
+      <div class="crew-row"><div class="crew-list">${bubs}</div>
+        <button class="react-btn" id="react-toggle" aria-expanded="${trayOpen}" aria-label="Send a reaction">🍻</button></div>${tray}</section>`;
+  }
+
   // ---- lobby ----
   function lobbyHTML() {
-    const people = S.players.map(p => `<li><span class="live${p.connected ? "" : " away"}" title="${p.connected ? "Online" : "Offline"}"></span>
+    const people = S.players.map(p => `<li><span class="av" style="--c:${p.color};width:28px;height:28px;font-size:14px">${esc(initial(p.name))}</span>
       <span class="pname">${esc(p.name)}</span>${p.id === S.hostId ? '<span class="tag">HOST</span>' : ""}${youTag(p.id)}
+      <span class="live${p.connected ? "" : " away"}" title="${p.connected ? "Online" : "Offline"}"></span>
       ${amHost() && p.id !== me ? `<button data-kick="${p.id}" aria-label="Remove ${esc(p.name)}">×</button>` : ""}</li>`).join("");
     const modes = amHost()
       ? `<fieldset class="modes"><legend class="label">Game mode</legend>${Object.entries(MODES).map(([k, m]) =>
@@ -486,12 +839,14 @@ details p { max-width: 65ch; color: var(--muted); }
           <label class="opt"><input type="checkbox" id="ties" ${S.settings.tiesMiss ? "checked" : ""}><span>Ties are a miss<small>A card matching the one it's compared to means you drink. Off gives a free pass.</small></span></label>
         </div>`
       : `<div class="field"><span class="label">Game mode</span><div class="mode-read"><b>${MODES[mode()].name}</b><p class="hint">${MODES[mode()].blurb}</p></div></div>`;
+    const played = S.players.some(p => p.guesses || p.drinks || p.won);
     const go = amHost()
-      ? `<button class="primary" id="start">${horse() ? "Place your bets" : "Board the bus"}</button>`
+      ? `<button class="primary" id="start">${horse() ? "Place your bets" : "Board the bus"}</button>${played ? '<button class="ghost" id="show-awards">End of night awards</button>' : ""}`
       : `<p class="waiting">Waiting for <b>${nameOf(S.hostId)}</b> to start the game.</p>`;
     return `${confirmHTML()}<section class="console setup">
       <div class="roomcode"><div><span class="label">Room code</span><br><strong>${esc(S.code)}</strong></div>
         <button class="ghost" id="invite">Invite friends</button></div>
+      ${crewHTML()}
       <span class="label">Players (${S.players.length})</span>
       <ul class="people">${people}</ul>
       ${modes}
@@ -502,86 +857,103 @@ details p { max-width: 65ch; color: var(--muted); }
   }
 
   // ---- classic / higher or lower ----
-  function cardHTML(i) {
-    const c = S.row[i];
+  // What the table shows right now. While a guess is being revealed, the new card stays face down.
+  function view() {
+    if (suspense && S.ev.seq === suspense.seq) return { row: S.row.slice(0, suspense.dealt), stage: suspense.dealt, phase: "guess", lastGood: suspense.lastGood, call: suspense.call, revealing: true };
+    const call = S.phase !== "guess" ? null : S.current === me ? armed : remote && remote.by === S.current ? remote.g : null;
+    return { row: S.row, stage: S.stage, phase: S.phase, lastGood: S.lastGood, call, revealing: false };
+  }
+  function cardHTML(i, v) {
+    const c = v.row[i];
     const slotCls = ["slot"];
-    if (!c) slotCls.push(i === S.stage && S.phase === "guess" ? "" : "empty");
+    let extra = "";
+    if (!c) {
+      slotCls.push(i === v.stage && v.phase === "guess" ? "" : "empty");
+      if (i === v.stage && v.phase === "guess") {
+        const myArm = S.current === me && armed && !v.revealing;
+        if (myArm) { slotCls.push("armed"); extra = ' id="swipe-card"'; }
+        else if (v.call) { slotCls.push("calling"); extra = ` id="swipe-card" style="--lift:${v.revealing ? 1 : (remote && remote.p) || 0}"`; }
+      }
+    }
     let face = "";
     if (c) {
       const s = suitOf(c);
-      const bust = S.phase === "miss" && i === S.stage;
-      slotCls.push(bust ? "wrong" : (S.phase === "won" ? "right" : ""));
+      const bust = v.phase === "miss" && i === v.stage;
+      slotCls.push(bust ? "wrong" : (v.phase === "won" ? "right" : ""));
       if (bust && fx === "miss") slotCls.push("shake");
       if (fx === "good" && i === dealt) slotCls.push("hit");
       face = `<div class="face${s.red ? " red" : ""}" aria-hidden="true">
         <span class="corner">${c.r}${s.sym}</span><span class="pip">${s.sym}</span><span class="corner bot">${c.r}${s.sym}</span></div>`;
     }
     const cardCls = c ? (i === dealt ? "card deal up" : "card up") : "card";
-    const aria = c ? `${c.r === "A" ? "Ace" : c.r} of ${suitOf(c).name}` : "Face-down card";
-    return `<div class="${slotCls.join(" ").trim()}" role="img" aria-label="${aria}"><div class="${cardCls}"><div class="back"></div>${face}</div></div>`;
+    const key = c && i === dealt ? ` data-key="d${S.ev.seq}"` : "";
+    const aria = c ? `${c.r === "A" ? "Ace" : c.r} of ${suitOf(c).name}` : slotCls.includes("armed") ? "Your card. Swipe up to flip it" : "Face-down card";
+    const hint = slotCls.includes("armed") ? '<span class="swipe-hint">Swipe up ↑</span>' : "";
+    return `<div class="${slotCls.filter(Boolean).join(" ")}"${extra} role="img" aria-label="${aria}"><div class="${cardCls}"${key}><div class="back"></div>${face}</div>${hint}</div>`;
   }
-  function stopsHTML() {
+  function stopsHTML(v) {
     return `<section class="route-line" aria-label="The four cards">${MODES[mode()].stops.map((name, i) => {
       let cls = "stop" + (fx === "turn" ? " enter" : fx === "won" ? " cheer" : "");
-      if (S.phase === "miss" && i === S.stage) cls += " bust";
-      else if (i < S.stage || S.phase === "won") cls += " done";
-      else if (i === S.stage) cls += " on";
-      return `<div class="${cls}" style="--i:${i}"><div class="stop-head"><span class="dot">${MODES[mode()].dots[i]}</span><span class="stop-name"><span class="long">${name[0]}</span><span class="short">${name[1]}</span></span></div>${cardHTML(i)}</div>`;
+      if (v.phase === "miss" && i === v.stage) cls += " bust";
+      else if (i < v.stage || v.phase === "won") cls += " done";
+      else if (i === v.stage) cls += " on";
+      return `<div class="${cls}" style="--i:${i}"><div class="stop-head"><span class="dot">${MODES[mode()].dots[i]}</span><span class="stop-name"><span class="long">${name[0]}</span><span class="short">${name[1]}</span></span></div>${cardHTML(i, v)}</div>`;
     }).join("")}</section>`;
   }
-  function consoleHTML() {
+  function choicesHTML(v) {
+    const r = v.row, picked = g => (S.current === me && armed === g ? " picked" : "");
+    const two = (a, b, la, lb, red) => `<div class="choices"><button class="choice${red ? " choice-red" : ""}${picked(a)}" data-g="${a}">${la}</button><button class="choice${picked(b)}" data-g="${b}">${lb}</button></div>`;
+    if (hilo()) return { prompt: `${v.stage === 3 ? "Last one. " : ""}Higher or lower than <span class="vs">${esc(label(r[v.stage - 1]))}</span>?`, choices: two("higher", "lower", "Higher ↑", "Lower ↓") };
+    if (v.stage === 0) return { prompt: "Red or black?", choices: two("red", "black", '<span class="r">Red</span>', "Black", true) };
+    if (v.stage === 1) return { prompt: `Higher or lower than <span class="vs">${esc(label(r[0]))}</span>?`, choices: two("higher", "lower", "Higher ↑", "Lower ↓") };
+    if (v.stage === 2) return { prompt: `Inside or outside <span class="vs">${esc(label(r[0]))}</span> and <span class="vs">${esc(label(r[1]))}</span>?`, choices: two("inside", "outside", "Inside", "Outside") };
+    return { prompt: "Pick the suit to get off", choices: `<div class="choices four">${SUITS.map(s => `<button class="choice suit${picked(s.key)}" data-g="${s.key}" aria-label="${s.name}">${s.red ? `<span class="r">${s.sym}</span>` : s.sym}</button>`).join("")}</div>` };
+  }
+  function consoleHTML(v) {
     const p = byId(S.current);
     if (!p) return `<section class="console"><p class="waiting">Waiting for the next turn…</p></section>`;
     const mine = S.current === me;
-    const canPass = mine || amHost();
+    if (v.revealing || (v.call && !mine)) {
+      return `<section class="console calling" aria-live="polite"><p class="call-by">${mine ? "You call" : `${esc(p.name)} calls`}</p>
+        <h2 class="call" data-key="c${v.call}">${esc(CALLS[v.call] || v.call)}</h2>
+        <div class="drum"><span></span><span></span><span></span></div>
+        ${v.revealing ? "" : `<p class="waiting">Waiting for ${esc(p.name)} to flip…</p>`}</section>`;
+    }
     const next = S.next;
-    const passLabel = next === S.current ? "Deal again" : next === null ? "Start a new round" : `Pass to ${nameOf(next)}`;
-    const waitPass = `<p class="waiting">Waiting for <b>${esc(p.name)}</b> to pass the bus.</p>`;
-    if (S.phase === "miss") {
-      const c = S.row[S.stage];
-      const after = next === S.current ? "Back to card 1." : `${nameOf(next)} is up next.`;
+    const upNext = next === S.current ? (mine ? "You go again from card 1." : `${esc(p.name)} goes again from card 1.`)
+      : next === null ? "Everyone's off. New round starting…" : next === me ? "You're up next!" : `${nameOf(next)} is up next.`;
+    const bar = `<div class="autopass" data-key="a${S.ev.seq}" style="--ms:${Math.max(800, S.autoPassMs - REVEAL_MS)}ms" aria-hidden="true"><span></span></div><p class="waiting">${upNext}</p>`;
+    if (v.phase === "miss") {
+      const c = v.row[v.stage];
       return `<section class="console" aria-live="polite">
         <div class="verdict miss"><span class="big${fx === "miss" ? " slam" : ""}">${mine ? "Drink" : `${esc(p.name)} drinks`}</span>
-          <p>${esc(label(c))} on card ${S.stage + 1}. ${mine ? "You're" : `${esc(p.name)} is`} still on the bus. ${after}</p></div>
-        ${canPass ? `<div class="row"><button class="primary" id="pass">${passLabel}</button></div>` : waitPass}
-      </section>`;
+          <p>${esc(label(c))} on card ${v.stage + 1}. ${mine ? "You're" : `${esc(p.name)} is`} still on the bus.</p></div>${bar}</section>`;
     }
-    if (S.phase === "won") {
+    if (v.phase === "won") {
       let note = "";
       if (next === null && S.players.length > 1) {
         const worst = S.players.reduce((a, b) => b.roundDrinks > a.roundDrinks ? b : a);
-        note = ` Everyone's off. ${esc(p.name)} was last off, and ${esc(worst.name)} drank the most this round (${worst.roundDrinks}).`;
+        note = ` ${esc(p.name)} was last off, and ${esc(worst.name)} drank the most this round (${worst.roundDrinks}).`;
       }
+      const give = mine ? ` Hand out ${plural(S.giveOnOff, "drink")}: tap players at the top.` : ` ${esc(p.name)} hands out ${plural(S.giveOnOff, "drink")}.`;
       return `<section class="console" aria-live="polite">
         <div class="verdict won"><span class="big${fx === "won" ? " slam" : ""}">Off the bus</span>
-          <p>${mine ? "You" : esc(p.name)} got off on try ${p.tries} after ${p.roundDrinks} drink${p.roundDrinks === 1 ? "" : "s"}.${note}</p></div>
-        ${canPass ? `<div class="row"><button class="primary" id="pass">${passLabel}</button></div>` : waitPass}
-      </section>`;
+          <p>${mine ? "You" : esc(p.name)} got off on try ${p.tries} after ${plural(p.roundDrinks, "drink")}.${give}${note}</p></div>${bar}</section>`;
     }
-    const r = S.row;
-    let prompt, choices;
-    if (hilo()) {
-      prompt = `${S.stage === 3 ? "Last one. " : ""}Higher or lower than <span class="vs">${esc(label(r[S.stage - 1]))}</span>?`;
-      choices = `<div class="choices"><button class="choice" data-g="higher">Higher ↑</button><button class="choice" data-g="lower">Lower ↓</button></div>`;
-    } else if (S.stage === 0) {
-      prompt = "Red or black?";
-      choices = `<div class="choices"><button class="choice choice-red" data-g="red"><span class="r">Red</span></button><button class="choice" data-g="black">Black</button></div>`;
-    } else if (S.stage === 1) {
-      prompt = `Higher or lower than <span class="vs">${esc(label(r[0]))}</span>?`;
-      choices = `<div class="choices"><button class="choice" data-g="higher">Higher ↑</button><button class="choice" data-g="lower">Lower ↓</button></div>`;
-    } else if (S.stage === 2) {
-      prompt = `Inside or outside <span class="vs">${esc(label(r[0]))}</span> and <span class="vs">${esc(label(r[1]))}</span>?`;
-      choices = `<div class="choices"><button class="choice" data-g="inside">Inside</button><button class="choice" data-g="outside">Outside</button></div>`;
-    } else {
-      prompt = "Pick the suit to get off";
-      choices = `<div class="choices four">${SUITS.map(s => `<button class="choice suit" data-g="${s.key}" aria-label="${s.name}">${s.red ? `<span class="r">${s.sym}</span>` : s.sym}</button>`).join("")}</div>`;
-    }
-    const flash = S.lastGood ? `<p class="flash ok">${esc(S.lastGood)}</p>` : "";
+    const { prompt, choices } = choicesHTML(v);
+    const flashLine = v.lastGood ? `<p class="flash ok">${esc(v.lastGood)}</p>` : "";
     let controls;
-    if (mine) controls = choices;
-    else if (amHost() && !p.connected) controls = `<p class="waiting"><b>${esc(p.name)}</b> is offline. Guess for them or skip their turn.</p>${choices}<button class="ghost" id="skip">Skip ${esc(p.name)}'s turn</button>`;
-    else controls = `<p class="waiting">Waiting for <b>${esc(p.name)}</b> to guess…</p>`;
-    return `<section class="console">${flash}<h2 class="prompt">${prompt}</h2>${controls}</section>`;
+    if (mine && armed) {
+      controls = `<p class="waiting">You call <b>${esc(CALLS[armed])}</b>. Swipe the card up to flip it, or change your call.</p>${choices}
+        <button class="primary flip-btn" id="flip-now">Flip it</button>`;
+    } else if (mine) {
+      controls = choices;
+    } else if (amHost() && !p.connected) {
+      controls = `<p class="waiting"><b>${esc(p.name)}</b> is offline. Skipping them in ${Math.round(S.offlineSkipMs / 1000)} seconds, or skip now.</p><button class="ghost" id="skip">Skip ${esc(p.name)}'s turn</button>`;
+    } else {
+      controls = `<p class="waiting">Waiting for <b>${esc(p.name)}</b> to call…<span class="nudge-hint">Tap their bubble at the top to hurry them up.</span></p>`;
+    }
+    return `<section class="console">${flashLine}<h2 class="prompt">${mine ? prompt : `${esc(p.name)}: ${prompt}`}</h2>${controls}</section>`;
   }
   function paxHTML() {
     const rows = S.players.map(p => {
@@ -593,14 +965,16 @@ details p { max-width: 65ch; color: var(--muted); }
     return `<section class="pax">
       <div class="pax-head"><span class="label">Passengers · room ${esc(S.code)}</span><button class="ghost" id="invite">Invite</button></div>
       <div style="overflow-x:auto"><table><thead><tr><th>Name</th><th class="n">This round</th><th class="n">Total</th><th class="n">Best</th></tr></thead><tbody>${rows}</tbody></table></div>
-      <p class="hint">Turns go down the list. A miss passes the bus to the next player, and anyone who gets off sits out until the next round. New players join at the end of the list.</p>
-      <button class="ghost" id="leave">Leave room</button>
+      <p class="hint">Turns go down the list and pass on by themselves. New players join at the end of the list.</p>
+      <div class="row">${amHost() ? '<button class="ghost" id="show-awards">End of night awards</button>' : ""}<button class="ghost" id="leave">Leave room</button></div>
     </section>`;
   }
   function playHTML() {
+    const v = view();
     const p = byId(S.current) || { name: "", tries: 0, roundDrinks: 0 };
     const mine = S.current === me;
-    return `${confirmHTML()}${fx === "miss" ? '<div class="miss-flash"></div>' : ""}<div class="wrap" style="max-width:none"><div class="stage">
+    return `${confirmHTML()}${layer(fx === "miss" ? '<div class="miss-flash"></div>' : "")}<div class="wrap" style="max-width:none"><div class="stage">
+      ${crewHTML()}
       <section class="status">
         <div><span class="label">Room ${esc(S.code)} · ${MODES[mode()].name}</span><p class="rider${fx === "turn" ? " slide" : ""}">${mine ? "Your turn" : esc(p.name)}</p></div>
         <div class="meters">
@@ -608,16 +982,12 @@ details p { max-width: 65ch; color: var(--muted); }
           <div class="meter"><span class="label">Drinks</span><strong>${p.roundDrinks}</strong></div>
         </div>
       </section>
-      ${stopsHTML()}${consoleHTML()}</div>${paxHTML()}${rulesHTML()}</div>`;
+      ${stopsHTML(v)}${consoleHTML(v)}</div>${paxHTML()}${rulesHTML()}</div>`;
   }
 
   // ---- horse race ----
   const leader = r => SUIT_KEYS.reduce((a, k) => r.pos[k] > r.pos[a] ? k : a, "S");
   function miniFace(c) { return c ? `<div class="face mini-face${suitOf(c).red ? " red" : ""}">${c.r}<span>${suitOf(c).sym}</span></div>` : ""; }
-  function drawHTML(r) {
-    if (!r.last) return `<div class="draw-slot"><div class="card"><div class="back"></div></div></div>`;
-    return `<div class="draw-slot"><div class="card${fx === "flip" || fx === "won" ? " deal" : ""} up"><div class="back"></div>${miniFace(r.last)}</div></div>`;
-  }
   function raceStatusHTML(r) {
     const lead = leader(r), tie = SUIT_KEYS.filter(k => r.pos[k] === r.pos[lead]).length > 1;
     const head = r.winner ? `${suitSym(r.winner)} ${suitName(r.winner)} win` : r.flips === 0 ? "They're at the gate" : tie ? "Neck and neck" : `${suitSym(lead)} ${suitName(lead)} lead`;
@@ -625,6 +995,8 @@ details p { max-width: 65ch; color: var(--muted); }
       <div class="meters"><div class="meter"><span class="label">Flips</span><strong>${r.flips}</strong></div></div>`;
   }
   function trackHTML(r) {
+    const myBet = byId(me) && byId(me).bet;
+    const lead = r.flips ? leader(r) : null;
     let side = `<div class="tcol side"><div class="tcell flag">Finish</div>`;
     for (let k = r.len; k >= 1; k--) {
       side += `<div class="tcell"><div class="mini" data-side="${k}"><div class="card${r.sideUp[k - 1] ? " up" : ""}"><div class="back"></div>${miniFace(r.side[k - 1])}</div></div></div>`;
@@ -634,8 +1006,11 @@ details p { max-width: 65ch; color: var(--muted); }
       let cells = `<div class="tcell finish"></div>`;
       for (let i = 0; i < r.len; i++) cells += `<div class="tcell lane"></div>`;
       cells += `<div class="tcell gate"></div>`;
-      const cls = ["horse", isRed(k) ? "red" : "", r.winner === k ? "winner" : ""].join(" ").trim();
-      return `<div class="tcol">${cells}<div class="${cls}" data-h="${k}" style="--p:${r.pos[k]}" aria-label="Ace of ${suitName(k)}, spot ${r.pos[k]}"><div class="hface">A<span>${suitSym(k)}</span></div></div></div>`;
+      const cls = ["horse", isRed(k) ? "red" : "", r.winner === k ? "winner" : "", !r.winner && lead === k ? "leader" : ""].filter(Boolean).join(" ");
+      const riders = S.players.filter(p => p.bet && p.bet.suit === k).slice(0, 4)
+        .map(p => `<span class="rdot" style="--c:${p.color}" title="${esc(p.name)}">${esc(initial(p.name))}</span>`).join("");
+      const mine = myBet && myBet.suit === k;
+      return `<div class="tcol${mine ? " mine" : ""}"${mine ? ` style="--c:${byId(me).color}"` : ""}>${cells}<div class="${cls}" data-h="${k}" style="--p:${r.pos[k]}" aria-label="Ace of ${suitName(k)}, spot ${r.pos[k]}"><div class="hface">A<span>${suitSym(k)}</span></div><div class="riders">${riders}</div></div></div>`;
     }).join("");
     return `<section class="track" id="track" style="--rows:${r.len + 2}" aria-label="Race track">${side}${lanes}</section>`;
   }
@@ -645,53 +1020,53 @@ details p { max-width: 65ch; color: var(--muted); }
         <span class="pay">${x.won ? `hand out ${x.amt * 2}` : `drink ${x.amt}`}</span></li>`).join("");
       return `<section class="console race-console" aria-live="polite">
         <div class="verdict won"><span class="big${fx === "won" ? " slam" : ""}">${suitSym(r.winner)} ${esc(suitName(r.winner))} win</span>
-          <p>Crossed the line after ${r.flips} flips. Losers drink their bet; winners hand out double.</p></div>
+          <p>Crossed the line after ${r.flips} flips. Losers drink their bet. Winners hand out double: tap players at the top.</p></div>
         <ul class="payouts">${res}</ul>
         ${amHost() ? '<div class="row"><button class="primary" id="race-again">Race again</button><button class="ghost" id="to-menu">Change game</button></div>'
           : `<p class="waiting">Waiting for <b>${nameOf(S.hostId)}</b> to start the next race.</p>`}
       </section>`;
     }
+    const f = byId(r.flipper), myFlip = r.flipper === me;
+    const lift = remote && remote.by === r.flipper ? remote.p : 0;
+    const deck = `<div class="draw-slot ${myFlip ? "armed" : "calling"}" id="swipe-card" style="--lift:${myFlip ? 0 : lift}" role="img" aria-label="${myFlip ? "The deck. Swipe up to flip a card" : "The deck"}">
+      <div class="card"><div class="back"></div></div>${myFlip ? '<span class="swipe-hint">Swipe ↑</span>' : ""}</div>`;
+    const last = r.last ? `<div class="draw-slot"><div class="card${fx === "flip" || fx === "won" ? " deal" : ""} up" data-key="f${r.flips}"><div class="back"></div>${miniFace(r.last)}</div></div>` : "";
+    const who = myFlip ? "<b>Your flip!</b> Swipe the deck up."
+      : f && !f.connected && amHost() ? `<b>${esc(f.name)}</b> is offline.` : `<b>${f ? esc(f.name) : "Someone"}</b> is flipping…`;
+    const button = myFlip ? '<button class="primary flip-btn" id="flip">Flip a card</button>'
+      : f && !f.connected && amHost() ? `<button class="ghost wide" id="flip">Flip for ${esc(f.name)}</button>` : "";
     return `<section class="console race-console">
-      <div class="draw">${drawHTML(r)}<p class="race-msg" id="race-msg" aria-live="polite">${esc(r.msg)}</p></div>
-      <button class="primary flip-btn" id="flip">Flip a card</button>
+      <div class="deck-row">${deck}${last}<div style="min-width:0"><p class="flipper-line">${who}</p><p class="race-msg" aria-live="polite">${esc(r.msg)}</p></div></div>
+      ${button}
     </section>`;
   }
   function raceHTML() {
     const r = S.race;
     const rows = S.players.map(p => `<tr><td><span class="pname">${esc(p.name)}</span>${youTag(p.id)}</td><td><span class="${isRed(p.bet.suit) ? "r" : ""}">${suitSym(p.bet.suit)}</span></td><td class="n">${p.bet.amt}</td><td class="n">${p.drinks}</td></tr>`).join("");
     return `${confirmHTML()}<div class="wrap" style="max-width:none"><div class="stage race-stage">
-      <section class="status" id="race-status">${raceStatusHTML(r)}</section>
+      ${crewHTML()}
+      <section class="status">${raceStatusHTML(r)}</section>
       ${trackHTML(r)}${raceConsoleHTML(r)}</div>
       <section class="pax"><div class="pax-head"><span class="label">Bets · room ${esc(S.code)}</span><button class="ghost" id="invite">Invite</button></div>
       <div style="overflow-x:auto"><table><thead><tr><th>Name</th><th>Horse</th><th class="n">Bet</th><th class="n">Total drinks</th></tr></thead><tbody>${rows}</tbody></table></div>
-      <button class="ghost" id="leave">Leave room</button></section>
+      <div class="row">${amHost() ? '<button class="ghost" id="show-awards">End of night awards</button>' : ""}<button class="ghost" id="leave">Leave room</button></div></section>
       ${rulesHTML()}</div>`;
   }
-  // Update the live race in place so horses slide and sideline cards flip instead of re-rendering.
-  function patchRace() {
-    const r = S.race;
-    patchHorses(r);
-    if (r.winner) { setTimeout(() => { fx = "won"; render(); }, calm() ? 0 : 650); return; }
-    document.getElementById("race-status").innerHTML = raceStatusHTML(r);
-    document.getElementById("race-msg").textContent = r.msg;
-    document.querySelector(".draw-slot").outerHTML = drawHTML(r);
-    fx = "";
-  }
-  function patchHorses(r) {
-    for (const k of SUIT_KEYS) {
-      const h = document.querySelector(`.horse[data-h="${k}"]`);
-      if (!h) continue;
-      h.style.setProperty("--p", r.pos[k]);
-      h.setAttribute("aria-label", `Ace of ${suitName(k)}, spot ${r.pos[k]}`);
-      if (r.back === k && fx === "flip") { h.classList.remove("hurt"); void h.offsetWidth; h.classList.add("hurt"); }
+  // After a flip, the horse that moved jumps; the one knocked back stumbles.
+  function animateHorses() {
+    const r = S && S.screen === "race" && S.race;
+    if (!r) { prevPos = null; return; }
+    if (prevPos && (fx === "flip" || fx === "won")) {
+      for (const k of SUIT_KEYS) {
+        const h = document.querySelector(`.horse[data-h="${k}"]`);
+        if (!h) continue;
+        const cls = r.back === k ? "hurt" : r.pos[k] > prevPos[k] ? "jump" : null;
+        if (!cls) continue;
+        h.classList.remove("jump", "hurt"); void h.offsetWidth; h.classList.add(cls);
+        setTimeout(() => h.classList.remove(cls), 700);
+      }
     }
-    r.sideUp.forEach((up, i) => {
-      const m = document.querySelector(`.mini[data-side="${i + 1}"]`);
-      if (!m) return;
-      const card = m.querySelector(".card");
-      if (up && !card.querySelector(".face") && r.side[i]) card.insertAdjacentHTML("beforeend", miniFace(r.side[i]));
-      if (up && !card.classList.contains("up")) requestAnimationFrame(() => card.classList.add("up"));
-    });
+    prevPos = { ...r.pos };
   }
   function betsHTML() {
     const rows = S.players.map(p => { const b = p.bet, mine = p.id === me, dis = mine ? "" : " disabled";
@@ -703,8 +1078,9 @@ details p { max-width: 65ch; color: var(--muted); }
           <div class="stepper" role="group" aria-label="Track length"><button id="len-down" aria-label="Shorter track">−</button><strong>${S.settings.trackLen}</strong><button id="len-up" aria-label="Longer track">+</button></div></div>`
       : `<p class="hint">Track length: ${S.settings.trackLen} sideline cards.</p>`;
     return `${confirmHTML()}<section class="console setup">
+      ${crewHTML()}
       <h2>Place your bets</h2>
-      <p class="hint">Pick a horse and how many drinks you're betting on your own phone. When the race ends, losers drink their bet and winners hand out double.</p>
+      <p class="hint">Pick a horse and how many drinks you're betting on your own phone. Everyone takes turns flipping. When the race ends, losers drink their bet and winners hand out double.</p>
       <ul class="bets">${rows}</ul>
       ${len}
       ${amHost() ? '<div class="row"><button class="primary" id="start-race">Start the race</button><button class="ghost" id="to-menu">Back</button></div>'
@@ -713,45 +1089,78 @@ details p { max-width: 65ch; color: var(--muted); }
     </section>`;
   }
 
+  // ---- end of night ----
+  function awardsHTML() {
+    const P = S.players;
+    const top = (fn, min = 1) => {
+      const best = Math.max(...P.map(fn));
+      return best >= min ? { who: P.filter(p => fn(p) === best), val: best } : null;
+    };
+    const rate = p => p.guesses >= 4 ? Math.round(100 * p.correct / p.guesses) : -1;
+    const awards = [
+      ["Most drinks", top(p => p.drinks), v => `${plural(v, "drink")} tonight`],
+      ["Bus champion", top(p => p.rides), v => `off the bus or a winning bet ${plural(v, "time")}`],
+      ["Luckiest", top(rate, 0), v => `${v}% of calls right`],
+      ["Best gambler", top(p => p.won), v => `won ${plural(v, "drink")} in bets`],
+      ["Most generous", top(p => p.given), v => `handed out ${plural(v, "drink")}`],
+      ["Most picked on", top(p => p.taken), v => `was handed ${plural(v, "drink")}`],
+      ["Hype machine", top(p => p.reacts), v => `${plural(v, "reaction")}`],
+    ].filter(a => a[1]);
+    const list = awards.map(([title, a, stat], i) => `<li class="award" style="--i:${i}"><span class="label">${title}</span>
+      <strong>${a.who.map(p => esc(p.name)).join(" & ")}</strong><span class="hint">${stat(a.val)}</span></li>`).join("");
+    return `${confirmHTML()}<section class="console setup">
+      ${crewHTML()}
+      <h2>End of the night</h2>
+      ${list ? `<ul class="awards">${list}</ul>` : '<p class="waiting">Play a few rounds first and the awards will show up here.</p>'}
+      ${amHost() ? '<div class="row"><button class="primary" id="to-menu">Back to the lobby</button><button class="ghost" id="new-night">Start a new night</button></div>'
+        : `<p class="waiting">Waiting for <b>${nameOf(S.hostId)}</b>.</p>`}
+    </section>`;
+  }
+
   // ---- shared ----
   function rulesHTML() {
     const tail = `Aces are ${S.settings.acesHigh ? "high" : "low"}. A tie with the card you're comparing against ${S.settings.tiesMiss ? "counts as a miss" : "is a free pass"}.`;
     if (horse()) return `<details><summary>House rules: Horse Race</summary><ol>
       <li>Everyone backs one of the four aces and bets 1 to 5 drinks.</li>
-      <li>Anyone can flip the next card. The ace of that suit moves forward one spot.</li>
+      <li>Players take turns flipping a card from the deck. The ace of that suit moves forward one spot.</li>
       <li>Once every ace has reached a sideline card, that card turns over and the ace of its suit drops back one spot.</li>
       <li>The first ace past the last sideline card wins.</li></ol>
-      <p>Losers drink what they bet. Winners hand out double their bet.</p></details>`;
+      <p>Losers drink what they bet. Winners hand out double their bet to anyone they like.</p></details>`;
+    const off = `Get off the bus and you hand out ${plural(S.giveOnOff, "drink")}, then sit out until everyone else is off.`;
     if (hilo()) return `<details><summary>House rules: Higher or Lower</summary>
-      <p>Each turn starts with a free card dealt face up. Call higher or lower for the next card, then the next, comparing each one with the card before it. Get 3 right in a row and you're off the bus.</p>
-      <p>Every miss is 1 drink. After a miss the bus passes to the next player, who starts again with a fresh start card. Get off the bus and you sit out until everyone else is off. ${tail}</p></details>`;
+      <p>Each turn starts with a free card dealt face up. Call higher or lower, then swipe the next card up to flip it. Get 3 right in a row and you're off the bus.</p>
+      <p>Every miss is 1 drink, and the bus moves on to the next player by itself. ${off} ${tail}</p></details>`;
     return `<details><summary>House rules: Classic</summary><ol>
       <li><b>Red or black.</b></li>
       <li><b>Higher or lower</b> than card 1.</li>
       <li><b>Inside or outside</b> cards 1 and 2.</li>
       <li><b>Pick the suit.</b> Hit it and you're off the bus.</li></ol>
-      <p>Every miss is 1 drink, whichever card you miss on. Players take turns on their own phones. After a miss the bus passes to the next player, who starts from card 1 with a fresh deal. Get off the bus and you sit out until everyone else is off. ${tail}</p></details>`;
+      <p>Make your call, then swipe the card up to flip it. Every miss is 1 drink, and the bus moves on to the next player by itself. ${off} ${tail}</p></details>`;
   }
+  // Overlays sit in fixed slots so showing or hiding one never shifts the page below it.
+  const layer = html => `<div class="layer">${html}</div>`;
   function confirmHTML() {
-    if (!confirming) return "";
+    if (!confirming) return layer("");
     const what = horse()
-      ? "Everyone's drink totals go back to zero and the room goes back to the betting screen."
-      : "Everyone's drinks, tries and best rides go back to zero, and a new round starts from the top of the list.";
-    return `<div class="confirm-back"><div class="confirm" role="dialog" aria-modal="true" aria-labelledby="rs-title">
+      ? "Everyone's drink totals and stats go back to zero and the room goes back to the betting screen."
+      : "Everyone's drinks, stats and best rides go back to zero, and a new round starts from the top of the list.";
+    return layer(`<div class="confirm-back"><div class="confirm" role="dialog" aria-modal="true" aria-labelledby="rs-title">
         <h2 id="rs-title">Restart the game?</h2><p>${what} This restarts it for the whole room.</p>
         <div class="row"><button class="primary" id="restart-yes">Restart</button><button class="ghost" id="restart-no">Keep playing</button></div>
-      </div></div>`;
+      </div></div>`);
   }
 
   function render() {
-    if (!S) app.innerHTML = joinHTML();
-    else if (S.screen === "lobby") app.innerHTML = lobbyHTML();
-    else if (S.screen === "bets") app.innerHTML = betsHTML();
-    else if (S.screen === "race" && S.race) app.innerHTML = raceHTML();
-    else app.innerHTML = playHTML();
+    paint(!S ? joinHTML()
+      : S.screen === "lobby" ? lobbyHTML()
+      : S.screen === "bets" ? betsHTML()
+      : S.screen === "race" && S.race ? raceHTML()
+      : S.screen === "awards" ? awardsHTML()
+      : playHTML());
     const hostBtns = !!S && amHost() && S.screen !== "lobby";
     document.getElementById("restart").hidden = !hostBtns;
     document.getElementById("menu").hidden = !hostBtns;
+    animateHorses();
     if (fx === "won") celebrate();
     fx = ""; dealt = -1;
     if (confirming) document.getElementById("restart-yes").focus();
@@ -766,12 +1175,75 @@ details p { max-width: 65ch; color: var(--muted); }
     catch (e) { toast(`Send your friends this link: ${url}`); }
   }
 
+  // ---- swipe to flip ----
+  // Push the card up past SWIPE_PX to flip it. The lift is shared live so everyone sees it rise.
+  let drag = null, lastDragSent = 0;
+  const canSwipe = () => S && ((S.screen === "play" && S.current === me && S.phase === "guess" && armed && !suspense)
+    || (S.screen === "race" && S.race && !S.race.winner && S.race.flipper === me));
+  function sendLift(p, force) {
+    const now = Date.now();
+    if (!force && now - lastDragSent < 70) return;
+    lastDragSent = now;
+    send({ t: "drag", p, g: S.screen === "play" ? armed : undefined }, true);
+  }
+  function commitFlip() {
+    if (!canSwipe()) return;
+    const el = document.getElementById("swipe-card");
+    if (el) { el.classList.remove("dragging"); el.style.setProperty("--lift", 1.3); }
+    sendLift(1, true);
+    if (S.screen === "play") act("guess", { g: armed }); else act("flip");
+  }
+  app.addEventListener("pointerdown", e => {
+    const el = e.target.closest("#swipe-card");
+    if (!el || !canSwipe()) return;
+    audio();
+    drag = { el, y: e.clientY, id: e.pointerId, p: 0 };
+    el.classList.add("dragging");
+    try { el.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  app.addEventListener("pointermove", e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dy = Math.max(0, drag.y - e.clientY);
+    drag.p = Math.min(1.3, dy / SWIPE_PX);
+    drag.el.style.setProperty("--lift", drag.p);
+    sendLift(Math.min(1, drag.p));
+  });
+  const endDrag = e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const d = drag; drag = null;
+    if (d.p >= 1) return commitFlip();
+    d.el.classList.remove("dragging"); d.el.style.setProperty("--lift", 0);
+    sendLift(0, true);
+  };
+  app.addEventListener("pointerup", endDrag);
+  app.addEventListener("pointercancel", endDrag);
+
   // ---- events ----
   app.addEventListener("click", e => {
     const t = e.target.closest("button");
+    if (trayOpen && !e.target.closest(".crew")) { trayOpen = false; render(); }
     if (!t || t.disabled) return;
-    keepAwake();
-    if (t.dataset.g) return act("guess", { g: t.dataset.g });
+    audio(); keepAwake();
+    if (t.dataset.g) {
+      // Picking a call doesn't flip anything yet: it arms the card for a swipe and tells the room.
+      if (!(S.screen === "play" && S.current === me && S.phase === "guess") || suspense) return;
+      armed = t.dataset.g; sfx.pop();
+      send({ t: "drag", p: 0, g: armed }, true);
+      return render();
+    }
+    if (t.dataset.rx) {
+      send({ t: "react", e: +t.dataset.rx });
+      // Leave the tray open for a burst of reactions, then tuck it away.
+      clearTimeout(trayTimer); trayTimer = setTimeout(() => { if (trayOpen) { trayOpen = false; render(); } }, 3000);
+      return;
+    }
+    if (t.dataset.bub) {
+      const id = t.dataset.bub, mine = byId(me);
+      if (mine && mine.give > 0 && id !== me) return act("give", { to: id });
+      const riderId = S.screen === "play" && S.phase === "guess" ? S.current : S.screen === "race" && S.race && !S.race.winner ? S.race.flipper : null;
+      if (id === riderId && id !== me) return send({ t: "nudge", to: id });
+      return;
+    }
     if (t.dataset.bs) return act("setBet", { suit: t.dataset.bs });
     if (t.dataset.ba) return act("setBet", { delta: +t.dataset.ba });
     if (t.dataset.kick) return act("kick", { id: t.dataset.kick });
@@ -787,14 +1259,17 @@ details p { max-width: 65ch; color: var(--muted); }
       case "invite": return invite();
       case "leave": return send({ t: "leave" });
       case "start": return act("start");
+      case "react-toggle": trayOpen = !trayOpen; return render();
       case "restart-yes": confirming = false; return act("restart");
       case "restart-no": confirming = false; return render();
-      case "pass": return act("pass");
+      case "flip-now": return commitFlip();
       case "skip": return act("skip");
       case "start-race": return act("startRace");
       case "race-again": return act("raceAgain");
       case "to-menu": return act("menu");
-      case "flip": return act("flip");
+      case "show-awards": return act("awards");
+      case "new-night": return act("restart");
+      case "flip": return S.race && S.race.flipper === me ? commitFlip() : act("flip");
       case "len-down": return act("setTrackLen", { delta: -1 });
       case "len-up": return act("setTrackLen", { delta: 1 });
     }
@@ -815,7 +1290,10 @@ details p { max-width: 65ch; color: var(--muted); }
   });
   document.getElementById("restart").addEventListener("click", () => { confirming = true; render(); });
   document.getElementById("menu").addEventListener("click", () => { confirming = false; act("menu"); scrollTo(0, 0); });
-  document.addEventListener("keydown", e => { if (e.key === "Escape" && confirming) { confirming = false; render(); } });
+  document.getElementById("sound").addEventListener("click", () => { session.muted = !session.muted; saveSession(); soundIcon(); if (!session.muted) sfx.pop(); });
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape" && (confirming || trayOpen)) { confirming = false; trayOpen = false; render(); }
+  });
 
   // ---- celebration ----
   function celebrate() {
@@ -858,6 +1336,7 @@ details p { max-width: 65ch; color: var(--muted); }
     })(performance.now());
   }
 
+  soundIcon();
   render();
   connect();
 })();

@@ -13,6 +13,9 @@ const SUIT_KEYS = ["S", "H", "D", "C"];
 const RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
 const MODES = ["classic", "hilo", "horse"];
 const MAX_PLAYERS = 16;
+const GIVE_ON_OFF = 3; // drinks a player hands out when they get off the bus
+// Bubble colours, picked in join order so neighbours differ.
+const COLORS = ["#f5b301", "#4cc9f0", "#f15bb5", "#46c46a", "#9b5de5", "#ff7a45", "#00c2a8", "#ef5a5f", "#c2e812", "#ffd6a5", "#7aa2ff", "#e0a6ff"];
 
 const rand = n => crypto.randomInt(n);
 const token = bytes => crypto.randomBytes(bytes).toString("hex");
@@ -44,8 +47,10 @@ function cleanName(name) {
 function addPlayer(room, name) {
   if (room.players.length >= MAX_PLAYERS) return null;
   const p = {
-    id: token(6), token: token(16), name, connected: true,
+    id: token(6), token: token(16), name, connected: true, color: COLORS[room.players.length % COLORS.length],
     drinks: 0, rides: 0, best: null, tries: 0, roundDrinks: 0, off: false,
+    // Stats for the end-of-night awards, and drinks this player still has to hand out.
+    give: 0, given: 0, taken: 0, guesses: 0, correct: 0, won: 0, reacts: 0,
     bet: { suit: SUIT_KEYS[room.players.length % 4], amt: 2 },
   };
   room.players.push(p);
@@ -56,7 +61,7 @@ function addPlayer(room, name) {
 const player = (room, id) => room.players.find(p => p.id === id);
 const idx = (room, id) => room.players.findIndex(p => p.id === id);
 const isHost = (room, id) => room.hostId === id;
-function bump(room, type, dealt = -1) { room.ev = { seq: room.ev.seq + 1, type, dealt }; }
+function bump(room, type, dealt = -1, extra = {}) { room.ev = { seq: room.ev.seq + 1, type, dealt, ...extra }; room.phaseAt = Date.now(); }
 
 // Hand host to the next connected player when the host leaves or drops.
 function reassignHost(room) {
@@ -130,21 +135,25 @@ function guess(room, g) {
   const card = draw(room);
   room.row[stage] = card;
   const p = player(room, room.current);
+  const call = { call: g, by: p.id };
+  p.guesses += 1;
   if (!judge(room, stage, g, card)) {
     p.drinks += 1; p.roundDrinks += 1;
     room.phase = "miss";
-    bump(room, "miss", stage);
+    bump(room, "miss", stage, call);
   } else if (stage === 3) {
-    p.rides += 1; p.off = true;
+    p.correct += 1;
+    p.rides += 1; p.off = true; p.give += GIVE_ON_OFF;
     if (p.best === null || p.tries < p.best) p.best = p.tries;
     room.phase = "won";
-    bump(room, "won", stage);
+    bump(room, "won", stage, call);
   } else {
+    p.correct += 1;
     room.stage += 1;
     room.lastGood = room.settings.mode === "hilo"
       ? `${label(card)}. ${stage} right, ${3 - stage} to go.`
       : `${label(card)}. Card ${stage + 1} is good.`;
-    bump(room, "good", stage);
+    bump(room, "good", stage, call);
   }
 }
 
@@ -157,13 +166,22 @@ function newRace(room) {
   room.race = {
     id: token(4), len, side: d.splice(0, len), sideUp: Array(len).fill(false), next: 1, deck: d, discard: [],
     pos: { S: 0, H: 0, D: 0, C: 0 }, last: null, msg: "Tap Flip to start the race.", back: null, flips: 0,
-    winner: null, results: null, entrants: room.players.map(p => p.id),
+    winner: null, results: null, entrants: room.players.map(p => p.id), flipper: null,
   };
+  // Players take turns flipping, starting with whoever's online first.
+  room.race.flipper = (room.players.find(p => p.connected) || room.players[0]).id;
   room.screen = "race";
   bump(room, "race");
 }
+function nextFlipper(room, fromId) {
+  const n = room.players.length;
+  const from = idx(room, fromId);
+  for (let k = 1; k <= n; k++) { const p = room.players[((from < 0 ? -1 : from) + k + n) % n]; if (p.connected) return p.id; }
+  return room.players[0] ? room.players[0].id : null;
+}
 function flip(room) {
   const r = room.race;
+  r.flipper = nextFlipper(room, r.flipper);
   if (!r.deck.length) { r.deck = shuffle(r.discard); r.discard = []; }
   const c = r.deck.pop();
   r.discard.push(c); r.last = c; r.flips += 1; r.back = null;
@@ -186,7 +204,7 @@ function flip(room) {
     // Settle bets for players who were in the room when the race started.
     r.results = room.players.filter(p => r.entrants.includes(p.id)).map(p => {
       const won = p.bet.suit === r.winner;
-      if (won) p.rides += 1; else p.drinks += p.bet.amt;
+      if (won) { p.rides += 1; p.won += p.bet.amt; p.give += p.bet.amt * 2; } else p.drinks += p.bet.amt;
       return { id: p.id, name: p.name, suit: p.bet.suit, amt: p.bet.amt, won };
     });
     bump(room, "won");
@@ -204,18 +222,21 @@ function removePlayer(room, id) {
   room.players.splice(i, 1);
   if (room.hostId === id) { room.hostId = null; reassignHost(room); }
   if (!room.players.length) return;
+  if (room.race && room.race.flipper === id) room.race.flipper = (room.players[i] || room.players[0]).id;
   if (room.starter > i) room.starter -= 1;
   if (wasCurrent) {
     if (next && next !== id) beginTurn(room, next); else newRound(room);
   }
 }
 
+// Host hand-over after a drop is decided by the server's grace timer (reassignHost), so a phone that
+// locks for a few seconds keeps its host role.
 function setConnected(room, id, connected) {
   const p = player(room, id);
   if (!p) return;
   p.connected = connected;
-  if (!connected && room.hostId === id) reassignHost(room);
-  if (connected && !player(room, room.hostId)?.connected) room.hostId = id;
+  p.offlineAt = connected ? null : Date.now();
+  if (connected && !player(room, room.hostId)) room.hostId = id;
 }
 
 // ---- actions from phones ----
@@ -254,8 +275,9 @@ function act(room, pid, msg) {
       room.screen = "lobby"; bump(room, "screen"); return null;
     case "restart":
       if (hostOnly()) return hostOnly();
-      room.players.forEach(p => { p.drinks = 0; p.rides = 0; p.best = null; });
+      room.players.forEach(p => Object.assign(p, { drinks: 0, rides: 0, best: null, give: 0, given: 0, taken: 0, guesses: 0, correct: 0, won: 0, reacts: 0 }));
       room.starter = 0; room.deck = [];
+      if (room.screen === "awards") { room.screen = "lobby"; bump(room, "screen"); return null; }
       if (room.settings.mode === "horse") { room.race = null; room.screen = "bets"; bump(room, "screen"); return null; }
       if (room.screen === "play") newRound(room); else bump(room, "screen");
       return null;
@@ -286,9 +308,25 @@ function act(room, pid, msg) {
       if (hostOnly()) return hostOnly();
       if (room.screen !== "bets") return "Place bets first.";
       newRace(room); return null;
-    case "flip":
+    case "flip": {
       if (room.screen !== "race" || !room.race || room.race.winner) return "The race is over.";
+      const f = player(room, room.race.flipper);
+      if (f && pid !== f.id && !(host && !f.connected)) return `It's ${f.name}'s flip.`;
       flip(room); return null;
+    }
+    case "give": {
+      // Hand one drink to another player. Doesn't touch the turn, so it never makes a rider's tap stale.
+      const to = player(room, msg.to);
+      if (me.give < 1) return "You've no drinks left to hand out.";
+      if (!to || to.id === pid) return "Pick someone else to drink.";
+      me.give -= 1; me.given += 1;
+      to.taken += 1; to.drinks += 1;
+      if (room.screen === "play") to.roundDrinks += 1;
+      return null;
+    }
+    case "awards":
+      if (hostOnly()) return hostOnly();
+      room.screen = "awards"; bump(room, "screen"); return null;
     case "raceAgain":
       if (hostOnly()) return hostOnly();
       room.screen = "bets"; bump(room, "screen"); return null;
@@ -305,12 +343,39 @@ function publicState(room) {
     players: room.players.map(({ token: _t, ...p }) => p),
     current: room.current, row: room.row, stage: room.stage, phase: room.phase, lastGood: room.lastGood,
     next: room.screen === "play" ? nextUp(room, room.current) : null,
+    autoPassMs: AUTO_PASS_MS, giveOnOff: GIVE_ON_OFF, offlineSkipMs: OFFLINE_SKIP_MS,
     race: r && {
       id: r.id, len: r.len, side: r.side.map((c, i) => r.sideUp[i] ? c : null), sideUp: r.sideUp,
-      pos: r.pos, last: r.last, msg: r.msg, back: r.back, flips: r.flips, winner: r.winner, results: r.results,
+      pos: r.pos, last: r.last, msg: r.msg, back: r.back, flips: r.flips, winner: r.winner, results: r.results, flipper: r.flipper,
     },
     ev: room.ev,
   };
 }
 
-module.exports = { createRoom, addPlayer, removePlayer, setConnected, cleanName, act, publicState, player, SUIT_KEYS, MAX_PLAYERS };
+// Multiplayer moves the bus on by itself: after a miss or a get-off (once everyone has seen it), and
+// past a rider whose phone has been offline for a while. Returns true when the room changed.
+const AUTO_PASS_MS = 4200;
+const OFFLINE_SKIP_MS = 15000;
+function tick(room, now = Date.now()) {
+  const r = room.race;
+  if (room.screen === "race" && r && !r.winner) {
+    const f = player(room, r.flipper);
+    if (f && !f.connected && room.players.some(p => p.connected) && now - (f.offlineAt || now) >= 8000) { r.flipper = nextFlipper(room, f.id); return true; }
+    return false;
+  }
+  if (room.screen !== "play" || !room.current) return false;
+  if (room.phase !== "guess" && now - (room.phaseAt || now) >= AUTO_PASS_MS) { passTurn(room); return true; }
+  const rider = player(room, room.current);
+  if (room.phase === "guess" && rider && !rider.connected && room.players.some(p => p.connected)
+      && now - Math.max(rider.offlineAt || now, room.phaseAt || 0) >= OFFLINE_SKIP_MS) {
+    room.lastSkipped = rider.id; passTurn(room); return true;
+  }
+  return false;
+}
+
+// Actions that depend on what the player saw. A tap sent against an older state (double tap, or two
+// players flipping at once) is dropped instead of being applied to the next card.
+const SEQ_CHECKED = new Set(["guess", "pass", "skip", "flip", "startRace", "raceAgain", "start", "restart", "menu"]);
+const isStale = (room, msg) => SEQ_CHECKED.has(msg && msg.a) && Number.isInteger(msg.seq) && msg.seq !== room.ev.seq;
+
+module.exports = { tick, createRoom, addPlayer, removePlayer, setConnected, reassignHost, cleanName, act, isStale, publicState, player, SUIT_KEYS, MAX_PLAYERS };
