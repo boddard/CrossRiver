@@ -131,7 +131,7 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 .stop.on .stop-name { color: var(--ink); }
 
 /* Cards */
-.slot { width: 100%; max-width: 100%; aspect-ratio: 5 / 7; perspective: 900px; container-type: inline-size; }
+.slot { width: 100%; max-width: 100%; aspect-ratio: 5 / 7; perspective: 900px; container-type: inline-size; transition: transform .25s ease-out; }
 .stop.on .slot:not(.empty) .back { box-shadow: inset 0 0 0 3px var(--bus), 0 0 0 3px rgba(245,179,1,.25), 0 10px 30px rgba(245,179,1,.18); }
 .card { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform .5s cubic-bezier(.2,.7,.2,1); }
 .card.up { transform: rotateY(180deg); }
@@ -941,24 +941,26 @@ details p { max-width: 65ch; color: var(--muted); }
       }
     }
     let face = "";
+    // The card just turned over animates once. Its classes stay the same on later updates and the card keeps
+    // its element (keyed by the card itself), so a reaction or reconnect arriving mid-animation doesn't restart it.
+    const ev = S.ev, landed = !v.revealing && (["good", "miss", "won"].includes(ev.type) || (ev.type === "turn" && ev.dealt === 0)) ? ev.dealt : -1;
     if (c) {
       const s = suitOf(c);
       const bust = v.phase === "miss" && i === v.stage;
-      slotCls.push(bust ? "wrong" : (v.phase === "won" ? "right" : ""));
-      if (bust && fx === "miss") slotCls.push("shake");
-      if (fx === "good" && i === dealt) slotCls.push("hit");
+      slotCls.push(bust ? "wrong shake" : (v.phase === "won" ? "right" : ""));
+      if (ev.type === "good" && i === landed) slotCls.push("hit");
       face = `<div class="face${s.red ? " red" : ""}" aria-hidden="true">
         <span class="corner">${c.r}${s.sym}</span><span class="pip">${s.sym}</span><span class="corner bot">${c.r}${s.sym}</span></div>`;
     }
-    const cardCls = c ? (i === dealt ? "card deal up" : "card up") : "card";
-    const key = c && i === dealt ? ` data-key="d${S.ev.seq}"` : "";
+    const cardCls = c ? (i === landed ? "card deal up" : "card up") : "card";
+    const key = c ? ` data-key="k${i}${c.r}${c.s}"` : "";
     const aria = c ? `${c.r === "A" ? "Ace" : c.r} of ${suitOf(c).name}` : slotCls.includes("armed") ? "Your card. Swipe up to flip it" : "Face-down card";
     const hint = slotCls.includes("armed") ? '<span class="swipe-hint">Swipe up ↑</span>' : "";
     return `<div class="${slotCls.filter(Boolean).join(" ")}"${extra} role="img" aria-label="${aria}"><div class="${cardCls}"${key}><div class="back"></div>${face}</div>${hint}</div>`;
   }
   function stopsHTML(v) {
     return `<section class="route-line" aria-label="The four cards">${MODES[mode()].stops.map((name, i) => {
-      let cls = "stop" + (fx === "turn" ? " enter" : fx === "won" ? " cheer" : "");
+      let cls = "stop" + (S.ev.type === "turn" ? " enter" : S.ev.type === "won" && !v.revealing ? " cheer" : "");
       if (v.phase === "miss" && i === v.stage) cls += " bust";
       else if (i < v.stage || v.phase === "won") cls += " done";
       else if (i === v.stage) cls += " on";
@@ -991,7 +993,7 @@ details p { max-width: 65ch; color: var(--muted); }
     if (v.phase === "miss") {
       const c = v.row[v.stage];
       return `<section class="console" aria-live="polite">
-        <div class="verdict miss"><span class="big${fx === "miss" ? " slam" : ""}">${mine ? "Drink" : `${esc(p.name)} drinks`}</span>
+        <div class="verdict miss"><span class="big slam">${mine ? "Drink" : `${esc(p.name)} drinks`}</span>
           <p>${esc(label(c))} on card ${v.stage + 1}. ${mine ? "You're" : `${esc(p.name)} is`} still on the bus.</p></div>${bar}</section>`;
     }
     if (v.phase === "won") {
@@ -1002,7 +1004,7 @@ details p { max-width: 65ch; color: var(--muted); }
       }
       const give = mine ? ` Hand out ${plural(S.giveOnOff, "drink")}: tap players at the top.` : ` ${esc(p.name)} hands out ${plural(S.giveOnOff, "drink")}.`;
       return `<section class="console" aria-live="polite">
-        <div class="verdict won"><span class="big${fx === "won" ? " slam" : ""}">Off the bus</span>
+        <div class="verdict won"><span class="big slam">Off the bus</span>
           <p>${mine ? "You" : esc(p.name)} got off on try ${p.tries} after ${plural(p.roundDrinks, "drink")}.${give}${note}</p></div>${bar}</section>`;
     }
     const { prompt, choices } = choicesHTML(v);
@@ -1036,10 +1038,10 @@ details p { max-width: 65ch; color: var(--muted); }
     const v = view();
     const p = byId(S.current) || { name: "", tries: 0, roundDrinks: 0 };
     const mine = S.current === me;
-    return `${confirmHTML()}${layer(fx === "miss" ? '<div class="miss-flash"></div>' : "")}<div class="wrap" style="max-width:none"><div class="stage">
+    return `${confirmHTML()}${layer("")}<div class="wrap" style="max-width:none"><div class="stage">
       ${crewHTML()}
       <section class="status">
-        <p class="turn-head${mine ? " mine" : ""}${fx === "turn" ? " slide" : ""}">${mine ? "Your turn" : `${esc(p.name)}'s turn`}</p>
+        <p class="turn-head${mine ? " mine" : ""}${S.ev.type === "turn" ? " slide" : ""}">${mine ? "Your turn" : `${esc(p.name)}'s turn`}</p>
       </section>
       ${stopsHTML(v)}${consoleHTML(v)}</div>${paxHTML()}${rulesHTML()}</div>`;
   }
