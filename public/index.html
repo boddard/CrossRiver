@@ -447,8 +447,7 @@ details p { max-width: 65ch; color: var(--muted); }
 .drum span { width: 10px; height: 10px; border-radius: 50%; background: var(--bus); animation: drum .5s ease-in-out infinite alternate; }
 .drum span:nth-child(2) { animation-delay: .15s; } .drum span:nth-child(3) { animation-delay: .3s; }
 @keyframes drum { from { transform: translateY(0); opacity: .4; } to { transform: translateY(-8px); opacity: 1; } }
-.slot.calling .back { animation: suspense .35s ease-in-out infinite alternate; }
-@keyframes suspense { from { transform: translateY(0) rotate(-1deg); } to { transform: translateY(-6px) rotate(1deg); } }
+
 
 /* The bus moves on by itself: a bar runs down until the next rider's turn */
 .autopass { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
@@ -462,18 +461,21 @@ details p { max-width: 65ch; color: var(--muted); }
 .award strong { font: 900 28px/1 var(--display); text-transform: uppercase; color: var(--bus); }
 .award:first-child { border-color: var(--bus); }
 
-/* Swipe to flip: your card lifts with your finger; everyone else sees it lift live */
-.slot.armed, .slot.calling, .draw-slot.armed, .draw-slot.calling {
-  transform: translateY(calc(var(--lift, 0) * -56px)) rotate(calc(var(--lift, 0) * -5deg));
-  transition: transform .18s ease-out; touch-action: none;
+/* Swipe to flip: drag sideways and the card turns over with your finger. Let go and it finishes turning
+   at the speed you swiped; every other phone sees the same turn, live. */
+.slot.armed, .slot.calling, .draw-slot.armed, .draw-slot.calling { touch-action: none; }
+.slot.armed .card, .slot.calling .card, .draw-slot.armed .card, .draw-slot.calling .card {
+  transform: rotateY(var(--rot, 0deg)); transition: transform var(--rt, 90ms) linear;
 }
-.slot.armed { cursor: grab; }
+.dragging .card { transition: none !important; }
+.slot.armed, .draw-slot.armed { cursor: grab; }
 .slot.armed .back, .draw-slot.armed .back { box-shadow: inset 0 0 0 3px var(--bus), 0 0 0 3px rgba(245,179,1,.35), 0 0 30px rgba(245,179,1,.35); }
-.dragging { transition: none !important; }
-.swipe-hint { position: absolute; left: 50%; bottom: -4px; transform: translate(-50%, 100%); white-space: nowrap; font: 700 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--bus); animation: nudgeup 1.1s ease-in-out infinite; pointer-events: none; }
+.swipe-hint { position: absolute; left: 50%; bottom: -4px; transform: translate(-50%, 100%); white-space: nowrap; font: 700 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--bus); animation: nudgex 1.2s ease-in-out infinite; pointer-events: none; }
 .slot, .draw-slot { position: relative; }
-@keyframes nudgeup { 0%, 100% { transform: translate(-50%, 100%); } 50% { transform: translate(-50%, calc(100% - 6px)); } }
-.slot.launch { transform: translateY(-70px) scale(1.04); transition: transform .25s ease-out; }
+@keyframes nudgex { 0%, 100% { transform: translate(-50%, 100%); } 25% { transform: translate(calc(-50% - 7px), 100%); } 75% { transform: translate(calc(-50% + 7px), 100%); } }
+/* The face lands in the direction and at the speed of the swipe */
+.card.swipe-in { animation: swipein var(--spd, 260ms) cubic-bezier(.25,.7,.35,1) both; }
+@keyframes swipein { from { transform: rotateY(calc(var(--dir, 1) * 84deg)); } to { transform: rotateY(calc(var(--dir, 1) * 180deg)); } }
 .choice.picked { border-color: var(--bus); background: rgba(245,179,1,.14); color: var(--bus); }
 .flip-row { display: flex; gap: 10px; align-items: center; }
 .flip-row .ghost { flex: none; }
@@ -535,7 +537,8 @@ details p { max-width: 65ch; color: var(--muted); }
   };
   const REACTIONS = ["🍺", "😂", "🔥", "😱", "👏", "🤮"];
   const CALLS = { red: "Red", black: "Black", higher: "Higher", lower: "Lower", inside: "Inside", outside: "Outside", S: "♠ Spades", H: "♥ Hearts", D: "♦ Diamonds", C: "♣ Clubs" };
-  const REVEAL_MS = 700;  // everyone holds on the call this long before the card turns
+  const REVEAL_MS = 450;  // the card hangs nearly edge-on this long before the face lands
+  const EDGE = 84;        // degrees: how far a swiped card turns before the server answers
   const SWIPE_PX = 70;    // how far a card must be pushed up to flip it
   const STORE = "fthebus.online.v1";
 
@@ -549,7 +552,9 @@ details p { max-width: 65ch; color: var(--muted); }
   let remote = null;     // the rider's (or flipper's) call and live swipe, seen from another phone
   let trayOpen = false, trayTimer = null, prevPos = null;
   let sheetOpen = false, sheetRules = false, leaveArmed = false;
-  let oweReadyAt = 0;  // the Drink card waits until the reveal and callouts have played
+  let oweReadyAt = 0;
+  let lastSwipe = null;   // { dir, spd, at }: how the latest card was swiped, so the face lands the same way
+  let pendingFlip = null; // my swipe is done and sent; hold the card edge-on until the answer arrives  // the Drink card waits until the reveal and callouts have played
   const TITLE = document.title;
   const calm = () => window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -753,7 +758,7 @@ details p { max-width: 65ch; color: var(--muted); }
     const fresh = lastSeq !== null && S.ev.seq !== lastSeq;
     lastSeq = S.ev.seq;
     fx = fresh ? S.ev.type : ""; dealt = fresh ? S.ev.dealt : -1;
-    if (fresh) remote = null;
+    if (fresh) { remote = null; pendingFlip = null; }
     if (S.screen !== "play" || S.current !== me || S.phase !== "guess" || (prev && prev.stage !== S.stage)) armed = null;
     if (suspense && S.ev.seq !== suspense.seq) { clearTimeout(suspense.timer); suspense = null; }
     turnAlert();
@@ -801,15 +806,21 @@ details p { max-width: 65ch; color: var(--muted); }
     if (myFlip && !wasMyFlip && prev && prev.screen === "race") { sfx.chime(); buzz(80); }
     wasMyFlip = myFlip;
   }
-  // Live swipe from another phone: show the call straight away, then lift the card with their finger.
+  // Live swipe from another phone: show the call straight away, then turn the card with their finger.
   function onDrag(m) {
     if (m.by === me || !S || m.seq !== S.ev.seq) return;
     const callChanged = !remote || remote.g !== m.g;
-    remote = { by: m.by, g: m.g, p: m.p };
+    remote = { by: m.by, g: m.g, p: m.p, dir: m.dir || 1, t: m.t };
+    if (m.spd) lastSwipe = { dir: m.dir || 1, spd: m.spd, at: Date.now() };
     if (callChanged) { if (m.g) sfx.pop(); render(); }
     const el = document.getElementById("swipe-card");
-    if (el) { el.classList.add("calling"); el.style.setProperty("--lift", m.p); }
+    if (el) {
+      el.classList.add("calling");
+      el.style.setProperty("--rt", `${m.t || 90}ms`);
+      el.style.setProperty("--rot", `${remote.dir * Math.min(1, m.p) * EDGE}deg`);
+    }
   }
+  const recentSwipe = () => lastSwipe && Date.now() - lastSwipe.at < 8000 ? lastSwipe : null;
   function leaveLocal() {
     S = null; me = null; lastSeq = null; confirming = false; armed = null; remote = null; suspense = null;
     session.room = ""; session.token = ""; saveSession();
@@ -830,6 +841,7 @@ details p { max-width: 65ch; color: var(--muted); }
   // focus survive updates, and CSS transitions (card flips, horses moving) play on the existing elements.
   // Nodes with a data-key are replaced when the key changes, so one-shot animations replay.
   function morph(cur, next) {
+    if (cur.nodeType === 1 && cur.classList.contains("dragging")) return;  // the finger owns it until release
     if (cur.nodeType !== next.nodeType || cur.nodeName !== next.nodeName
         || (cur.nodeType === 1 && (cur.getAttribute("data-key") || "") !== (next.getAttribute("data-key") || ""))) { cur.replaceWith(next); return; }
     if (cur.nodeType === 3) { if (cur.data !== next.data) cur.data = next.data; return; }
@@ -970,8 +982,15 @@ details p { max-width: 65ch; color: var(--muted); }
       slotCls.push(i === v.stage && v.phase === "guess" ? "" : "empty");
       if (i === v.stage && v.phase === "guess") {
         const myArm = S.current === me && armed && !v.revealing;
-        if (myArm) { slotCls.push("armed"); extra = ' id="swipe-card"'; }
-        else if (v.call) { slotCls.push("calling"); extra = ` id="swipe-card" style="--lift:${v.revealing ? 1 : (remote && remote.p) || 0}"`; }
+        const sw = recentSwipe();
+        if (myArm) {
+          slotCls.push("armed");
+          extra = pendingFlip ? ` id="swipe-card" style="--rot:${pendingFlip.dir * EDGE}deg;--rt:${pendingFlip.t}ms"` : ' id="swipe-card"';
+        } else if (v.call) {
+          // Watching: follow the rider's finger; while revealing, hold the card nearly edge-on.
+          const rot = v.revealing ? ((sw && sw.dir) || 1) * EDGE : remote ? remote.dir * Math.min(1, remote.p) * EDGE : 0;
+          slotCls.push("calling"); extra = ` id="swipe-card" style="--rot:${rot}deg;--rt:${remote && remote.t ? remote.t : 90}ms"`;
+        }
       }
     }
     let face = "";
@@ -986,11 +1005,14 @@ details p { max-width: 65ch; color: var(--muted); }
       face = `<div class="face${s.red ? " red" : ""}" aria-hidden="true">
         <span class="corner">${c.r}${s.sym}</span><span class="pip">${s.sym}</span><span class="corner bot">${c.r}${s.sym}</span></div>`;
     }
-    const cardCls = c ? (i === landed ? "card deal up" : "card up") : "card";
+    // A swiped card lands the way it was swiped; a dealt one (Higher or Lower's start card) drops in.
+    const sw = recentSwipe(), swiped = i === landed && ev.call && sw;
+    const cardCls = c ? (i === landed ? (swiped ? "card up swipe-in" : "card deal up") : "card up") : "card";
+    const cardStyle = swiped ? ` style="--dir:${sw.dir};--spd:${sw.spd}ms"` : "";
     const key = c ? ` data-key="k${i}${c.r}${c.s}"` : "";
-    const aria = c ? `${c.r === "A" ? "Ace" : c.r} of ${suitOf(c).name}` : slotCls.includes("armed") ? "Your card. Swipe up to flip it" : "Face-down card";
-    const hint = slotCls.includes("armed") ? '<span class="swipe-hint">Swipe up ↑</span>' : "";
-    return `<div class="${slotCls.filter(Boolean).join(" ")}"${extra} role="img" aria-label="${aria}"><div class="${cardCls}"${key}><div class="back"></div>${face}</div>${hint}</div>`;
+    const aria = c ? `${c.r === "A" ? "Ace" : c.r} of ${suitOf(c).name}` : slotCls.includes("armed") ? "Your card. Swipe it sideways to flip it" : "Face-down card";
+    const hint = slotCls.includes("armed") && !pendingFlip ? '<span class="swipe-hint">← Swipe →</span>' : "";
+    return `<div class="${slotCls.filter(Boolean).join(" ")}"${extra} role="img" aria-label="${aria}"><div class="${cardCls}"${key}${cardStyle}><div class="back"></div>${face}</div>${hint}</div>`;
   }
   function stopsHTML(v) {
     return `<div class="table-area"><section class="route-line" aria-label="The four cards">${MODES[mode()].stops.map((name, i) => {
@@ -1045,7 +1067,7 @@ details p { max-width: 65ch; color: var(--muted); }
     const flashLine = v.lastGood ? `<p class="flash ok">${esc(v.lastGood)}</p>` : "";
     let controls;
     if (mine && armed) {
-      controls = `${choices}<button class="primary flip-btn" id="flip-now">Flip ↑</button>`;
+      controls = `${choices}<button class="primary flip-btn" id="flip-now">Flip it</button>`;
     } else if (mine) {
       controls = choices;
     } else if (amHost() && !p.connected) {
@@ -1053,7 +1075,7 @@ details p { max-width: 65ch; color: var(--muted); }
     } else {
       controls = `<p class="waiting">Tap <b>${esc(p.name)}</b> at the top to hurry them up.</p>`;
     }
-    return `<section class="console">${flashLine}<h2 class="prompt">${mine && armed ? "Swipe the card up" : prompt}</h2>${controls}</section>`;
+    return `<section class="console">${flashLine}<h2 class="prompt">${mine && armed ? "Swipe the card sideways" : prompt}</h2>${controls}</section>`;
   }
   function betsTableHTML() {
     const rows = S.players.map(p => `<tr><td><span class="pname">${esc(p.name)}</span>${youTag(p.id)}</td><td><span class="${isRed(p.bet.suit) ? "r" : ""}">${suitSym(p.bet.suit)}</span></td><td class="n">${p.bet.amt}</td><td class="n">${p.drinks}</td></tr>`).join("");
@@ -1125,11 +1147,14 @@ details p { max-width: 65ch; color: var(--muted); }
       </section>`;
     }
     const f = byId(r.flipper), myFlip = r.flipper === me;
-    const lift = remote && remote.by === r.flipper ? remote.p : 0;
-    const deck = `<div class="draw-slot ${myFlip ? "armed" : "calling"}" id="swipe-card" style="--lift:${myFlip ? 0 : lift}" role="img" aria-label="${myFlip ? "The deck. Swipe up to flip a card" : "The deck"}">
-      <div class="card"><div class="back"></div></div>${myFlip ? '<span class="swipe-hint">Swipe ↑</span>' : ""}</div>`;
-    const last = r.last ? `<div class="draw-slot"><div class="card${fx === "flip" || fx === "won" ? " deal" : ""} up" data-key="f${r.flips}"><div class="back"></div>${miniFace(r.last)}</div></div>` : "";
-    const who = myFlip ? "<b>Your flip!</b> Swipe the deck up."
+    const watching = remote && remote.by === r.flipper;
+    const rot = myFlip ? (pendingFlip ? pendingFlip.dir * EDGE : 0) : watching ? remote.dir * Math.min(1, remote.p) * EDGE : 0;
+    const rt = myFlip ? (pendingFlip ? pendingFlip.t : 0) : watching ? remote.t || 90 : 0;
+    const deck = `<div class="draw-slot ${myFlip ? "armed" : "calling"}" id="swipe-card" style="--rot:${rot}deg;--rt:${rt}ms" role="img" aria-label="${myFlip ? "The deck. Swipe it sideways to flip a card" : "The deck"}">
+      <div class="card" data-key="d${r.flips}"><div class="back"></div></div>${myFlip && !pendingFlip ? '<span class="swipe-hint">← Swipe →</span>' : ""}</div>`;
+    const sw = recentSwipe(), fresh = fx === "flip" || fx === "won";
+    const last = r.last ? `<div class="draw-slot"><div class="card up${fresh ? (sw ? " swipe-in" : " deal") : ""}" data-key="f${r.flips}"${fresh && sw ? ` style="--dir:${sw.dir};--spd:${sw.spd}ms"` : ""}><div class="back"></div>${miniFace(r.last)}</div></div>` : "";
+    const who = myFlip ? "<b>Your flip!</b> Swipe the deck sideways."
       : f && !f.connected && amHost() ? `<b>${esc(f.name)}</b> is offline.` : `<b>${f ? esc(f.name) : "Someone"}</b> is flipping…`;
     const button = myFlip ? '<button class="primary flip-btn" id="flip">Flip a card</button>'
       : f && !f.connected && amHost() ? `<button class="ghost wide" id="flip">Flip for ${esc(f.name)}</button>` : "";
@@ -1322,44 +1347,68 @@ details p { max-width: 65ch; color: var(--muted); }
   }
 
   // ---- swipe to flip ----
-  // Push the card up past SWIPE_PX to flip it. The lift is shared live so everyone sees it rise.
+  // Drag the card sideways and it turns with your finger (up to nearly edge-on). Let go past halfway, or
+  // flick it, and it finishes at your swipe's speed; the face then lands at that same speed. Let go early
+  // and it springs back. The turn is shared live so everyone watches it.
   let drag = null, lastDragSent = 0;
-  const canSwipe = () => S && ((S.screen === "play" && S.current === me && S.phase === "guess" && armed && !suspense)
+  const canSwipe = () => S && !pendingFlip && ((S.screen === "play" && S.current === me && S.phase === "guess" && armed && !suspense)
     || (S.screen === "race" && S.race && !S.race.winner && S.race.flipper === me));
-  function sendLift(p, force) {
+  function sendTurn(p, dir, extra = {}, force = false) {
     const now = Date.now();
-    if (!force && now - lastDragSent < 70) return;
+    if (!force && now - lastDragSent < 60) return;
     lastDragSent = now;
-    send({ t: "drag", p, g: S.screen === "play" ? armed : undefined }, true);
+    send({ t: "drag", p, dir, g: S.screen === "play" ? armed : undefined, ...extra }, true);
   }
-  function commitFlip() {
+  // angVel: degrees per millisecond at release (a default for the Flip button).
+  function commitFlip(dir = 1, angVel = .35, p = 0) {
     if (!canSwipe()) return;
+    const v = Math.max(angVel, .06);
+    const t = Math.round(Math.min(380, Math.max(60, EDGE * (1 - p) / v)));
+    const spd = Math.round(Math.min(560, Math.max(140, (180 - EDGE) / v)));
+    pendingFlip = { dir, t };
+    lastSwipe = { dir, spd, at: Date.now() };
     const el = document.getElementById("swipe-card");
-    if (el) { el.classList.remove("dragging"); el.style.setProperty("--lift", 1.3); }
-    sendLift(1, true);
+    if (el) {
+      el.classList.remove("dragging");
+      el.style.setProperty("--rt", `${t}ms`);
+      el.style.setProperty("--rot", `${dir * EDGE}deg`);
+      const hint = el.querySelector(".swipe-hint"); if (hint) hint.remove();
+    }
+    sfx.flip();
+    sendTurn(1, dir, { spd, t }, true);
     if (S.screen === "play") act("guess", { g: armed }); else act("flip");
   }
   app.addEventListener("pointerdown", e => {
     const el = e.target.closest("#swipe-card");
     if (!el || !canSwipe()) return;
     audio();
-    drag = { el, y: e.clientY, id: e.pointerId, p: 0 };
+    drag = { el, x: e.clientX, w: el.offsetWidth || 120, id: e.pointerId, p: 0, dir: 1, pts: [{ x: e.clientX, t: performance.now() }] };
     el.classList.add("dragging");
     try { el.setPointerCapture(e.pointerId); } catch (err) {}
   });
   app.addEventListener("pointermove", e => {
     if (!drag || e.pointerId !== drag.id) return;
-    const dy = Math.max(0, drag.y - e.clientY);
-    drag.p = Math.min(1.3, dy / SWIPE_PX);
-    drag.el.style.setProperty("--lift", drag.p);
-    sendLift(Math.min(1, drag.p));
+    const dx = e.clientX - drag.x;
+    drag.dir = dx < 0 ? -1 : 1;
+    drag.p = Math.min(1, Math.abs(dx) / (drag.w * .9));
+    drag.pts.push({ x: e.clientX, t: performance.now() });
+    if (drag.pts.length > 8) drag.pts.shift();
+    drag.el.style.setProperty("--rot", `${drag.dir * drag.p * EDGE}deg`);
+    sendTurn(drag.p, drag.dir);
   });
   const endDrag = e => {
     if (!drag || e.pointerId !== drag.id) return;
     const d = drag; drag = null;
-    if (d.p >= 1) return commitFlip();
-    d.el.classList.remove("dragging"); d.el.style.setProperty("--lift", 0);
-    sendLift(0, true);
+    // Release speed from the last ~100ms of movement.
+    const now = performance.now(), recent = d.pts.filter(pt => now - pt.t < 110);
+    const a = recent[0] || d.pts[0], b = d.pts[d.pts.length - 1];
+    const pxPerMs = b.t > a.t ? Math.abs(b.x - a.x) / (b.t - a.t) : 0;
+    const angVel = pxPerMs / (d.w * .9) * EDGE;
+    if (d.p >= .55 || (pxPerMs > .5 && d.p > .15)) return commitFlip(d.dir, angVel, d.p);
+    d.el.classList.remove("dragging");
+    d.el.style.setProperty("--rt", "220ms");
+    d.el.style.setProperty("--rot", "0deg");
+    sendTurn(0, d.dir, { t: 220 }, true);
   };
   app.addEventListener("pointerup", endDrag);
   app.addEventListener("pointercancel", endDrag);
@@ -1372,7 +1421,7 @@ details p { max-width: 65ch; color: var(--muted); }
     audio(); keepAwake();
     if (t.dataset.g) {
       // Picking a call doesn't flip anything yet: it arms the card for a swipe and tells the room.
-      if (!(S.screen === "play" && S.current === me && S.phase === "guess") || suspense) return;
+      if (!(S.screen === "play" && S.current === me && S.phase === "guess") || suspense || pendingFlip) return;
       armed = t.dataset.g; sfx.pop();
       send({ t: "drag", p: 0, g: armed }, true);
       return render();
@@ -1415,14 +1464,14 @@ details p { max-width: 65ch; color: var(--muted); }
       case "react-toggle": trayOpen = !trayOpen; return render();
       case "restart-yes": confirming = false; return act("restart");
       case "restart-no": confirming = false; return render();
-      case "flip-now": return commitFlip();
+      case "flip-now": return commitFlip(1, .3);
       case "skip": return act("skip");
       case "start-race": return act("startRace");
       case "race-again": return act("raceAgain");
       case "to-menu": sheetOpen = false; return act("menu");
       case "show-awards": sheetOpen = false; return act("awards");
       case "new-night": return act("restart");
-      case "flip": return S.race && S.race.flipper === me ? commitFlip() : act("flip");
+      case "flip": return S.race && S.race.flipper === me ? commitFlip(1, .3) : act("flip");
       case "len-down": return act("setTrackLen", { delta: -1 });
       case "len-up": return act("setTrackLen", { delta: 1 });
     }
