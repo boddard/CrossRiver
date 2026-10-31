@@ -468,6 +468,7 @@ details p { max-width: 65ch; color: var(--muted); }
   transform: rotateY(var(--rot, 0deg)); transition: transform var(--rt, 90ms) linear;
 }
 .dragging .card { transition: none !important; }
+html.swipe-turn, html.swipe-turn body { touch-action: none; }
 .slot.armed, .draw-slot.armed { cursor: grab; }
 .slot.armed .back, .draw-slot.armed .back { box-shadow: inset 0 0 0 3px var(--bus), 0 0 0 3px rgba(245,179,1,.35), 0 0 30px rgba(245,179,1,.35); }
 .swipe-hint { position: absolute; left: 50%; bottom: -4px; transform: translate(-50%, 100%); white-space: nowrap; font: 700 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--bus); animation: nudgex 1.2s ease-in-out infinite; pointer-events: none; }
@@ -1011,7 +1012,7 @@ details p { max-width: 65ch; color: var(--muted); }
     const cardStyle = swiped ? ` style="--dir:${sw.dir};--spd:${sw.spd}ms"` : "";
     const key = c ? ` data-key="k${i}${c.r}${c.s}"` : "";
     const aria = c ? `${c.r === "A" ? "Ace" : c.r} of ${suitOf(c).name}` : slotCls.includes("armed") ? "Your card. Swipe it sideways to flip it" : "Face-down card";
-    const hint = slotCls.includes("armed") && !pendingFlip ? '<span class="swipe-hint">← Swipe →</span>' : "";
+    const hint = slotCls.includes("armed") && !pendingFlip ? '<span class="swipe-hint">← Swipe anywhere →</span>' : "";
     return `<div class="${slotCls.filter(Boolean).join(" ")}"${extra} role="img" aria-label="${aria}"><div class="${cardCls}"${key}${cardStyle}><div class="back"></div>${face}</div>${hint}</div>`;
   }
   function stopsHTML(v) {
@@ -1075,7 +1076,7 @@ details p { max-width: 65ch; color: var(--muted); }
     } else {
       controls = `<p class="waiting">Tap <b>${esc(p.name)}</b> at the top to hurry them up.</p>`;
     }
-    return `<section class="console">${flashLine}<h2 class="prompt">${mine && armed ? "Swipe the card sideways" : prompt}</h2>${controls}</section>`;
+    return `<section class="console">${flashLine}<h2 class="prompt">${mine && armed ? "Swipe across the screen" : prompt}</h2>${controls}</section>`;
   }
   function betsTableHTML() {
     const rows = S.players.map(p => `<tr><td><span class="pname">${esc(p.name)}</span>${youTag(p.id)}</td><td><span class="${isRed(p.bet.suit) ? "r" : ""}">${suitSym(p.bet.suit)}</span></td><td class="n">${p.bet.amt}</td><td class="n">${p.drinks}</td></tr>`).join("");
@@ -1151,10 +1152,10 @@ details p { max-width: 65ch; color: var(--muted); }
     const rot = myFlip ? (pendingFlip ? pendingFlip.dir * EDGE : 0) : watching ? remote.dir * Math.min(1, remote.p) * EDGE : 0;
     const rt = myFlip ? (pendingFlip ? pendingFlip.t : 0) : watching ? remote.t || 90 : 0;
     const deck = `<div class="draw-slot ${myFlip ? "armed" : "calling"}" id="swipe-card" style="--rot:${rot}deg;--rt:${rt}ms" role="img" aria-label="${myFlip ? "The deck. Swipe it sideways to flip a card" : "The deck"}">
-      <div class="card" data-key="d${r.flips}"><div class="back"></div></div>${myFlip && !pendingFlip ? '<span class="swipe-hint">← Swipe →</span>' : ""}</div>`;
+      <div class="card" data-key="d${r.flips}"><div class="back"></div></div>${myFlip && !pendingFlip ? '<span class="swipe-hint">← Swipe anywhere →</span>' : ""}</div>`;
     const sw = recentSwipe(), fresh = fx === "flip" || fx === "won";
     const last = r.last ? `<div class="draw-slot"><div class="card up${fresh ? (sw ? " swipe-in" : " deal") : ""}" data-key="f${r.flips}"${fresh && sw ? ` style="--dir:${sw.dir};--spd:${sw.spd}ms"` : ""}><div class="back"></div>${miniFace(r.last)}</div></div>` : "";
-    const who = myFlip ? "<b>Your flip!</b> Swipe the deck sideways."
+    const who = myFlip ? "<b>Your flip!</b> Swipe across the screen."
       : f && !f.connected && amHost() ? `<b>${esc(f.name)}</b> is offline.` : `<b>${f ? esc(f.name) : "Someone"}</b> is flipping…`;
     const button = myFlip ? '<button class="primary flip-btn" id="flip">Flip a card</button>'
       : f && !f.connected && amHost() ? `<button class="ghost wide" id="flip">Flip for ${esc(f.name)}</button>` : "";
@@ -1324,6 +1325,7 @@ details p { max-width: 65ch; color: var(--muted); }
     const screen = S ? S.screen : "join";
     if (screen !== lastScreen) { lastScreen = screen; scrollTo(0, 0); }
     document.documentElement.classList.toggle("framed", screen === "play" || (screen === "race" && !!S.race));
+    document.documentElement.classList.toggle("swipe-turn", !!canSwipe());
     paint(!S ? joinHTML()
       : S.screen === "lobby" ? lobbyHTML()
       : S.screen === "bets" ? betsHTML()
@@ -1378,40 +1380,50 @@ details p { max-width: 65ch; color: var(--muted); }
     sendTurn(1, dir, { spd, t }, true);
     if (S.screen === "play") act("guess", { g: armed }); else act("flip");
   }
-  app.addEventListener("pointerdown", e => {
-    const el = e.target.closest("#swipe-card");
-    if (!el || !canSwipe()) return;
+  // Full-screen swipe: start anywhere that isn't a button, and the card turns as the finger moves.
+  // Half the screen's width turns it edge-on, and at that point it flips over by itself.
+  const halfWidth = () => Math.max(120, innerWidth / 2);
+  document.addEventListener("pointerdown", e => {
+    if (!canSwipe() || e.button > 0) return;
+    if (e.target.closest("button, input, a, label, .crew, .sheet, .drink-card, .confirm, .tray")) return;
+    const el = document.getElementById("swipe-card");
+    if (!el) return;
     audio();
-    drag = { el, x: e.clientX, w: el.offsetWidth || 120, id: e.pointerId, p: 0, dir: 1, pts: [{ x: e.clientX, t: performance.now() }] };
+    drag = { el, x: e.clientX, id: e.pointerId, p: 0, dir: 1, pts: [{ x: e.clientX, t: performance.now() }] };
     el.classList.add("dragging");
-    try { el.setPointerCapture(e.pointerId); } catch (err) {}
   });
-  app.addEventListener("pointermove", e => {
+  document.addEventListener("pointermove", e => {
     if (!drag || e.pointerId !== drag.id) return;
     const dx = e.clientX - drag.x;
     drag.dir = dx < 0 ? -1 : 1;
-    drag.p = Math.min(1, Math.abs(dx) / (drag.w * .9));
+    drag.p = Math.min(1, Math.abs(dx) / halfWidth());
     drag.pts.push({ x: e.clientX, t: performance.now() });
     if (drag.pts.length > 8) drag.pts.shift();
+    if (drag.p >= 1) {
+      // Halfway across the screen: flip it now, at the speed the finger was moving.
+      const d = drag; drag = null;
+      return commitFlip(d.dir, releaseSpeed(d), 1);
+    }
     drag.el.style.setProperty("--rot", `${drag.dir * drag.p * EDGE}deg`);
     sendTurn(drag.p, drag.dir);
   });
-  const endDrag = e => {
-    if (!drag || e.pointerId !== drag.id) return;
-    const d = drag; drag = null;
-    // Release speed from the last ~100ms of movement.
+  // Degrees per millisecond, from the last ~100ms of finger movement.
+  function releaseSpeed(d) {
     const now = performance.now(), recent = d.pts.filter(pt => now - pt.t < 110);
     const a = recent[0] || d.pts[0], b = d.pts[d.pts.length - 1];
     const pxPerMs = b.t > a.t ? Math.abs(b.x - a.x) / (b.t - a.t) : 0;
-    const angVel = pxPerMs / (d.w * .9) * EDGE;
-    if (d.p >= .55 || (pxPerMs > .5 && d.p > .15)) return commitFlip(d.dir, angVel, d.p);
+    return pxPerMs / halfWidth() * EDGE;
+  }
+  const endDrag = e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const d = drag; drag = null;
     d.el.classList.remove("dragging");
     d.el.style.setProperty("--rt", "220ms");
     d.el.style.setProperty("--rot", "0deg");
     sendTurn(0, d.dir, { t: 220 }, true);
   };
-  app.addEventListener("pointerup", endDrag);
-  app.addEventListener("pointercancel", endDrag);
+  document.addEventListener("pointerup", endDrag);
+  document.addEventListener("pointercancel", endDrag);
 
   // ---- events ----
   app.addEventListener("click", e => {
