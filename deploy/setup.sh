@@ -29,12 +29,14 @@ if [ "$(id -u)" -ne 0 ]; then echo "Run this as root (or with sudo)."; exit 1; f
 echo "==> Installing packages"
 apt-get update -qq
 apt-get install -y -qq git curl ca-certificates >/dev/null
-if ! command -v node >/dev/null || [ "$(node -p 'process.versions.node.split(".")[0]')" -lt 18 ]; then
-  echo "==> Installing Node.js 20"
+# The service runs /usr/bin/node. A Node installed per-user (nvm, n, a tarball) isn't readable by the
+# service account, so install the system package there; other apps keep using their own Node.
+if [ ! -x /usr/bin/node ] || [ "$(/usr/bin/node -p 'process.versions.node.split(".")[0]')" -lt 18 ]; then
+  echo "==> Installing Node.js 20 at /usr/bin/node"
   curl -fsSL https://deb.nodesource.com/setup_20.x | bash - >/dev/null
   apt-get install -y -qq nodejs >/dev/null
 fi
-echo "    node $(node -v)"
+echo "    node $(/usr/bin/node -v)"
 
 echo "==> Fetching the game into $APP"
 if [ -d "$APP/.git" ]; then
@@ -44,7 +46,7 @@ else
   git clone -q --branch "$BRANCH" "$REPO" "$APP"
 fi
 cd "$APP"
-npm ci --omit=dev --no-audit --no-fund --silent
+PATH="/usr/bin:$PATH" /usr/bin/npm ci --omit=dev --no-audit --no-fund --silent
 
 # The service runs as its own unprivileged user; the code stays owned by root and read-only to it.
 id crossriver >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin crossriver
