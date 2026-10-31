@@ -10,7 +10,7 @@ WorkingDirectory=/opt/crossriver
 ExecStart=/usr/bin/node server/server.js
 Environment=NODE_ENV=production
 # nginx forwards to this port; it is not reachable from outside.
-Environment=PORT=3000
+Environment=PORT=3100
 Environment=HOST=127.0.0.1
 Restart=always
 RestartSec=2

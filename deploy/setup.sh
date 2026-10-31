@@ -4,9 +4,9 @@
 #   bash setup.sh tunnel <TOKEN>                    # Cloudflare Tunnel: HTTPS via Cloudflare, no open ports
 #   bash setup.sh bus.example.com you@example.com   # nginx + free Let's Encrypt HTTPS certificate
 #   bash setup.sh bus.example.com                   # nginx, plain HTTP
-#   bash setup.sh                                   # update; or, first time with no tunnel, http://SERVER-IP:3000
+#   bash setup.sh                                   # update; or, first time with no tunnel, http://SERVER-IP:3100
 #
-# For a tunnel, create it in the Cloudflare dashboard with a public hostname pointing at http://localhost:3000
+# For a tunnel, create it in the Cloudflare dashboard with a public hostname pointing at http://localhost:3100
 # and pass the token from its install command. For nginx, point the domain's DNS A record here first.
 set -euo pipefail
 
@@ -55,16 +55,25 @@ mkdir -p /etc/systemd/system/crossriver.service.d
 HAS_TUNNEL=0
 if [ -n "$TUNNEL_TOKEN" ] || systemctl is-enabled -q cloudflared 2>/dev/null; then HAS_TUNNEL=1; fi
 if [ -z "$DOMAIN" ] && [ "$HAS_TUNNEL" -eq 0 ]; then
-  # No domain and no tunnel: listen on all addresses so phones can reach http://SERVER-IP:3000 directly.
+  # No domain and no tunnel: listen on all addresses so phones can reach http://SERVER-IP:3100 directly.
   printf '[Service]\nEnvironment=HOST=0.0.0.0\n' > /etc/systemd/system/crossriver.service.d/override.conf
 else
   rm -f /etc/systemd/system/crossriver.service.d/override.conf
 fi
+# Port 3100 must be free for the game (another app on this server already uses 3000).
+systemctl stop crossriver 2>/dev/null || true
+if ss -ltn '( sport = :3100 )' | grep -q LISTEN; then
+  echo "Another program is already using port 3100:"; ss -ltnp '( sport = :3100 )' | tail -n +2
+  echo "Stop it, or change PORT in $APP/deploy/crossriver.service, then run this again."; exit 1
+fi
 systemctl daemon-reload
 systemctl enable -q crossriver
 systemctl restart crossriver
-sleep 1
-curl -fsS http://127.0.0.1:3000/healthz >/dev/null && echo "    game server is running"
+for i in 1 2 3 4 5 6 7 8 9 10; do
+  if curl -fsS http://127.0.0.1:3100/healthz 2>/dev/null | grep -q '^ok'; then echo "    game server is running on port 3100"; break; fi
+  if [ "$i" -eq 10 ]; then echo "The game server didn't start. Recent log:"; journalctl -u crossriver -n 20 --no-pager; exit 1; fi
+  sleep 1
+done
 
 if [ -n "$TUNNEL_TOKEN" ]; then
   echo "==> Connecting the Cloudflare Tunnel"
@@ -91,10 +100,10 @@ if [ "$HAS_TUNNEL" -eq 1 ] && [ -z "$DOMAIN" ]; then
 fi
 
 if [ -z "$DOMAIN" ]; then
-  if command -v ufw >/dev/null && ufw status | grep -q "Status: active"; then ufw allow 3000/tcp >/dev/null; fi
+  if command -v ufw >/dev/null && ufw status | grep -q "Status: active"; then ufw allow 3100/tcp >/dev/null; fi
   IP=$(curl -fsS https://api.ipify.org 2>/dev/null || hostname -I | awk '{print $1}')
   echo
-  echo "Done. Open http://$IP:3000 on your phone."
+  echo "Done. Open http://$IP:3100 on your phone."
   echo "Tip: run again with a domain and email to get HTTPS: bash $APP/deploy/setup.sh bus.example.com you@example.com"
   exit 0
 fi
@@ -103,7 +112,7 @@ echo "==> Setting up nginx for $DOMAIN"
 if ! command -v nginx >/dev/null; then
   if ss -ltn '( sport = :80 )' | grep -q LISTEN; then
     echo "Something other than nginx is already using port 80 (Apache or a control panel?)."
-    echo "The game is running on 127.0.0.1:3000. Point your existing web server at it, with WebSocket"
+    echo "The game is running on 127.0.0.1:3100. Point your existing web server at it, with WebSocket"
     echo "upgrade headers on /ws, or ask Claude for a config for your web server."
     exit 1
   fi

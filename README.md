@@ -28,7 +28,7 @@ The Node.js server holds every room's state and does all the dealing, so nobody 
 Cloudflare serves the game over HTTPS on your own hostname. The server needs no open ports, nginx or certificates.
 
 1. In the Cloudflare dashboard, open **Zero Trust → Networks → Tunnels**, create a **Cloudflared** tunnel, and copy the token from the install command it shows (the long string after `--token` or `service install`).
-2. Add a **public hostname** to the tunnel, for example `bus` on `b21g.com`, with service type **HTTP** and URL `localhost:3000`.
+2. Add a **public hostname** to the tunnel, for example `bus` on `b21g.com`, with service type **HTTP** and URL `http://localhost:3100`.
 3. On the server, as root:
 
 ```bash
@@ -49,7 +49,7 @@ bash setup.sh bus.b21g.com you@example.com
 
 - Replace `bus.b21g.com` with the domain you want. Add a DNS **A record** for it pointing at the server's IP first.
 - The email is for the free Let's Encrypt HTTPS certificate. Leave it off for plain HTTP.
-- With no arguments at all (`bash setup.sh`), the game runs at `http://SERVER-IP:3000`.
+- With no arguments at all (`bash setup.sh`), the game runs at `http://SERVER-IP:3100`.
 
 The script installs Node.js 20, puts the code in `/opt/crossriver`, runs it as a systemd service (`crossriver`) under its own user, and sets up an nginx site (with WebSocket support) plus HTTPS.
 
@@ -67,7 +67,7 @@ It pulls the latest `main`, reinstalls dependencies and restarts the service.
 ```bash
 systemctl status crossriver        # is it running?
 journalctl -u crossriver -f        # live logs
-curl http://127.0.0.1:3000/healthz # "ok N rooms"
+curl http://127.0.0.1:3100/healthz # "ok N rooms"
 ```
 
 ### Run it locally
