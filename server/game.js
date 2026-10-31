@@ -371,6 +371,7 @@ function publicState(room) {
     current: room.current, row: room.row, stage: room.stage, phase: room.phase, lastGood: room.lastGood,
     next: room.screen === "play" ? nextUp(room, room.current) : null,
     autoPassMs: AUTO_PASS_MS, giveOnOff: GIVE_ON_OFF, offlineSkipMs: OFFLINE_SKIP_MS,
+    turnMs: TURN_MS, turnLeftMs: clockRunning(room) ? Math.max(0, deadline(room) - Date.now()) : null,
     grudges: Object.entries(room.grudges || {}).map(([k, n]) => { const [from, to] = k.split(">"); return { from, to, n }; }),
     race: r && {
       id: r.id, len: r.len, side: r.side.map((c, i) => r.sideUp[i] ? c : null), sideUp: r.sideUp,
@@ -384,16 +385,35 @@ function publicState(room) {
 // past a rider whose phone has been offline for a while. Returns true when the room changed.
 const AUTO_PASS_MS = 4200;
 const OFFLINE_SKIP_MS = 15000;
+// Each card gets 5 seconds. The clock starts once the previous card's animation has had time to play.
+const TURN_MS = 5000;
+const CLOCK_GRACE = { good: 1800, turn: 1300, flip: 900, race: 1000 };
+const deadline = room => (room.phaseAt || 0) + TURN_MS + (CLOCK_GRACE[room.ev.type] || 0);
+function clockRunning(room) {
+  if (room.screen === "play") return room.phase === "guess" && !!player(room, room.current);
+  return room.screen === "race" && !!room.race && !room.race.winner;
+}
+// Out of time on a card: it counts as a miss.
+function timeout(room) {
+  const p = player(room, room.current), stage = room.stage;
+  p.drinks += 1; p.roundDrinks += 1;
+  p.streak += 1; p.worstStreak = Math.max(p.worstStreak, p.streak); p.run = 0;
+  owe(p, 1, "Too slow");
+  room.phase = "miss";
+  bump(room, "miss", stage, { by: p.id, timeout: true });
+}
 function tick(room, now = Date.now()) {
   const r = room.race;
   if (room.screen === "race" && r && !r.winner) {
     const f = player(room, r.flipper);
     if (f && !f.connected && room.players.some(p => p.connected) && now - (f.offlineAt || now) >= 8000) { r.flipper = nextFlipper(room, f.id); return true; }
+    if (f && f.connected && now >= deadline(room)) { flip(room, f.id); return true; }  // too slow: the deck flips for them
     return false;
   }
   if (room.screen !== "play" || !room.current) return false;
   if (room.phase !== "guess" && now - (room.phaseAt || now) >= AUTO_PASS_MS) { passTurn(room); return true; }
   const rider = player(room, room.current);
+  if (room.phase === "guess" && rider && rider.connected && now >= deadline(room)) { timeout(room); return true; }
   if (room.phase === "guess" && rider && !rider.connected && room.players.some(p => p.connected)
       && now - Math.max(rider.offlineAt || now, room.phaseAt || 0) >= OFFLINE_SKIP_MS) {
     room.lastSkipped = rider.id; passTurn(room); return true;

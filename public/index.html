@@ -470,6 +470,13 @@ details p { max-width: 65ch; color: var(--muted); }
 }
 .dragging .card { transition: none !important; }
 html.swipe-turn, html.swipe-turn body { touch-action: none; }
+/* The 5-second clock: a bar under the headline and a big seconds count; red for the last two seconds */
+.frame > .status { position: relative; justify-content: space-between; }
+.clock-num { font: 900 40px/1 var(--display); font-variant-numeric: tabular-nums; color: var(--ink); min-width: 1ch; text-align: right; }
+.clock-num.late { color: var(--miss); animation: pop .4s ease-out; }
+.clock { position: absolute; left: 0; right: 0; bottom: -4px; height: 5px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.clock span { display: block; height: 100%; background: var(--bus); transform-origin: left; animation: drain var(--ms) linear var(--delay, 0ms) forwards; }
+.clock.late span { background: var(--miss); }
 /* The giant card: fills the screen while it's being swiped and turns with the finger, face and all */
 .bigcard { position: fixed; inset: 0; z-index: 46; display: grid; place-items: center; align-content: center; gap: 18px; padding: 0 16px; background: rgba(8,9,12,.86); pointer-events: none; animation: fade .12s ease-out both; }
 .bc-who { margin: 0; font: 900 clamp(26px, 8vw, 40px)/1 var(--display); text-transform: uppercase; color: var(--bus); text-align: center; text-wrap: balance; }
@@ -574,6 +581,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
   let oweReadyAt = 0;
   let lastSwipe = null;   // { dir, spd, at }: how the latest card was swiped, so the face lands the same way
   let pendingFlip = null; // my swipe is done and sent; hold the card edge-on until the answer arrives
+  let turnDeadline = 0, clockFor = null, lastTick = null; // the 5-second clock for the current card
   let flip = null;        // the giant card being turned right now: { by, dir, committed, faceKnown, done, autoSpd, after }  // the Drink card waits until the reveal and callouts have played
   const TITLE = document.title;
   const calm = () => window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -767,6 +775,30 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     if (m.t === "left") return leaveLocal();
   }
 
+  // ---- the 5-second clock ----
+  function clockHTML() {
+    if (!turnDeadline || !S) return "";
+    if (!clockFor || clockFor.seq !== S.ev.seq) {
+      const left = Math.max(0, turnDeadline - Date.now());
+      clockFor = { seq: S.ev.seq, ms: Math.min(left, S.turnMs), delay: Math.max(0, left - S.turnMs) };
+    }
+    return `<span class="clock-num" id="clock-num">${Math.ceil(Math.min(S.turnMs, Math.max(0, turnDeadline - Date.now())) / 1000)}</span>
+      <div class="clock" id="clock" data-key="c${S.ev.seq}"><span style="--ms:${clockFor.ms}ms;--delay:${clockFor.delay}ms"></span></div>`;
+  }
+  // Keep the seconds count live; tick and buzz on the rider's phone for the last three.
+  setInterval(() => {
+    const num = document.getElementById("clock-num");
+    if (!num || !turnDeadline || !S) return;
+    const secs = Math.ceil(Math.min(S.turnMs, Math.max(0, turnDeadline - Date.now())) / 1000);
+    if (num.textContent !== String(secs)) num.textContent = secs;
+    const late = secs <= 2;
+    num.classList.toggle("late", late);
+    const bar = document.getElementById("clock"); if (bar) bar.classList.toggle("late", late);
+    const mine = (S.screen === "play" && S.current === me && S.phase === "guess" && !suspense) || (S.screen === "race" && S.race && !S.race.winner && S.race.flipper === me);
+    const key = `${S.ev.seq}:${secs}`;
+    if (mine && secs <= 3 && secs > 0 && lastTick !== key) { lastTick = key; tone(secs === 1 ? 1100 : 880, .06, "square", .08); buzz(25); }
+  }, 200);
+
   // ---- the giant card ----
   // Angles: 0 is face down, 90 edge-on, 180 face up. dir is the swipe direction (-1 left, 1 right).
   const big = {
@@ -830,6 +862,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     }
     const fresh = lastSeq !== null && S.ev.seq !== lastSeq;
     lastSeq = S.ev.seq;
+    turnDeadline = S.turnLeftMs == null ? 0 : Date.now() + S.turnLeftMs;
     fx = fresh ? S.ev.type : ""; dealt = fresh ? S.ev.dealt : -1;
     if (fresh) { remote = null; pendingFlip = null; }
     if (S.screen !== "play" || S.current !== me || S.phase !== "guess" || (prev && prev.stage !== S.stage)) armed = null;
@@ -865,6 +898,12 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
   }
   // Sounds and callouts for events that don't go through a reveal.
   function cue(prev) {
+    if (fx === "miss" && S.ev.timeout) {
+      const mine = S.ev.by === me;
+      if (mine && flip && flip.by === me) { big.hide(); flip = null; drag = null; pendingFlip = null; }
+      takeover(mine ? "Too slow! Drink" : `${plainName(S.ev.by)} too slow!`, "miss"); sfx.gulp(); if (mine) buzz(250);
+      oweReadyAt = Date.now() + 1700; setTimeout(render, 1750);
+    }
     if (fx === "turn" && S.current === me) { takeover("Your turn", "turn"); sfx.chime(); }
     if (S.screen !== "race" || !S.race) return;
     const r = S.race;
@@ -1130,6 +1169,11 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     const upNext = next === S.current ? (mine ? "You go again from card 1." : `${esc(p.name)} goes again from card 1.`)
       : next === null ? "Everyone's off. New round starting…" : next === me ? "You're up next!" : `${nameOf(next)} is up next.`;
     const bar = `<div class="autopass" data-key="a${S.ev.seq}" style="--ms:${Math.max(800, S.autoPassMs - REVEAL_MS)}ms" aria-hidden="true"><span></span></div><p class="waiting">${upNext}</p>`;
+    if (v.phase === "miss" && S.ev.timeout) {
+      return `<section class="console" aria-live="polite">
+        <div class="verdict miss"><span class="big slam">Too slow</span>
+          <p>${mine ? "You ran" : `${esc(p.name)} ran`} out of time. That's a drink.</p></div>${bar}</section>`;
+    }
     if (v.phase === "miss") {
       const c = v.row[v.stage];
       return `<section class="console" aria-live="polite">
@@ -1185,6 +1229,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
       ${crewHTML()}
       <section class="status">
         <p class="turn-head${mine ? " mine" : ""}${S.ev.type === "turn" ? " slide" : ""}">${mine ? "Your turn" : `${esc(p.name)}'s turn`}</p>
+        ${S.phase === "guess" && !v.revealing ? clockHTML() : ""}
       </section>
       ${stopsHTML(v)}${consoleHTML(v)}</div>`;
   }
@@ -1196,7 +1241,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     const lead = leader(r), tie = SUIT_KEYS.filter(k => r.pos[k] === r.pos[lead]).length > 1;
     const head = r.winner ? `${suitSym(r.winner)} ${suitName(r.winner)} win` : r.flips === 0 ? "They're at the gate" : tie ? "Neck and neck" : `${suitSym(lead)} ${suitName(lead)} lead`;
     return `<div><span class="label">Room ${esc(S.code)} · Horse Race · ${r.len} cards</span><p class="rider">${head}</p></div>
-      <div class="meters"><div class="meter"><span class="label">Flips</span><strong>${r.flips}</strong></div></div>`;
+      ${r.winner ? `<div class="meters"><div class="meter"><span class="label">Flips</span><strong>${r.flips}</strong></div></div>` : clockHTML()}`;
   }
   function trackHTML(r) {
     const myBet = byId(me) && byId(me).bet;
