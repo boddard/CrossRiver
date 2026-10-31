@@ -1,0 +1,23 @@
+[Unit]
+Description=F the Bus online game server
+After=network.target
+
+[Service]
+Type=simple
+User=crossriver
+Group=crossriver
+WorkingDirectory=/opt/crossriver
+ExecStart=/usr/bin/node server/server.js
+Environment=NODE_ENV=production
+# nginx forwards to this port; it is not reachable from outside.
+Environment=PORT=3000
+Environment=HOST=127.0.0.1
+Restart=always
+RestartSec=2
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

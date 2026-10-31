@@ -1,0 +1,866 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>F the Bus Online</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: phone-only, full-screen night-bus stage. Slim sign on top, four big cards in a 2x2 grid fill the middle, buttons dock at the bottom; the scoreboard sits below the fold. Wider screens get the same phone-width column. */
+:root {
+  --asphalt: #14161b;
+  --panel: #1d2028;
+  --line: #333845;
+  --ink: #eef0f3;
+  --muted: #9aa1ae;
+  --bus: #f5b301;
+  --bus-ink: #1a1505;
+  --card: #f7f5ef;
+  --card-ink: #1b1d22;
+  --suit-red: #d93a3f;
+  --ok: #46c46a;
+  --miss: #ef5a5f;
+  --display: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+  --body: "Barlow", "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  --gutter: max(12px, env(safe-area-inset-left, 0px));
+  --safe-y: calc(env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px));
+  --pad-y: 10px;
+  --sign-h: 48px;
+  --gap: 12px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body {
+  margin: 0;
+  background: var(--asphalt);
+  color: var(--ink);
+  font: 16px/1.5 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: var(--pad-y) 32px;
+}
+.wrap { max-width: 480px; margin: 0 auto; display: grid; gap: var(--gap); }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--bus); outline-offset: 2px; }
+
+/* Destination sign */
+.sign {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  height: var(--sign-h); background: #0b0c0f; border: 2px solid var(--line); border-radius: 6px; padding: 0 14px; overflow: hidden;
+}
+.sign h1 {
+  margin: 0; font: 900 30px/1 var(--display); letter-spacing: .02em; text-transform: uppercase;
+  color: var(--bus); text-shadow: 0 0 14px rgba(245,179,1,.35);
+}
+
+.label { font: 600 12px/1.2 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+
+/* Status strip */
+.stage { display: flex; flex-direction: column; gap: var(--gap); min-height: calc(100dvh - var(--safe-y) - 2 * var(--pad-y) - var(--sign-h) - var(--gap)); }
+.status { display: flex; align-items: flex-end; justify-content: space-between; gap: 6px 16px; }
+.status > div:first-child { min-width: 0; }
+.rider { font: 900 clamp(30px, 8vw, 44px)/1 var(--display); text-transform: uppercase; margin: 2px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.meters { display: flex; gap: 18px; }
+.meter { text-align: right; }
+.meter strong { display: block; font: 700 22px/1.1 var(--mono); font-variant-numeric: tabular-nums; }
+
+/* Cards: sized from both the screen width and the height left over after the bar, status and buttons */
+.route-line {
+  --cols: 2; --rows: 2; --reserve: 382px; --col-gap: 12px;
+  --cw: min(calc((100% - (var(--cols) - 1) * var(--col-gap)) / var(--cols)),
+            calc(((100dvh - var(--safe-y) - var(--reserve)) / var(--rows) - 34px) * 5 / 7));
+  flex: 1; display: grid; grid-template-columns: repeat(var(--cols), max(84px, var(--cw)));
+  justify-content: center; align-content: center; gap: 14px var(--col-gap);
+}
+.stop { display: grid; gap: 8px; justify-items: center; min-width: 0; container-type: inline-size; }
+.stop-name .short { display: none; }
+@container (max-width: 150px) { .stop-name .long { display: none; } .stop-name .short { display: inline; } }
+.stop-head { display: flex; align-items: center; gap: 7px; min-width: 0; max-width: 100%; }
+.dot { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--asphalt); border: 3px solid var(--line); display: grid; place-items: center; font: 700 10px var(--mono); color: var(--muted); }
+.stop.on .dot { border-color: var(--bus); color: var(--bus); }
+.stop.done .dot { background: var(--ok); border-color: var(--ok); color: var(--asphalt); }
+.stop.bust .dot { background: var(--miss); border-color: var(--miss); color: var(--asphalt); }
+.stop-name { font: 700 clamp(14px, 3.8vw, 19px)/1 var(--display); text-transform: uppercase; letter-spacing: .03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+.stop.on .stop-name { color: var(--ink); }
+
+/* Cards */
+.slot { width: 100%; max-width: 100%; aspect-ratio: 5 / 7; perspective: 900px; container-type: inline-size; }
+.stop.on .slot:not(.empty) .back { box-shadow: inset 0 0 0 3px var(--bus), 0 0 0 3px rgba(245,179,1,.25), 0 10px 30px rgba(245,179,1,.18); }
+.card { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform .5s cubic-bezier(.2,.7,.2,1); }
+.card.up { transform: rotateY(180deg); }
+.card.deal { animation: deal .6s cubic-bezier(.2,.7,.2,1); }
+@keyframes deal {
+  0% { transform: translateY(-36px) scale(.9) rotateY(0deg); opacity: 0; }
+  35% { transform: translateY(0) scale(1.04) rotateY(0deg); opacity: 1; }
+  100% { transform: translateY(0) scale(1) rotateY(180deg); }
+}
+.face, .back { position: absolute; inset: 0; border-radius: 7cqw; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.back {
+  background: repeating-linear-gradient(135deg, var(--bus) 0 10px, #e2a400 10px 20px);
+  border: 3px solid #0b0c0f; box-shadow: inset 0 0 0 3px var(--bus);
+}
+.back::after { content: "BUS"; position: absolute; inset: 0; display: grid; place-items: center; font: 900 22cqw/1 var(--display); color: #0b0c0f; letter-spacing: .08em; }
+.slot.empty .back { background: transparent; border: 2px dashed var(--line); box-shadow: none; }
+.slot.empty .back::after { content: none; }
+.face {
+  transform: rotateY(180deg); background: var(--card); color: var(--card-ink);
+  border: 1px solid #d9d5c8; display: grid; grid-template-rows: auto 1fr auto; padding: 6cqw 7cqw;
+}
+.face.red { color: var(--suit-red); }
+.corner { font: 700 15cqw/1 var(--mono); letter-spacing: -.04em; }
+.corner.bot { justify-self: end; transform: rotate(180deg); }
+.pip { display: grid; place-items: center; font-size: 42cqw; line-height: 1; }
+.slot.wrong .face { box-shadow: 0 0 0 3px var(--miss); }
+.slot.right .face { box-shadow: 0 0 0 3px var(--ok); }
+
+/* Controls */
+.stage > .console { margin-top: auto; }
+.console { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 14px; }
+.prompt { margin: 0; font: 700 clamp(20px, 5vw, 26px)/1.15 var(--display); text-transform: uppercase; letter-spacing: .02em; text-wrap: balance; }
+.prompt .vs { color: var(--bus); }
+.choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.choices.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.choice {
+  border: 2px solid var(--line); background: var(--asphalt); border-radius: 10px; padding: 8px; min-height: 62px;
+  font: 700 clamp(17px, 4.6vw, 22px)/1 var(--display); text-transform: uppercase; letter-spacing: .04em;
+  transition: border-color .15s, transform .1s;
+}
+@media (hover: hover) { .choice:hover { border-color: var(--bus); } }
+.choice:active { transform: scale(.96); }
+.choice.suit { font-size: clamp(26px, 7vw, 34px); padding: 10px 4px; }
+.choice .r { color: var(--miss); }
+.choice-red { border-color: rgba(239,90,95,.55); }
+.verdict { display: grid; gap: 4px; }
+.verdict .big { font: 900 clamp(34px, 10vw, 54px)/1 var(--display); text-transform: uppercase; }
+.verdict.miss .big { color: var(--miss); }
+.verdict.won .big { color: var(--bus); }
+.verdict p { margin: 0; color: var(--muted); }
+.primary {
+  background: var(--bus); color: var(--bus-ink); border: 0; border-radius: 8px; padding: 14px 18px;
+  font: 900 20px/1 var(--display); text-transform: uppercase; letter-spacing: .05em;
+}
+.primary:hover { filter: brightness(1.08); }
+.ghost { background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; font-weight: 600; color: var(--muted); }
+.ghost:hover { color: var(--ink); border-color: var(--muted); }
+.row { display: flex; flex-wrap: wrap; gap: 10px; }
+.flash { margin: 0; font-weight: 600; }
+.flash.ok { color: var(--ok); }
+
+/* Passengers */
+.pax { display: grid; gap: 8px; }
+.pax-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th { text-align: left; font: 600 11px/1.2 var(--body); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); }
+th.n, td.n { text-align: right; font-family: var(--mono); }
+td { padding: 9px 8px; border-bottom: 1px solid var(--line); }
+tr.current td { background: rgba(245,179,1,.08); }
+tr.current td:first-child { box-shadow: inset 3px 0 0 var(--bus); }
+.pname { font-weight: 600; }
+.tag.off { background: var(--line); color: var(--muted); }
+tr.is-off td { color: var(--muted); }
+.tag { font: 700 10px/1 var(--mono); background: var(--bus); color: var(--bus-ink); padding: 3px 5px; border-radius: 3px; margin-left: 8px; vertical-align: 2px; }
+.hint { font-size: 13px; color: var(--muted); margin: 0; }
+
+/* Setup */
+.setup { display: grid; gap: 18px; }
+.setup h2 { margin: 0; font: 900 28px/1 var(--display); text-transform: uppercase; }
+.add { display: flex; gap: 8px; }
+.add input {
+  flex: 1; min-width: 0; background: var(--asphalt); color: var(--ink); border: 2px solid var(--line); border-radius: 8px;
+  padding: 11px 12px; font: 500 16px var(--body);
+}
+.add button { flex: none; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.chips li { display: flex; align-items: center; gap: 6px; background: var(--asphalt); border: 1px solid var(--line); border-radius: 999px; padding: 6px 6px 6px 14px; font-weight: 600; }
+.chips button { background: none; border: 0; width: 26px; height: 26px; border-radius: 50%; color: var(--muted); font-size: 16px; line-height: 1; }
+.chips button:hover { background: var(--line); color: var(--ink); }
+.opts { display: grid; gap: 10px; }
+.modes { border: 0; margin: 0; padding: 0; display: grid; gap: 10px; }
+.modes legend { padding: 0; margin-bottom: 8px; }
+.mode { position: relative; display: block; cursor: pointer; }
+.mode input { position: absolute; opacity: 0; pointer-events: none; }
+.mode span { display: grid; gap: 4px; height: 100%; padding: 12px 14px; border: 2px solid var(--line); border-radius: 10px; background: var(--asphalt); transition: border-color .15s; }
+.mode b { font: 900 20px/1 var(--display); text-transform: uppercase; letter-spacing: .03em; }
+.mode small { color: var(--muted); font-size: 13px; line-height: 1.35; }
+.mode input:checked + span { border-color: var(--bus); box-shadow: 0 0 0 3px rgba(245,179,1,.18); }
+.mode input:checked + span b { color: var(--bus); }
+.mode input:focus-visible + span { outline: 2px solid var(--bus); outline-offset: 2px; }
+.opt { display: flex; gap: 10px; align-items: flex-start; }
+.opt input { width: 20px; height: 20px; accent-color: var(--bus); margin-top: 2px; flex: none; }
+.opt span small { display: block; color: var(--muted); font-size: 13px; }
+
+details { border-top: 1px solid var(--line); padding-top: 12px; }
+summary { cursor: pointer; font: 700 16px var(--display); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+details ol { margin: 10px 0 0; padding-left: 20px; display: grid; gap: 6px; max-width: 65ch; }
+details p { max-width: 65ch; color: var(--muted); }
+
+.flip-btn { width: 100%; min-height: 62px; font-size: 24px; }
+.flip-btn:active { transform: scale(.98); }
+.meters { gap: 12px; }
+/* Moments: a correct card pulses green, a miss shakes and flashes red, getting off throws confetti and drives a bus past */
+.slot.hit .face { animation: hit .7s .45s ease-out both; }
+@keyframes hit { 0% { box-shadow: 0 0 0 0 rgba(70,196,106,.9); } 100% { box-shadow: 0 0 0 18px rgba(70,196,106,0); } }
+.slot.shake { animation: shake .5s .5s ease-in-out both; }
+@keyframes shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-9px) rotate(-3deg); } 40% { transform: translateX(8px) rotate(2deg); } 60% { transform: translateX(-6px); } 80% { transform: translateX(4px); } }
+.miss-flash { position: fixed; inset: 0; pointer-events: none; z-index: 20; background: radial-gradient(ellipse at center, transparent 40%, rgba(239,90,95,.45)); animation: flash .9s .45s ease-out both; }
+@keyframes flash { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
+.slam { display: inline-block; animation: slam .45s .5s cubic-bezier(.2,1.6,.4,1) both; }
+@keyframes slam { 0% { transform: scale(2.2); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+.stop.enter .slot { animation: rise .45s calc(var(--i) * 80ms) cubic-bezier(.2,.7,.2,1) both; }
+@keyframes rise { 0% { transform: translateY(24px); opacity: 0; } 100% { transform: none; opacity: 1; } }
+.stop.cheer .slot { animation: cheer .6s calc(.5s + var(--i) * 90ms) ease-in-out both; }
+@keyframes cheer { 0%, 100% { transform: none; } 40% { transform: translateY(-16px) rotate(-3deg); } 70% { transform: translateY(2px); } }
+.rider.slide { animation: slide .45s cubic-bezier(.2,.7,.2,1) both; }
+@keyframes slide { 0% { transform: translateX(-28px); opacity: 0; } 100% { transform: none; opacity: 1; } }
+.console.pop { animation: rise .35s .35s ease-out both; }
+.fx-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 25; }
+.fx-bus { position: fixed; left: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); width: 150px; z-index: 30; pointer-events: none; animation: drive 2.2s .4s cubic-bezier(.45,0,.55,1) both; }
+.fx-bus g { animation: bob .22s ease-in-out infinite alternate; }
+@keyframes drive { 0% { transform: translateX(-170px); } 100% { transform: translateX(calc(100vw + 20px)); } }
+@keyframes bob { from { transform: translateY(0); } to { transform: translateY(-2px); } }
+
+/* Horse race: a vertical track. Sideline cards run up the left; four lanes, finish at the top */
+.track {
+  --rgap: 4px;
+  --row: clamp(30px, calc((100dvh - var(--safe-y) - 360px) / var(--rows) - var(--rgap)), 72px);
+  flex: 1; align-self: center; width: min(100%, 520px);
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0 8px; align-content: center;
+}
+.tcol { position: relative; display: grid; grid-template-rows: repeat(var(--rows), var(--row)); gap: var(--rgap); }
+.tcell { border-radius: 6px; display: grid; place-items: center; min-width: 0; }
+.tcell.lane { background: linear-gradient(90deg, transparent 46%, var(--line) 46%, var(--line) 54%, transparent 54%); opacity: .55; }
+.tcell.finish { background: repeating-conic-gradient(var(--ink) 0 25%, var(--asphalt) 0 50%) 0 0 / 12px 12px; opacity: .3; }
+.tcell.gate { border: 2px dashed var(--line); }
+.tcell.flag { font: 700 clamp(11px, 3vw, 14px)/1 var(--display); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.mini { height: 100%; width: min(100%, calc(var(--row) * 5 / 7)); perspective: 500px; container-type: inline-size; }
+.mini-face { display: grid; place-items: center; align-content: center; padding: 0; font: 700 34cqw/1 var(--mono); }
+.mini-face span { font-size: 44cqw; line-height: 1; }
+.mini .back::after, .draw-slot .back::after { font-size: 22cqw; }
+.horse {
+  position: absolute; left: 50%; bottom: 0; height: var(--row); width: min(100%, calc(var(--row) * 5 / 7));
+  container-type: inline-size; border-radius: 6px; background: var(--card); color: var(--card-ink); border: 1px solid #d9d5c8;
+  transform: translateX(-50%) translateY(calc(var(--p) * -1 * (var(--row) + var(--rgap))));
+  transition: transform .5s cubic-bezier(.3,1.35,.5,1); box-shadow: 0 6px 16px rgba(0,0,0,.35);
+}
+.hface { height: 100%; display: grid; place-items: center; align-content: center; font: 700 34cqw/1 var(--mono); }
+.hface span { font-size: 46cqw; line-height: 1; }
+.horse.red { color: var(--suit-red); }
+.horse.winner { box-shadow: 0 0 0 3px var(--bus), 0 0 24px rgba(245,179,1,.55); }
+.horse.hurt { animation: hurt .7s ease-out; }
+@keyframes hurt { 0%, 100% { box-shadow: 0 6px 16px rgba(0,0,0,.35); } 30% { box-shadow: 0 0 0 4px var(--miss), 0 0 20px rgba(239,90,95,.6); } }
+.race-console { gap: 12px; }
+.draw { display: flex; align-items: center; gap: 14px; min-height: 84px; }
+.draw-slot { flex: none; width: 60px; aspect-ratio: 5 / 7; perspective: 600px; container-type: inline-size; }
+.race-msg { margin: 0; flex: 1; min-width: 0; font-weight: 500; }
+.payouts { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.payouts li { display: flex; align-items: baseline; gap: 8px; padding: 8px 10px; border-radius: 8px; background: var(--asphalt); }
+.payouts .pay { margin-left: auto; font: 700 14px var(--mono); white-space: nowrap; }
+.payouts .win .pay { color: var(--ok); }
+.payouts .lose .pay { color: var(--miss); }
+.r { color: var(--suit-red); }
+.bets { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.bet { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; background: var(--asphalt); border: 1px solid var(--line); border-radius: 10px; }
+.bet-name { font-weight: 600; flex: 1 1 80px; min-width: 0; }
+.bet-suits { display: flex; gap: 6px; }
+.bsuit { width: 42px; height: 42px; border-radius: 8px; border: 2px solid var(--line); background: var(--panel); font-size: 22px; line-height: 1; }
+.bsuit.r { color: var(--suit-red); }
+.bsuit.on { border-color: var(--bus); background: rgba(245,179,1,.14); }
+.stepper { display: flex; align-items: center; gap: 4px; }
+.stepper button { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); font: 700 18px/1 var(--mono); }
+.stepper strong { min-width: 28px; text-align: center; font: 700 18px var(--mono); }
+
+/* Restart */
+.sign-end { display: flex; align-items: center; gap: 8px; }
+.sign-btn { background: transparent; border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font: 700 12px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.sign-btn:hover { color: var(--bus); border-color: var(--bus); }
+.confirm-back { position: fixed; inset: 0; z-index: 40; background: rgba(8,9,12,.72); display: grid; place-items: center; padding: 16px; animation: fade .2s ease-out both; }
+.confirm { width: min(420px, 100%); background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; display: grid; gap: 14px; animation: rise .25s ease-out both; }
+.confirm h2 { margin: 0; font: 900 28px/1 var(--display); text-transform: uppercase; }
+.confirm p { margin: 0; color: var(--muted); }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .fx-bus, .fx-canvas, .miss-flash { display: none; }
+}
+
+/* Online: join screen, lobby, waiting states, connection banner, toasts */
+.join { display: grid; gap: 16px; }
+.join h2 { margin: 0; font: 900 30px/1 var(--display); text-transform: uppercase; }
+.field { display: grid; gap: 6px; }
+.field input {
+  width: 100%; background: var(--asphalt); color: var(--ink); border: 2px solid var(--line); border-radius: 10px;
+  padding: 13px 14px; font: 500 18px var(--body);
+}
+.field input.code { font: 700 28px/1 var(--mono); letter-spacing: .3em; text-transform: uppercase; text-align: center; }
+.or { display: flex; align-items: center; gap: 10px; color: var(--muted); font: 600 12px var(--body); letter-spacing: .12em; text-transform: uppercase; }
+.or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.wide { width: 100%; }
+.roomcode { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.roomcode strong { font: 700 40px/1 var(--mono); letter-spacing: .18em; color: var(--bus); }
+.people { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.people li { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--asphalt); border: 1px solid var(--line); border-radius: 10px; min-width: 0; }
+.people .pname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.people button { background: none; border: 0; width: 30px; height: 30px; border-radius: 50%; color: var(--muted); font-size: 18px; line-height: 1; }
+.people button:hover { background: var(--line); color: var(--ink); }
+.live { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); flex: none; }
+.live.away { background: var(--line); }
+.tag.you { background: var(--line); color: var(--ink); }
+.waiting { margin: 0; color: var(--muted); font-weight: 500; }
+.waiting b { color: var(--ink); }
+.mode-read { padding: 12px 14px; border: 2px solid var(--line); border-radius: 10px; background: var(--asphalt); }
+.mode-read b { font: 900 20px/1 var(--display); text-transform: uppercase; color: var(--bus); }
+.bet.mine { border-color: var(--bus); }
+.bet .bsuit[disabled], .bet .stepper button[disabled] { opacity: .45; cursor: default; }
+.banner {
+  position: fixed; left: 0; right: 0; top: 0; z-index: 50; text-align: center;
+  padding: calc(env(safe-area-inset-top, 0px) + 8px) max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px));
+  background: var(--miss); color: #fff; font-weight: 600; font-size: 14px;
+}
+.toast {
+  position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 20px); z-index: 60; transform: translateX(-50%);
+  width: min(440px, calc(100% - 32px)); padding: 12px 16px; border-radius: 10px;
+  background: var(--card); color: var(--card-ink); font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,.4); animation: rise .25s ease-out both;
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="sign" aria-label="F the Bus">
+    <h1>F the Bus</h1>
+    <div class="sign-end">
+      <button class="sign-btn" id="menu" type="button" hidden>Menu</button>
+      <button class="sign-btn" id="restart" type="button" hidden>Restart</button>
+    </div>
+  </header>
+  <main id="app"></main>
+</div>
+<div class="banner" id="banner" hidden>Reconnecting…</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+(() => {
+  const SUITS = [
+    { key: "S", sym: "♠", name: "Spades", red: false },
+    { key: "H", sym: "♥", name: "Hearts", red: true },
+    { key: "D", sym: "♦", name: "Diamonds", red: true },
+    { key: "C", sym: "♣", name: "Clubs", red: false },
+  ];
+  const SUIT_KEYS = ["S", "H", "D", "C"];
+  const MODES = {
+    classic: { name: "Classic", blurb: "Red or black, higher or lower, inside or outside, then the suit.", dots: ["1", "2", "3", "4"],
+      stops: [["Red / Black", "Red/Blk"], ["Higher / Lower", "Hi/Lo"], ["Inside / Outside", "In/Out"], ["Suit", "Suit"]] },
+    hilo: { name: "Higher or Lower", blurb: "Get 3 higher-or-lower calls right in a row.", dots: ["S", "1", "2", "3"],
+      stops: [["Start card", "Start"], ["Guess 1", "Guess 1"], ["Guess 2", "Guess 2"], ["Guess 3", "Guess 3"]] },
+    horse: { name: "Horse Race", blurb: "Bet on an ace and flip cards to race them up the track." },
+  };
+  const STORE = "fthebus.online.v1";
+
+  const app = document.getElementById("app");
+  // S is the room state the server last sent; the server is the only source of truth.
+  let S = null, me = null, ws = null, connected = false, retry = 0, retryTimer = null;
+  let fx = "", dealt = -1, lastSeq = null, confirming = false, toastTimer = null;
+  const calm = () => window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // Name, room and seat token survive reloads so a phone that locks rejoins its seat.
+  let session = { name: "", room: "", token: "" };
+  try { Object.assign(session, JSON.parse(localStorage.getItem(STORE)) || {}); } catch (e) {}
+  const saveSession = () => { try { localStorage.setItem(STORE, JSON.stringify(session)); } catch (e) {} };
+  const linkRoom = (new URLSearchParams(location.search).get("room") || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4);
+  if (linkRoom && linkRoom !== session.room) { session.room = ""; session.token = ""; }
+
+  // ---- helpers ----
+  const esc = s => String(s).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+  const suitOf = c => SUITS.find(s => s.key === c.s);
+  const suitSym = k => SUITS.find(s => s.key === k).sym;
+  const suitName = k => SUITS.find(s => s.key === k).name;
+  const isRed = k => k === "H" || k === "D";
+  const label = c => c.r + suitOf(c).sym;
+  const mode = () => S.settings.mode;
+  const hilo = () => mode() === "hilo";
+  const horse = () => mode() === "horse";
+  const byId = id => S.players.find(p => p.id === id);
+  const amHost = () => S && S.hostId === me;
+  const host = () => byId(S.hostId);
+  const nameOf = id => { const p = byId(id); return p ? esc(p.name) : "Someone"; };
+  const youTag = id => id === me ? ' <span class="tag you">YOU</span>' : "";
+
+  function toast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 3500);
+  }
+
+  // ---- connection ----
+  function connect() {
+    clearTimeout(retryTimer);
+    if (ws && (ws.readyState === 0 || ws.readyState === 1)) return;
+    ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws`);
+    ws.onopen = () => {
+      connected = true; retry = 0; banner();
+      if (session.room && session.token) send({ t: "hello", room: session.room, token: session.token, name: session.name });
+      else render();
+    };
+    ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch (err) { return; } onMessage(m); };
+    ws.onclose = () => {
+      connected = false; banner();
+      retryTimer = setTimeout(connect, Math.min(8000, 500 * 2 ** retry++));
+    };
+  }
+  function send(m) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); else toast("Not connected yet. Hang on a second."); }
+  const act = (a, extra = {}) => send({ t: "act", a, ...extra });
+  function banner() { document.getElementById("banner").hidden = connected || !session.room; }
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) { if (!connected) connect(); keepAwake(); } });
+
+  function onMessage(m) {
+    if (m.t === "welcome") {
+      me = m.you; session.room = m.room; session.token = m.token; saveSession();
+      history.replaceState(null, "", `?room=${m.room}`);
+      return;
+    }
+    if (m.t === "state") {
+      const prev = S;
+      S = m.state;
+      const fresh = lastSeq !== null && S.ev.seq !== lastSeq;
+      fx = fresh ? S.ev.type : ""; dealt = fresh ? S.ev.dealt : -1;
+      lastSeq = S.ev.seq;
+      if (S.screen === "race" && prev && prev.screen === "race" && prev.race && S.race && prev.race.id === S.race.id && document.getElementById("track")) return patchRace();
+      return render();
+    }
+    if (m.t === "error") {
+      if (m.code === "no_room" || m.code === "need_name") { leaveLocal(); if (m.code === "need_name") return toast(m.msg); }
+      return toast(m.msg);
+    }
+    if (m.t === "left") return leaveLocal();
+  }
+  function leaveLocal() {
+    S = null; me = null; lastSeq = null; confirming = false;
+    session.room = ""; session.token = ""; saveSession();
+    history.replaceState(null, "", location.pathname);
+    banner(); render();
+  }
+
+  // Keep the screen on during a game; harmless where the browser refuses.
+  let lock = null;
+  async function keepAwake() {
+    if (!S || lock || !("wakeLock" in navigator)) return;
+    try { lock = await navigator.wakeLock.request("screen"); lock.addEventListener("release", () => { lock = null; }); } catch (e) {}
+  }
+
+  // ---- join screen ----
+  function joinHTML() {
+    const code = linkRoom || "";
+    const rejoining = session.room && session.token;
+    if (rejoining) return `<section class="console join"><h2>Rejoining ${esc(session.room)}…</h2>
+      <p class="waiting">${connected ? "Finding your seat." : "Connecting to the server."}</p>
+      <button class="ghost" id="forget">Join a different room</button></section>`;
+    return `<section class="console join">
+      <h2>${code ? `Join room ${esc(code)}` : "Play online"}</h2>
+      <form id="joinform" class="join">
+        <label class="field"><span class="label">Your name</span>
+          <input id="name" maxlength="20" autocomplete="nickname" placeholder="What do your mates call you?" value="${esc(session.name)}"></label>
+        <label class="field"><span class="label">Room code</span>
+          <input id="code" class="code" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD" value="${esc(code)}"></label>
+        <button class="primary wide" type="submit" id="join">Join room</button>
+      </form>
+      ${code ? "" : `<div class="or">or</div><button class="ghost wide" id="create">Create a new room</button>`}
+      ${connected ? "" : '<p class="waiting">Connecting to the server…</p>'}
+      ${code ? '<button class="ghost" id="nocode">Create a new room instead</button>' : ""}
+    </section>`;
+  }
+
+  // ---- lobby ----
+  function lobbyHTML() {
+    const people = S.players.map(p => `<li><span class="live${p.connected ? "" : " away"}" title="${p.connected ? "Online" : "Offline"}"></span>
+      <span class="pname">${esc(p.name)}</span>${p.id === S.hostId ? '<span class="tag">HOST</span>' : ""}${youTag(p.id)}
+      ${amHost() && p.id !== me ? `<button data-kick="${p.id}" aria-label="Remove ${esc(p.name)}">×</button>` : ""}</li>`).join("");
+    const modes = amHost()
+      ? `<fieldset class="modes"><legend class="label">Game mode</legend>${Object.entries(MODES).map(([k, m]) =>
+          `<label class="mode"><input type="radio" name="mode" value="${k}" ${mode() === k ? "checked" : ""}><span><b>${m.name}</b><small>${m.blurb}</small></span></label>`).join("")}</fieldset>
+        <div class="opts"${horse() ? " hidden" : ""}>
+          <label class="opt"><input type="checkbox" id="aces" ${S.settings.acesHigh ? "checked" : ""}><span>Aces high<small>Off makes aces the lowest card.</small></span></label>
+          <label class="opt"><input type="checkbox" id="ties" ${S.settings.tiesMiss ? "checked" : ""}><span>Ties are a miss<small>A card matching the one it's compared to means you drink. Off gives a free pass.</small></span></label>
+        </div>`
+      : `<div class="field"><span class="label">Game mode</span><div class="mode-read"><b>${MODES[mode()].name}</b><p class="hint">${MODES[mode()].blurb}</p></div></div>`;
+    const go = amHost()
+      ? `<button class="primary" id="start">${horse() ? "Place your bets" : "Board the bus"}</button>`
+      : `<p class="waiting">Waiting for <b>${nameOf(S.hostId)}</b> to start the game.</p>`;
+    return `${confirmHTML()}<section class="console setup">
+      <div class="roomcode"><div><span class="label">Room code</span><br><strong>${esc(S.code)}</strong></div>
+        <button class="ghost" id="invite">Invite friends</button></div>
+      <span class="label">Players (${S.players.length})</span>
+      <ul class="people">${people}</ul>
+      ${modes}
+      <div class="row">${go}</div>
+      <button class="ghost" id="leave">Leave room</button>
+      ${rulesHTML()}
+    </section>`;
+  }
+
+  // ---- classic / higher or lower ----
+  function cardHTML(i) {
+    const c = S.row[i];
+    const slotCls = ["slot"];
+    if (!c) slotCls.push(i === S.stage && S.phase === "guess" ? "" : "empty");
+    let face = "";
+    if (c) {
+      const s = suitOf(c);
+      const bust = S.phase === "miss" && i === S.stage;
+      slotCls.push(bust ? "wrong" : (S.phase === "won" ? "right" : ""));
+      if (bust && fx === "miss") slotCls.push("shake");
+      if (fx === "good" && i === dealt) slotCls.push("hit");
+      face = `<div class="face${s.red ? " red" : ""}" aria-hidden="true">
+        <span class="corner">${c.r}${s.sym}</span><span class="pip">${s.sym}</span><span class="corner bot">${c.r}${s.sym}</span></div>`;
+    }
+    const cardCls = c ? (i === dealt ? "card deal up" : "card up") : "card";
+    const aria = c ? `${c.r === "A" ? "Ace" : c.r} of ${suitOf(c).name}` : "Face-down card";
+    return `<div class="${slotCls.join(" ").trim()}" role="img" aria-label="${aria}"><div class="${cardCls}"><div class="back"></div>${face}</div></div>`;
+  }
+  function stopsHTML() {
+    return `<section class="route-line" aria-label="The four cards">${MODES[mode()].stops.map((name, i) => {
+      let cls = "stop" + (fx === "turn" ? " enter" : fx === "won" ? " cheer" : "");
+      if (S.phase === "miss" && i === S.stage) cls += " bust";
+      else if (i < S.stage || S.phase === "won") cls += " done";
+      else if (i === S.stage) cls += " on";
+      return `<div class="${cls}" style="--i:${i}"><div class="stop-head"><span class="dot">${MODES[mode()].dots[i]}</span><span class="stop-name"><span class="long">${name[0]}</span><span class="short">${name[1]}</span></span></div>${cardHTML(i)}</div>`;
+    }).join("")}</section>`;
+  }
+  function consoleHTML() {
+    const p = byId(S.current);
+    if (!p) return `<section class="console"><p class="waiting">Waiting for the next turn…</p></section>`;
+    const mine = S.current === me;
+    const canPass = mine || amHost();
+    const next = S.next;
+    const passLabel = next === S.current ? "Deal again" : next === null ? "Start a new round" : `Pass to ${nameOf(next)}`;
+    const waitPass = `<p class="waiting">Waiting for <b>${esc(p.name)}</b> to pass the bus.</p>`;
+    if (S.phase === "miss") {
+      const c = S.row[S.stage];
+      const after = next === S.current ? "Back to card 1." : `${nameOf(next)} is up next.`;
+      return `<section class="console" aria-live="polite">
+        <div class="verdict miss"><span class="big${fx === "miss" ? " slam" : ""}">${mine ? "Drink" : `${esc(p.name)} drinks`}</span>
+          <p>${esc(label(c))} on card ${S.stage + 1}. ${mine ? "You're" : `${esc(p.name)} is`} still on the bus. ${after}</p></div>
+        ${canPass ? `<div class="row"><button class="primary" id="pass">${passLabel}</button></div>` : waitPass}
+      </section>`;
+    }
+    if (S.phase === "won") {
+      let note = "";
+      if (next === null && S.players.length > 1) {
+        const worst = S.players.reduce((a, b) => b.roundDrinks > a.roundDrinks ? b : a);
+        note = ` Everyone's off. ${esc(p.name)} was last off, and ${esc(worst.name)} drank the most this round (${worst.roundDrinks}).`;
+      }
+      return `<section class="console" aria-live="polite">
+        <div class="verdict won"><span class="big${fx === "won" ? " slam" : ""}">Off the bus</span>
+          <p>${mine ? "You" : esc(p.name)} got off on try ${p.tries} after ${p.roundDrinks} drink${p.roundDrinks === 1 ? "" : "s"}.${note}</p></div>
+        ${canPass ? `<div class="row"><button class="primary" id="pass">${passLabel}</button></div>` : waitPass}
+      </section>`;
+    }
+    const r = S.row;
+    let prompt, choices;
+    if (hilo()) {
+      prompt = `${S.stage === 3 ? "Last one. " : ""}Higher or lower than <span class="vs">${esc(label(r[S.stage - 1]))}</span>?`;
+      choices = `<div class="choices"><button class="choice" data-g="higher">Higher ↑</button><button class="choice" data-g="lower">Lower ↓</button></div>`;
+    } else if (S.stage === 0) {
+      prompt = "Red or black?";
+      choices = `<div class="choices"><button class="choice choice-red" data-g="red"><span class="r">Red</span></button><button class="choice" data-g="black">Black</button></div>`;
+    } else if (S.stage === 1) {
+      prompt = `Higher or lower than <span class="vs">${esc(label(r[0]))}</span>?`;
+      choices = `<div class="choices"><button class="choice" data-g="higher">Higher ↑</button><button class="choice" data-g="lower">Lower ↓</button></div>`;
+    } else if (S.stage === 2) {
+      prompt = `Inside or outside <span class="vs">${esc(label(r[0]))}</span> and <span class="vs">${esc(label(r[1]))}</span>?`;
+      choices = `<div class="choices"><button class="choice" data-g="inside">Inside</button><button class="choice" data-g="outside">Outside</button></div>`;
+    } else {
+      prompt = "Pick the suit to get off";
+      choices = `<div class="choices four">${SUITS.map(s => `<button class="choice suit" data-g="${s.key}" aria-label="${s.name}">${s.red ? `<span class="r">${s.sym}</span>` : s.sym}</button>`).join("")}</div>`;
+    }
+    const flash = S.lastGood ? `<p class="flash ok">${esc(S.lastGood)}</p>` : "";
+    let controls;
+    if (mine) controls = choices;
+    else if (amHost() && !p.connected) controls = `<p class="waiting"><b>${esc(p.name)}</b> is offline. Guess for them or skip their turn.</p>${choices}<button class="ghost" id="skip">Skip ${esc(p.name)}'s turn</button>`;
+    else controls = `<p class="waiting">Waiting for <b>${esc(p.name)}</b> to guess…</p>`;
+    return `<section class="console">${flash}<h2 class="prompt">${prompt}</h2>${controls}</section>`;
+  }
+  function paxHTML() {
+    const rows = S.players.map(p => {
+      const tag = p.id === S.current && S.phase !== "won" ? '<span class="tag">RIDING</span>' : p.off ? '<span class="tag off">OFF</span>' : "";
+      return `<tr class="${p.id === S.current ? "current" : ""}${p.off ? " is-off" : ""}">
+      <td><span class="live${p.connected ? "" : " away"}" style="display:inline-block;margin-right:8px"></span><span class="pname">${esc(p.name)}</span>${tag}${youTag(p.id)}</td>
+      <td class="n">${p.roundDrinks}</td><td class="n">${p.drinks}</td><td class="n">${p.best ?? "–"}</td></tr>`;
+    }).join("");
+    return `<section class="pax">
+      <div class="pax-head"><span class="label">Passengers · room ${esc(S.code)}</span><button class="ghost" id="invite">Invite</button></div>
+      <div style="overflow-x:auto"><table><thead><tr><th>Name</th><th class="n">This round</th><th class="n">Total</th><th class="n">Best</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <p class="hint">Turns go down the list. A miss passes the bus to the next player, and anyone who gets off sits out until the next round. New players join at the end of the list.</p>
+      <button class="ghost" id="leave">Leave room</button>
+    </section>`;
+  }
+  function playHTML() {
+    const p = byId(S.current) || { name: "", tries: 0, roundDrinks: 0 };
+    const mine = S.current === me;
+    return `${confirmHTML()}${fx === "miss" ? '<div class="miss-flash"></div>' : ""}<div class="wrap" style="max-width:none"><div class="stage">
+      <section class="status">
+        <div><span class="label">Room ${esc(S.code)} · ${MODES[mode()].name}</span><p class="rider${fx === "turn" ? " slide" : ""}">${mine ? "Your turn" : esc(p.name)}</p></div>
+        <div class="meters">
+          <div class="meter"><span class="label">Try</span><strong>${p.tries}</strong></div>
+          <div class="meter"><span class="label">Drinks</span><strong>${p.roundDrinks}</strong></div>
+        </div>
+      </section>
+      ${stopsHTML()}${consoleHTML()}</div>${paxHTML()}${rulesHTML()}</div>`;
+  }
+
+  // ---- horse race ----
+  const leader = r => SUIT_KEYS.reduce((a, k) => r.pos[k] > r.pos[a] ? k : a, "S");
+  function miniFace(c) { return c ? `<div class="face mini-face${suitOf(c).red ? " red" : ""}">${c.r}<span>${suitOf(c).sym}</span></div>` : ""; }
+  function drawHTML(r) {
+    if (!r.last) return `<div class="draw-slot"><div class="card"><div class="back"></div></div></div>`;
+    return `<div class="draw-slot"><div class="card${fx === "flip" || fx === "won" ? " deal" : ""} up"><div class="back"></div>${miniFace(r.last)}</div></div>`;
+  }
+  function raceStatusHTML(r) {
+    const lead = leader(r), tie = SUIT_KEYS.filter(k => r.pos[k] === r.pos[lead]).length > 1;
+    const head = r.winner ? `${suitSym(r.winner)} ${suitName(r.winner)} win` : r.flips === 0 ? "They're at the gate" : tie ? "Neck and neck" : `${suitSym(lead)} ${suitName(lead)} lead`;
+    return `<div><span class="label">Room ${esc(S.code)} · Horse Race · ${r.len} cards</span><p class="rider">${head}</p></div>
+      <div class="meters"><div class="meter"><span class="label">Flips</span><strong>${r.flips}</strong></div></div>`;
+  }
+  function trackHTML(r) {
+    let side = `<div class="tcol side"><div class="tcell flag">Finish</div>`;
+    for (let k = r.len; k >= 1; k--) {
+      side += `<div class="tcell"><div class="mini" data-side="${k}"><div class="card${r.sideUp[k - 1] ? " up" : ""}"><div class="back"></div>${miniFace(r.side[k - 1])}</div></div></div>`;
+    }
+    side += `<div class="tcell flag">Start</div></div>`;
+    const lanes = SUIT_KEYS.map(k => {
+      let cells = `<div class="tcell finish"></div>`;
+      for (let i = 0; i < r.len; i++) cells += `<div class="tcell lane"></div>`;
+      cells += `<div class="tcell gate"></div>`;
+      const cls = ["horse", isRed(k) ? "red" : "", r.winner === k ? "winner" : ""].join(" ").trim();
+      return `<div class="tcol">${cells}<div class="${cls}" data-h="${k}" style="--p:${r.pos[k]}" aria-label="Ace of ${suitName(k)}, spot ${r.pos[k]}"><div class="hface">A<span>${suitSym(k)}</span></div></div></div>`;
+    }).join("");
+    return `<section class="track" id="track" style="--rows:${r.len + 2}" aria-label="Race track">${side}${lanes}</section>`;
+  }
+  function raceConsoleHTML(r) {
+    if (r.winner) {
+      const res = (r.results || []).map(x => `<li class="${x.won ? "win" : "lose"}"><b>${esc(x.name)}</b>${youTag(x.id)} backed <span class="${isRed(x.suit) ? "r" : ""}">${suitSym(x.suit)}</span> for ${x.amt}
+        <span class="pay">${x.won ? `hand out ${x.amt * 2}` : `drink ${x.amt}`}</span></li>`).join("");
+      return `<section class="console race-console" aria-live="polite">
+        <div class="verdict won"><span class="big${fx === "won" ? " slam" : ""}">${suitSym(r.winner)} ${esc(suitName(r.winner))} win</span>
+          <p>Crossed the line after ${r.flips} flips. Losers drink their bet; winners hand out double.</p></div>
+        <ul class="payouts">${res}</ul>
+        ${amHost() ? '<div class="row"><button class="primary" id="race-again">Race again</button><button class="ghost" id="to-menu">Change game</button></div>'
+          : `<p class="waiting">Waiting for <b>${nameOf(S.hostId)}</b> to start the next race.</p>`}
+      </section>`;
+    }
+    return `<section class="console race-console">
+      <div class="draw">${drawHTML(r)}<p class="race-msg" id="race-msg" aria-live="polite">${esc(r.msg)}</p></div>
+      <button class="primary flip-btn" id="flip">Flip a card</button>
+    </section>`;
+  }
+  function raceHTML() {
+    const r = S.race;
+    const rows = S.players.map(p => `<tr><td><span class="pname">${esc(p.name)}</span>${youTag(p.id)}</td><td><span class="${isRed(p.bet.suit) ? "r" : ""}">${suitSym(p.bet.suit)}</span></td><td class="n">${p.bet.amt}</td><td class="n">${p.drinks}</td></tr>`).join("");
+    return `${confirmHTML()}<div class="wrap" style="max-width:none"><div class="stage race-stage">
+      <section class="status" id="race-status">${raceStatusHTML(r)}</section>
+      ${trackHTML(r)}${raceConsoleHTML(r)}</div>
+      <section class="pax"><div class="pax-head"><span class="label">Bets · room ${esc(S.code)}</span><button class="ghost" id="invite">Invite</button></div>
+      <div style="overflow-x:auto"><table><thead><tr><th>Name</th><th>Horse</th><th class="n">Bet</th><th class="n">Total drinks</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <button class="ghost" id="leave">Leave room</button></section>
+      ${rulesHTML()}</div>`;
+  }
+  // Update the live race in place so horses slide and sideline cards flip instead of re-rendering.
+  function patchRace() {
+    const r = S.race;
+    patchHorses(r);
+    if (r.winner) { setTimeout(() => { fx = "won"; render(); }, calm() ? 0 : 650); return; }
+    document.getElementById("race-status").innerHTML = raceStatusHTML(r);
+    document.getElementById("race-msg").textContent = r.msg;
+    document.querySelector(".draw-slot").outerHTML = drawHTML(r);
+    fx = "";
+  }
+  function patchHorses(r) {
+    for (const k of SUIT_KEYS) {
+      const h = document.querySelector(`.horse[data-h="${k}"]`);
+      if (!h) continue;
+      h.style.setProperty("--p", r.pos[k]);
+      h.setAttribute("aria-label", `Ace of ${suitName(k)}, spot ${r.pos[k]}`);
+      if (r.back === k && fx === "flip") { h.classList.remove("hurt"); void h.offsetWidth; h.classList.add("hurt"); }
+    }
+    r.sideUp.forEach((up, i) => {
+      const m = document.querySelector(`.mini[data-side="${i + 1}"]`);
+      if (!m) return;
+      const card = m.querySelector(".card");
+      if (up && !card.querySelector(".face") && r.side[i]) card.insertAdjacentHTML("beforeend", miniFace(r.side[i]));
+      if (up && !card.classList.contains("up")) requestAnimationFrame(() => card.classList.add("up"));
+    });
+  }
+  function betsHTML() {
+    const rows = S.players.map(p => { const b = p.bet, mine = p.id === me, dis = mine ? "" : " disabled";
+      return `<li class="bet${mine ? " mine" : ""}"><span class="bet-name">${esc(p.name)}${youTag(p.id)}</span>
+        <div class="bet-suits" role="group" aria-label="${esc(p.name)}'s horse">${SUIT_KEYS.map(k => `<button class="bsuit${b.suit === k ? " on" : ""}${isRed(k) ? " r" : ""}" data-bs="${k}" aria-pressed="${b.suit === k}" aria-label="${suitName(k)}"${dis}>${suitSym(k)}</button>`).join("")}</div>
+        <div class="stepper" role="group" aria-label="${esc(p.name)}'s bet"><button data-ba="-1" aria-label="Bet less"${dis}>−</button><strong>${b.amt}</strong><button data-ba="1" aria-label="Bet more"${dis}>+</button></div></li>`; }).join("");
+    const len = amHost()
+      ? `<div class="bet"><span class="bet-name">Track length</span><span class="hint">Sideline cards</span>
+          <div class="stepper" role="group" aria-label="Track length"><button id="len-down" aria-label="Shorter track">−</button><strong>${S.settings.trackLen}</strong><button id="len-up" aria-label="Longer track">+</button></div></div>`
+      : `<p class="hint">Track length: ${S.settings.trackLen} sideline cards.</p>`;
+    return `${confirmHTML()}<section class="console setup">
+      <h2>Place your bets</h2>
+      <p class="hint">Pick a horse and how many drinks you're betting on your own phone. When the race ends, losers drink their bet and winners hand out double.</p>
+      <ul class="bets">${rows}</ul>
+      ${len}
+      ${amHost() ? '<div class="row"><button class="primary" id="start-race">Start the race</button><button class="ghost" id="to-menu">Back</button></div>'
+        : `<p class="waiting">Waiting for <b>${nameOf(S.hostId)}</b> to start the race.</p>`}
+      ${rulesHTML()}
+    </section>`;
+  }
+
+  // ---- shared ----
+  function rulesHTML() {
+    const tail = `Aces are ${S.settings.acesHigh ? "high" : "low"}. A tie with the card you're comparing against ${S.settings.tiesMiss ? "counts as a miss" : "is a free pass"}.`;
+    if (horse()) return `<details><summary>House rules: Horse Race</summary><ol>
+      <li>Everyone backs one of the four aces and bets 1 to 5 drinks.</li>
+      <li>Anyone can flip the next card. The ace of that suit moves forward one spot.</li>
+      <li>Once every ace has reached a sideline card, that card turns over and the ace of its suit drops back one spot.</li>
+      <li>The first ace past the last sideline card wins.</li></ol>
+      <p>Losers drink what they bet. Winners hand out double their bet.</p></details>`;
+    if (hilo()) return `<details><summary>House rules: Higher or Lower</summary>
+      <p>Each turn starts with a free card dealt face up. Call higher or lower for the next card, then the next, comparing each one with the card before it. Get 3 right in a row and you're off the bus.</p>
+      <p>Every miss is 1 drink. After a miss the bus passes to the next player, who starts again with a fresh start card. Get off the bus and you sit out until everyone else is off. ${tail}</p></details>`;
+    return `<details><summary>House rules: Classic</summary><ol>
+      <li><b>Red or black.</b></li>
+      <li><b>Higher or lower</b> than card 1.</li>
+      <li><b>Inside or outside</b> cards 1 and 2.</li>
+      <li><b>Pick the suit.</b> Hit it and you're off the bus.</li></ol>
+      <p>Every miss is 1 drink, whichever card you miss on. Players take turns on their own phones. After a miss the bus passes to the next player, who starts from card 1 with a fresh deal. Get off the bus and you sit out until everyone else is off. ${tail}</p></details>`;
+  }
+  function confirmHTML() {
+    if (!confirming) return "";
+    const what = horse()
+      ? "Everyone's drink totals go back to zero and the room goes back to the betting screen."
+      : "Everyone's drinks, tries and best rides go back to zero, and a new round starts from the top of the list.";
+    return `<div class="confirm-back"><div class="confirm" role="dialog" aria-modal="true" aria-labelledby="rs-title">
+        <h2 id="rs-title">Restart the game?</h2><p>${what} This restarts it for the whole room.</p>
+        <div class="row"><button class="primary" id="restart-yes">Restart</button><button class="ghost" id="restart-no">Keep playing</button></div>
+      </div></div>`;
+  }
+
+  function render() {
+    if (!S) app.innerHTML = joinHTML();
+    else if (S.screen === "lobby") app.innerHTML = lobbyHTML();
+    else if (S.screen === "bets") app.innerHTML = betsHTML();
+    else if (S.screen === "race" && S.race) app.innerHTML = raceHTML();
+    else app.innerHTML = playHTML();
+    const hostBtns = !!S && amHost() && S.screen !== "lobby";
+    document.getElementById("restart").hidden = !hostBtns;
+    document.getElementById("menu").hidden = !hostBtns;
+    if (fx === "won") celebrate();
+    fx = ""; dealt = -1;
+    if (confirming) document.getElementById("restart-yes").focus();
+    banner();
+  }
+
+  async function invite() {
+    const url = `${location.origin}${location.pathname}?room=${S.code}`;
+    const text = `Join my F the Bus game. Room code ${S.code}`;
+    try { if (navigator.share) { await navigator.share({ title: "F the Bus", text, url }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
+    try { await navigator.clipboard.writeText(url); toast("Invite link copied. Paste it in the group chat."); }
+    catch (e) { toast(`Send your friends this link: ${url}`); }
+  }
+
+  // ---- events ----
+  app.addEventListener("click", e => {
+    const t = e.target.closest("button");
+    if (!t || t.disabled) return;
+    keepAwake();
+    if (t.dataset.g) return act("guess", { g: t.dataset.g });
+    if (t.dataset.bs) return act("setBet", { suit: t.dataset.bs });
+    if (t.dataset.ba) return act("setBet", { delta: +t.dataset.ba });
+    if (t.dataset.kick) return act("kick", { id: t.dataset.kick });
+    switch (t.id) {
+      case "create": {
+        const name = (document.getElementById("name").value || "").trim();
+        if (!name) { toast("Enter your name first."); return document.getElementById("name").focus(); }
+        session.name = name; saveSession();
+        return send({ t: "hello", create: true, name });
+      }
+      case "nocode": history.replaceState(null, "", location.pathname); return location.reload();
+      case "forget": leaveLocal(); return;
+      case "invite": return invite();
+      case "leave": return send({ t: "leave" });
+      case "start": return act("start");
+      case "restart-yes": confirming = false; return act("restart");
+      case "restart-no": confirming = false; return render();
+      case "pass": return act("pass");
+      case "skip": return act("skip");
+      case "start-race": return act("startRace");
+      case "race-again": return act("raceAgain");
+      case "to-menu": return act("menu");
+      case "flip": return act("flip");
+      case "len-down": return act("setTrackLen", { delta: -1 });
+      case "len-up": return act("setTrackLen", { delta: 1 });
+    }
+  });
+  app.addEventListener("submit", e => {
+    e.preventDefault();
+    const name = document.getElementById("name").value.trim();
+    const code = document.getElementById("code").value.toUpperCase().replace(/[^A-Z]/g, "");
+    if (!name) { toast("Enter your name first."); return document.getElementById("name").focus(); }
+    if (code.length !== 4) { toast("Room codes are 4 letters."); return document.getElementById("code").focus(); }
+    session.name = name; saveSession();
+    send({ t: "hello", room: code, name });
+  });
+  app.addEventListener("change", e => {
+    if (e.target.name === "mode") return act("setMode", { mode: e.target.value });
+    if (e.target.id === "aces") return act("setSetting", { key: "acesHigh", value: e.target.checked });
+    if (e.target.id === "ties") return act("setSetting", { key: "tiesMiss", value: e.target.checked });
+  });
+  document.getElementById("restart").addEventListener("click", () => { confirming = true; render(); });
+  document.getElementById("menu").addEventListener("click", () => { confirming = false; act("menu"); scrollTo(0, 0); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && confirming) { confirming = false; render(); } });
+
+  // ---- celebration ----
+  function celebrate() {
+    if (calm()) return;
+    const bus = document.createElement("div");
+    bus.innerHTML = `<svg class="fx-bus" viewBox="0 0 150 64" aria-hidden="true"><g>
+      <rect x="4" y="6" width="138" height="44" rx="9" fill="#f5b301" stroke="#0b0c0f" stroke-width="3"/>
+      <rect x="14" y="13" width="20" height="15" rx="2" fill="#0b0c0f"/><rect x="40" y="13" width="20" height="15" rx="2" fill="#0b0c0f"/>
+      <rect x="66" y="13" width="20" height="15" rx="2" fill="#0b0c0f"/><rect x="92" y="13" width="20" height="15" rx="2" fill="#0b0c0f"/>
+      <rect x="120" y="13" width="16" height="22" rx="2" fill="#0b0c0f"/><rect x="4" y="34" width="112" height="4" fill="#0b0c0f"/>
+      <circle cx="32" cy="52" r="10" fill="#0b0c0f"/><circle cx="32" cy="52" r="4" fill="#9aa1ae"/>
+      <circle cx="112" cy="52" r="10" fill="#0b0c0f"/><circle cx="112" cy="52" r="4" fill="#9aa1ae"/></g></svg>`;
+    const svg = bus.firstElementChild;
+    document.body.appendChild(svg);
+    setTimeout(() => svg.remove(), 3000);
+    const c = document.createElement("canvas");
+    c.className = "fx-canvas";
+    document.body.appendChild(c);
+    const dpr = window.devicePixelRatio || 1, W = innerWidth, H = innerHeight;
+    c.width = W * dpr; c.height = H * dpr;
+    const g = c.getContext("2d"); g.scale(dpr, dpr);
+    const colors = ["#f5b301", "#46c46a", "#f7f5ef", "#ef5a5f", "#e2a400"];
+    const bits = Array.from({ length: 150 }, () => ({
+      x: W / 2 + (Math.random() - .5) * W * .3, y: H * .5,
+      vx: (Math.random() - .5) * 16, vy: -(Math.random() * 15 + 7),
+      w: 6 + Math.random() * 6, h: 4 + Math.random() * 4,
+      r: Math.random() * 6, vr: (Math.random() - .5) * .4, col: colors[Math.floor(Math.random() * colors.length)],
+    }));
+    const t0 = performance.now() + 450;
+    (function frame(now) {
+      if (now < t0) return requestAnimationFrame(frame);
+      const t = now - t0;
+      g.clearRect(0, 0, W, H);
+      g.globalAlpha = t > 1600 ? Math.max(0, 1 - (t - 1600) / 600) : 1;
+      for (const b of bits) {
+        b.vy += .45; b.vx *= .99; b.x += b.vx; b.y += b.vy; b.r += b.vr;
+        g.save(); g.translate(b.x, b.y); g.rotate(b.r); g.fillStyle = b.col; g.fillRect(-b.w / 2, -b.h / 2, b.w, b.h); g.restore();
+      }
+      if (t < 2200) requestAnimationFrame(frame); else c.remove();
+    })(performance.now());
+  }
+
+  render();
+  connect();
+})();
+</script>
+</body>
+</html>

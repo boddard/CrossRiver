@@ -1,0 +1,16 @@
+{
+  "name": "f-the-bus-online",
+  "version": "1.0.0",
+  "private": true,
+  "description": "F the Bus drinking game: online rooms where everyone plays on their own phone.",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "ws": "8.18.0"
+  }
+}
