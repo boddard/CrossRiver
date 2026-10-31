@@ -221,7 +221,8 @@ function triviaReveal(room) {
     if (ans && ans.i === t.correct) {
       t.streak[p.id] = (t.streak[p.id] || 0) + 1;
       const speed = Math.max(0, 1 - ans.ms / TRIVIA.question);
-      const pts = Math.round((500 + 500 * speed) / 10) * 10 + Math.min(300, (t.streak[p.id] - 1) * 100);
+      // 50-90 for a right answer (faster is more), +5 per extra answer in a streak up to +10; never over 100.
+      const pts = Math.min(100, Math.round(50 + 40 * speed) + Math.min(10, (t.streak[p.id] - 1) * 5));
       t.gained[p.id] = pts;
       t.scores[p.id] = (t.scores[p.id] || 0) + pts;
       p.correct += 1; p.guesses += 1;

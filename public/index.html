@@ -1686,7 +1686,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
   function rulesHTML() {
     const tail = `Aces are ${S.settings.acesHigh ? "high" : "low"}. A tie with the card you're comparing against ${S.settings.tiesMiss ? "counts as a miss" : "is a free pass"}.`;
     if (trivia()) return `<details><summary>How Trivia works</summary>
-      <p>Pick categories in the lobby, or leave it on All. Everyone answers on their own phone. You've got ${Math.round((S.turnMs || 15000) / 1000)} seconds a question; the question ends early once everyone has answered. A right answer scores 500 to 1,000 points, more the faster you are, plus up to 300 bonus for answering right several times in a row.</p>
+      <p>Pick categories in the lobby, or leave it on All. Everyone answers on their own phone. You've got ${Math.round((S.turnMs || 15000) / 1000)} seconds a question; the question ends early once everyone has answered. A right answer scores 50 to 90 points, more the faster you are, plus up to 10 bonus for answering right several times in a row. No question is worth more than 100.</p>
       <p class="hint">Extra questions from Open Trivia DB (opentdb.com), used under CC BY-SA 4.0.</p></details>`;
     if (kings()) return `<details><summary>House rules: Kings Cup</summary><ol>
       ${Object.entries(KC).sort((a, b) => "A2345678910JQK".indexOf(a[0]) - "A2345678910JQK".indexOf(b[0])).map(([r, [t, d]]) => `<li><b>${r} · ${t}.</b> ${d}</li>`).join("")}</ol>
