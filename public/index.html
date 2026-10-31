@@ -87,6 +87,46 @@ button:active { transform: scale(.97); }
 .drink-card .big { font: 900 clamp(56px, 18vw, 84px)/.95 var(--display); text-transform: uppercase; color: var(--miss); }
 .drink-why { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; color: var(--muted); font-weight: 600; }
 .drink-card .primary { min-height: 72px; font-size: 28px; }
+/* Trivia: a big question card, four colour-coded answers, a reveal with who picked what, then scores */
+.q-card { width: 100%; max-height: 100%; display: grid; gap: 10px; align-content: center; text-align: center; padding: 8px; }
+.q-cat { justify-self: center; font: 700 12px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--bus); border: 1px solid var(--bus); padding: 5px 10px; border-radius: 999px; }
+.q-text { margin: 0; font: 900 clamp(22px, 6.5vw, 34px)/1.1 var(--display); text-transform: uppercase; text-wrap: balance; animation: slam .45s cubic-bezier(.2,1.6,.4,1) both; }
+.q-big { margin: 0; font: 900 clamp(48px, 16vw, 80px)/1 var(--display); text-transform: uppercase; color: var(--bus); }
+.answers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; height: 100%; }
+.ans {
+  position: relative; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 8px; text-align: left;
+  padding: 6px 10px; border: 0; border-radius: 12px; background: var(--c); color: #fff; min-height: 52px;
+  font: 700 clamp(14px, 4vw, 18px)/1.15 var(--body); text-shadow: 0 1px 2px rgba(0,0,0,.35); overflow: hidden;
+  transition: opacity .25s, transform .25s, box-shadow .25s;
+}
+.ans .sh { font-size: 20px; line-height: 1; }
+.ans.picked { box-shadow: 0 0 0 3px var(--asphalt), 0 0 0 6px var(--ink); }
+.answers.locked .ans:not(.picked) { opacity: .4; }
+.ans.right { box-shadow: 0 0 0 3px var(--asphalt), 0 0 0 6px var(--ok); animation: pop .5s cubic-bezier(.2,1.6,.4,1); }
+.answers.revealed .ans:not(.right) { opacity: .3; transform: scale(.97); }
+.ans .who { position: absolute; right: 6px; bottom: 5px; display: flex; gap: 2px; }
+.ans .who .rdot { width: 14px; height: 14px; font-size: 8px; line-height: 14px; }
+.locked-line { margin: 0; text-align: center; color: var(--muted); font-weight: 600; }
+.board { list-style: none; margin: 0; padding: 0; width: 100%; display: grid; gap: 6px; align-content: center; max-height: 100%; overflow: hidden; }
+.board li { display: grid; grid-template-columns: 26px 30px 1fr auto auto; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 10px; background: var(--panel); border: 1px solid var(--line); animation: rise .4s calc(var(--i) * 70ms) ease-out both; }
+.board li.me { border-color: var(--bus); }
+.board .rk { font: 900 18px/1 var(--display); color: var(--muted); text-align: center; }
+.board .av { width: 28px; height: 28px; font-size: 14px; }
+.board .nm { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.board .sc { font: 700 16px/1 var(--mono); font-variant-numeric: tabular-nums; }
+.board .gain { font: 700 12px/1 var(--mono); color: var(--ok); min-width: 44px; text-align: right; }
+.board .up { color: var(--ok); } .board .down { color: var(--miss); }
+.podium { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; gap: 8px; width: 100%; height: 100%; padding-top: 8px; }
+.pod { display: grid; justify-items: center; gap: 6px; align-content: end; height: 100%; }
+.pod .av { width: 44px; height: 44px; font-size: 22px; }
+.pod .nm { font-weight: 700; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.pod .blk { width: 100%; border-radius: 10px 10px 0 0; background: var(--panel); border: 1px solid var(--line); display: grid; place-items: start center; padding-top: 8px; font: 900 28px/1 var(--display); color: var(--bus); animation: grow .8s calc(var(--i) * 200ms) cubic-bezier(.2,.8,.3,1) both; transform-origin: bottom; }
+.pod .pts { font: 700 13px/1 var(--mono); color: var(--muted); }
+@keyframes grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+.len-pick { display: flex; gap: 8px; }
+.len-pick button { flex: 1; min-height: 44px; border-radius: 10px; border: 2px solid var(--line); background: var(--asphalt); font: 700 16px var(--body); }
+.len-pick button.on { border-color: var(--bus); color: var(--bus); }
+
 /* Kings Cup: a ring of face-down cards around the cup, which fills as Kings are drawn */
 .ring { position: relative; width: 70vw; aspect-ratio: 1; --R: 30vw; }
 @supports (width: 1cqw) { .ring { width: min(100cqw, 100cqh); --R: min(43cqw, 43cqh); } }
@@ -618,6 +658,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     hilo: { name: "Higher or Lower", blurb: "Get 3 higher-or-lower calls right in a row.", dots: ["S", "1", "2", "3"],
       stops: [["Start card", "Start"], ["Guess 1", "Guess 1"], ["Guess 2", "Guess 2"], ["Guess 3", "Guess 3"]] },
     horse: { name: "Horse Race", blurb: "Bet on an ace and take turns flipping cards to race them up the track." },
+    trivia: { name: "Trivia", blurb: "Quick-fire quiz on everyone's phone. Faster right answers score more." },
     kings: { name: "Kings Cup", blurb: "Take turns drawing from the ring. Every card has a rule; the 4th King drinks the cup." },
   };
   // Kings Cup rules by rank: [title, what happens]
@@ -679,6 +720,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
   const hilo = () => mode() === "hilo";
   const horse = () => mode() === "horse";
   const kings = () => mode() === "kings";
+  const trivia = () => mode() === "trivia";
   const byId = id => S.players.find(p => p.id === id);
   const amHost = () => S && S.hostId === me;
   const nameOf = id => { const p = byId(id); return p ? esc(p.name) : "Someone"; };
@@ -870,7 +912,8 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     const late = secs <= 2;
     num.classList.toggle("late", late);
     const bar = document.getElementById("clock"); if (bar) bar.classList.toggle("late", late);
-    const mine = (S.screen === "play" && S.current === me && S.phase === "guess" && !suspense) || (S.screen === "race" && S.race && !S.race.winner && S.race.flipper === me);
+    const mine = (S.screen === "play" && S.current === me && S.phase === "guess" && !suspense) || (S.screen === "race" && S.race && !S.race.winner && S.race.flipper === me)
+      || (S.screen === "trivia" && S.trivia && S.trivia.phase === "question" && myAnswer === null && !S.trivia.answered.includes(me));
     const key = `${S.ev.seq}:${secs}`;
     if (mine && secs <= 3 && secs > 0 && lastTick !== key) { lastTick = key; tone(secs === 1 ? 1100 : 880, .06, "square", .08); buzz(25); }
   }, 200);
@@ -981,6 +1024,18 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
   }
   // Sounds and callouts for events that don't go through a reveal.
   function cue(prev) {
+    if (S.screen === "trivia" && S.trivia) {
+      const t = S.trivia;
+      if (fx === "question") sfx.chime();
+      if (fx === "reveal") {
+        const mine = t.picks[me];
+        if (mine === t.correct) { takeover(`Correct! +${t.gained[me] || 0}`, "won"); sfx.ding(); }
+        else if (mine == null) { takeover("Too slow!", "miss"); sfx.buzz(); }
+        else { takeover("Wrong!", "miss"); sfx.bump(); }
+      }
+      if (fx === "trivia-over") { celebrate(); sfx.horn(); }
+      return;
+    }
     if (S.screen === "kings" && S.kings) {
       const k = S.kings, c = k.last, by = S.ev.by;
       if (fx === "draw" && c) {
@@ -1188,13 +1243,14 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     const modes = amHost()
       ? `<fieldset class="modes"><legend class="label">Game mode</legend>${Object.entries(MODES).map(([k, m]) =>
           `<label class="mode"><input type="radio" name="mode" value="${k}" ${mode() === k ? "checked" : ""}><span><b>${m.name}</b><small>${m.blurb}</small></span></label>`).join("")}</fieldset>
-        <div class="opts"${horse() || kings() ? " hidden" : ""}>
+        ${trivia() ? `<div class="field"><span class="label">Questions</span><div class="len-pick">${[10, 15, 20].map(n => `<button class="${S.settings.triviaLen === n ? "on" : ""}" data-tl="${n}">${n}</button>`).join("")}</div></div>` : ""}
+        <div class="opts"${horse() || kings() || trivia() ? " hidden" : ""}>
           <label class="opt"><input type="checkbox" id="aces" ${S.settings.acesHigh ? "checked" : ""}><span>Aces high<small>Off makes aces the lowest card.</small></span></label>
           <label class="opt"><input type="checkbox" id="ties" ${S.settings.tiesMiss ? "checked" : ""}><span>Ties are a miss<small>A card matching the one it's compared to means you drink. Off gives a free pass.</small></span></label>
         </div>`
       : `<div class="field"><span class="label">Game mode</span><div class="mode-read"><b>${MODES[mode()].name}</b><p class="hint">${MODES[mode()].blurb}</p></div></div>`;
     const go = amHost()
-      ? `<button class="primary wide" id="start">${horse() ? "Place your bets" : kings() ? "Start Kings Cup" : "Start the game"}</button>`
+      ? `<button class="primary wide" id="start">${horse() ? "Place your bets" : kings() ? "Start Kings Cup" : trivia() ? "Start Trivia" : "Start the game"}</button>`
       : `<p class="waiting">Waiting for <b>${nameOf(S.hostId)}</b> to start the game.</p>`;
     return `${confirmHTML()}<section class="console setup">
       <div class="roomcode"><div><span class="label">Room code</span><br><strong>${esc(S.code)}</strong></div>
@@ -1452,6 +1508,61 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     </section>`;
   }
 
+  // ---- Trivia ----
+  const ordinal = n => { const v = n % 100; return n + (["th", "st", "nd", "rd"][(v - 20) % 10] || ["th", "st", "nd", "rd"][v] || "th"); };
+  const ANS_STYLE = [["#e5484d", "▲"], ["#3e8ef7", "◆"], ["#d99a00", "●"], ["#2fa75a", "■"]];
+  let myAnswer = null;  // shown straight away, before the server confirms
+  function boardHTML(t, final) {
+    const sorted = [...S.players].sort((a, b) => (t.scores[b.id] || 0) - (t.scores[a.id] || 0));
+    if (final) {
+      const top = [sorted[1], sorted[0], sorted[2]];
+      return `<div class="podium">${top.map((p, i) => p ? `<div class="pod" style="--i:${[1, 0, 2][i]}">
+          <span class="av" style="--c:${p.color}">${esc(initial(p.name))}</span><span class="nm">${p.id === me ? "You" : esc(p.name)}</span><span class="pts">${t.scores[p.id] || 0}</span>
+          <div class="blk" style="height:${[62, 86, 44][i]}%">${[2, 1, 3][i]}</div></div>` : "<div></div>").join("")}</div>`;
+    }
+    return `<ol class="board">${sorted.slice(0, 8).map((p, i) => {
+      const was = t.prevRank[p.id], move = was ? was - (i + 1) : 0;
+      return `<li class="${p.id === me ? "me" : ""}" style="--i:${i}"><span class="rk">${i + 1}</span><span class="av" style="--c:${p.color}">${esc(initial(p.name))}</span>
+        <span class="nm">${p.id === me ? "You" : esc(p.name)}${move > 0 ? ' <span class="up">▲</span>' : move < 0 ? ' <span class="down">▼</span>' : ""}</span>
+        <span class="gain">${t.gained[p.id] ? `+${t.gained[p.id]}` : ""}</span><span class="sc">${t.scores[p.id] || 0}</span></li>`;
+    }).join("")}</ol>`;
+  }
+  function triviaHTML() {
+    const t = S.trivia, q = t.q;
+    if (t.phase !== "question") myAnswer = null;
+    const picked = t.phase === "question" ? (myAnswer ?? null) : t.picks[me] ?? null;
+    const head = t.phase === "ready" ? "Get ready" : t.phase === "over" ? "Final scores" : t.phase === "board" ? "Scores" : `Question ${t.n + 1} of ${t.total}`;
+    let middle;
+    if (t.phase === "ready") middle = `<div class="q-card"><span class="q-cat">${t.total} questions</span><p class="q-big">Question 1</p></div>`;
+    else if (t.phase === "board") middle = boardHTML(t, false);
+    else if (t.phase === "over") middle = boardHTML(t, true);
+    else middle = `<div class="q-card"><span class="q-cat">${esc(q.cat)}</span><p class="q-text" data-key="q${t.n}">${esc(q.text)}</p></div>`;
+    let panel;
+    if (t.phase === "question" || t.phase === "reveal") {
+      const revealed = t.phase === "reveal";
+      const btns = q.answers.map((a, i) => {
+        const who = revealed ? S.players.filter(p => t.picks[p.id] === i).slice(0, 5).map(p => `<span class="rdot" style="--c:${p.color}">${esc(initial(p.name))}</span>`).join("") : "";
+        const cls = ["ans", picked === i ? "picked" : "", revealed && t.correct === i ? "right" : ""].filter(Boolean).join(" ");
+        return `<button class="${cls}" data-ta="${i}" style="--c:${ANS_STYLE[i][0]}" ${revealed || picked !== null ? "disabled" : ""}><span class="sh">${ANS_STYLE[i][1]}</span><span>${esc(a)}</span>${who ? `<span class="who">${who}</span>` : ""}</button>`;
+      }).join("");
+      const line = revealed
+        ? (t.picks[me] === t.correct ? `Correct! +${t.gained[me] || 0}` : t.picks[me] == null ? "No answer" : "Wrong")
+        : picked !== null ? `Locked in · ${t.answered.length}/${S.players.filter(p => p.connected).length} answered` : "";
+      panel = `<section class="console"><div class="answers${revealed ? " revealed" : picked !== null ? " locked" : ""}">${btns}</div>${line ? `<p class="locked-line">${line}</p>` : ""}</section>`;
+    } else if (t.phase === "over") {
+      const winner = [...S.players].sort((a, b) => (t.scores[b.id] || 0) - (t.scores[a.id] || 0))[0];
+      panel = `<section class="console"><div class="verdict won"><span class="big slam">${winner && winner.id === me ? "You win!" : `${esc(winner ? winner.name : "")} wins`}</span></div>
+        ${amHost() ? '<div class="row"><button class="primary" id="trivia-again">Play again</button><button class="ghost" id="to-menu">Change game</button></div>' : `<p class="waiting">Waiting for <b>${nameOf(S.hostId)}</b>.</p>`}</section>`;
+    } else {
+      const myRank = t.phase === "board" ? [...S.players].sort((a, b) => (t.scores[b.id] || 0) - (t.scores[a.id] || 0)).findIndex(p => p.id === me) + 1 : 0;
+      panel = `<section class="console"><p class="waiting" style="text-align:center">${t.phase === "ready" ? "Answer on your phone. Faster is worth more." : `You're ${ordinal(myRank)} with ${t.scores[me] || 0} points. Next question coming…`}</p></section>`;
+    }
+    return `${confirmHTML()}<div class="frame">
+      ${crewHTML()}
+      <section class="status"><p class="turn-head">${head}</p>${t.phase === "question" ? clockHTML() : ""}</section>
+      <div class="table-area">${middle}</div>${panel}</div>`;
+  }
+
   // ---- Kings Cup ----
   let catchOpen = false;
   function ringHTML(k) {
@@ -1558,6 +1669,8 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
   // ---- shared ----
   function rulesHTML() {
     const tail = `Aces are ${S.settings.acesHigh ? "high" : "low"}. A tie with the card you're comparing against ${S.settings.tiesMiss ? "counts as a miss" : "is a free pass"}.`;
+    if (trivia()) return `<details><summary>How Trivia works</summary>
+      <p>Everyone answers on their own phone. You've got ${Math.round((S.turnMs || 15000) / 1000)} seconds a question; the question ends early once everyone has answered. A right answer scores 500 to 1,000 points, more the faster you are, plus up to 300 bonus for answering right several times in a row.</p></details>`;
     if (kings()) return `<details><summary>House rules: Kings Cup</summary><ol>
       ${Object.entries(KC).sort((a, b) => "A2345678910JQK".indexOf(a[0]) - "A2345678910JQK".indexOf(b[0])).map(([r, [t, d]]) => `<li><b>${r} · ${t}.</b> ${d}</li>`).join("")}</ol>
       <p>Take turns drawing by swiping across the screen. Anyone mated to a drinker drinks too.</p></details>`;
@@ -1624,7 +1737,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     // A new screen (lobby to game, game to awards) starts at the top; updates within a screen keep their place.
     const screen = S ? S.screen : "join";
     if (screen !== lastScreen) { lastScreen = screen; scrollTo(0, 0); }
-    document.documentElement.classList.toggle("framed", screen === "play" || (screen === "race" && !!S.race) || (screen === "kings" && !!S.kings));
+    document.documentElement.classList.toggle("framed", screen === "play" || (screen === "race" && !!S.race) || (screen === "kings" && !!S.kings) || (screen === "trivia" && !!S.trivia));
     document.documentElement.classList.toggle("swipe-turn", !!canSwipe());
     paint(!S ? joinHTML()
       : S.screen === "lobby" ? lobbyHTML()
@@ -1632,6 +1745,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
       : S.screen === "race" && S.race ? raceHTML()
       : S.screen === "awards" ? awardsHTML()
       : S.screen === "kings" && S.kings ? kingsHTML()
+      : S.screen === "trivia" && S.trivia ? triviaHTML()
       : playHTML());
     document.getElementById("more").hidden = !S;
     animateHorses();
@@ -1753,6 +1867,12 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     if (t.dataset.ba) return act("setBet", { delta: +t.dataset.ba });
     if (t.dataset.kick) return act("kick", { id: t.dataset.kick });
     if (t.dataset.kcPick) return act("pick", { to: t.dataset.kcPick });
+    if (t.dataset.ta !== undefined) {
+      if (myAnswer !== null || !S.trivia || S.trivia.phase !== "question") return;
+      myAnswer = +t.dataset.ta; sfx.pop(); buzz(30);
+      send({ t: "act", a: "answer", i: myAnswer }); return render();
+    }
+    if (t.dataset.tl) return act("setTriviaLen", { n: +t.dataset.tl });
     if (t.dataset.kcCatch) { catchOpen = false; return act("catch", { to: t.dataset.kcCatch }); }
     switch (t.id) {
       case "create": {
@@ -1789,6 +1909,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
       case "kc-claim": sfx.gulp(); return act("claim");
       case "kc-catch-open": catchOpen = true; return render();
       case "kings-again": return act("kingsAgain");
+      case "trivia-again": return act("triviaAgain");
     }
   });
   app.addEventListener("submit", e => {

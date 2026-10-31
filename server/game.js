@@ -11,7 +11,8 @@ const SUITS = {
 };
 const SUIT_KEYS = ["S", "H", "D", "C"];
 const RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
-const MODES = ["classic", "hilo", "horse", "kings"];
+const MODES = ["classic", "hilo", "horse", "kings", "trivia"];
+const QUESTIONS = require("./trivia-questions");
 const MAX_PLAYERS = 16;
 const GIVE_ON_OFF = 3; // drinks a player hands out when they get off the bus
 // Bubble colours, picked in join order so neighbours differ.
@@ -31,7 +32,7 @@ const label = c => c.r + SUITS[c.s].sym;
 function createRoom(code) {
   return {
     code, hostId: null, players: [],
-    settings: { mode: "classic", acesHigh: true, tiesMiss: true, trackLen: 7 },
+    settings: { mode: "classic", acesHigh: true, tiesMiss: true, trackLen: 7, triviaLen: 10 },
     screen: "lobby",
     current: null, starter: 0, deck: [], row: [], stage: 0, phase: "guess", lastGood: "",
     race: null,
@@ -173,6 +174,73 @@ function guess(room, g) {
 // ---- Horse race ----
 // Each flip moves that suit's ace one spot. Once every ace has reached sideline card k, card k turns
 // over and the ace of its suit drops back one (never below the start). First ace past the last card wins.
+// ---- Trivia ----
+// Quick-fire quiz: everyone answers on their own phone against the clock. Faster right answers score
+// more, with a bonus for answering several right in a row. Each question goes question -> reveal -> scores.
+const TRIVIA = { ready: 2500, question: 15000, reveal: 4500, board: 4000 };
+function newTrivia(room) {
+  const order = shuffle(QUESTIONS.map((_, i) => i)).slice(0, room.settings.triviaLen);
+  room.trivia = {
+    id: token(4), order, n: 0, phase: "ready", endsAt: Date.now() + TRIVIA.ready,
+    q: null, correct: -1, answers: {}, scores: {}, streak: {}, gained: {}, prevRank: {},
+  };
+  room.players.forEach(p => { room.trivia.scores[p.id] = 0; room.trivia.streak[p.id] = 0; });
+  room.screen = "trivia";
+  bump(room, "trivia");
+}
+function triviaAsk(room) {
+  const t = room.trivia, [cat, text, ...answers] = QUESTIONS[t.order[t.n]];
+  const shuffled = shuffle(answers.map((a, i) => ({ a, right: i === 0 })));
+  t.q = { cat, text, answers: shuffled.map(x => x.a) };
+  t.correct = shuffled.findIndex(x => x.right);
+  t.answers = {}; t.gained = {};
+  t.phase = "question"; t.startedAt = Date.now(); t.endsAt = t.startedAt + TRIVIA.question;
+  bump(room, "question");
+}
+function triviaReveal(room) {
+  const t = room.trivia;
+  t.prevRank = rankOf(room);
+  for (const p of room.players) {
+    const ans = t.answers[p.id];
+    if (ans && ans.i === t.correct) {
+      t.streak[p.id] = (t.streak[p.id] || 0) + 1;
+      const speed = Math.max(0, 1 - ans.ms / TRIVIA.question);
+      const pts = Math.round((500 + 500 * speed) / 10) * 10 + Math.min(300, (t.streak[p.id] - 1) * 100);
+      t.gained[p.id] = pts;
+      t.scores[p.id] = (t.scores[p.id] || 0) + pts;
+      p.correct += 1; p.guesses += 1;
+      p.bestRun = Math.max(p.bestRun, t.streak[p.id]);
+    } else {
+      t.streak[p.id] = 0; t.gained[p.id] = 0;
+      if (ans) p.guesses += 1;
+    }
+  }
+  t.phase = "reveal"; t.endsAt = Date.now() + TRIVIA.reveal;
+  bump(room, "reveal");
+}
+function rankOf(room) {
+  const t = room.trivia, sorted = [...room.players].sort((a, b) => (t.scores[b.id] || 0) - (t.scores[a.id] || 0));
+  return Object.fromEntries(sorted.map((p, i) => [p.id, i + 1]));
+}
+function triviaTick(room, now) {
+  const t = room.trivia;
+  if (t.phase === "over" || now < t.endsAt) {
+    // Everyone's answered: no need to wait out the clock.
+    if (t.phase === "question" && room.players.filter(p => p.connected).every(p => t.answers[p.id])) { triviaReveal(room); return true; }
+    return false;
+  }
+  if (t.phase === "ready") { triviaAsk(room); return true; }
+  if (t.phase === "question") { triviaReveal(room); return true; }
+  if (t.phase === "reveal") { t.phase = "board"; t.endsAt = now + TRIVIA.board; bump(room, "board"); return true; }
+  if (t.phase === "board") {
+    t.n += 1;
+    if (t.n >= t.order.length) { t.phase = "over"; bump(room, "trivia-over"); }
+    else triviaAsk(room);
+    return true;
+  }
+  return false;
+}
+
 // ---- Kings Cup ----
 // Players take turns drawing from a ring of 52 cards. Each rank has a rule; the phones run the
 // interactive ones (races to tap, picking who drinks, mates, rules). The 4th King drinks the cup.
@@ -364,6 +432,7 @@ function act(room, pid, msg) {
       if (!room.players.length) return "Add a player first.";
       if (room.settings.mode === "horse") { room.screen = "bets"; bump(room, "screen"); return null; }
       if (room.settings.mode === "kings") { newKings(room); return null; }
+      if (room.settings.mode === "trivia") { newTrivia(room); return null; }
       room.starter = 0; newRound(room); return null;
     case "menu":
       if (hostOnly()) return hostOnly();
@@ -378,6 +447,7 @@ function act(room, pid, msg) {
       if (room.screen === "awards") { room.screen = "lobby"; bump(room, "screen"); return null; }
       if (room.settings.mode === "horse") { room.race = null; room.screen = "bets"; bump(room, "screen"); return null; }
       if (room.settings.mode === "kings") { newKings(room); return null; }
+      if (room.settings.mode === "trivia") { newTrivia(room); return null; }
       if (room.screen === "play") newRound(room); else bump(room, "screen");
       return null;
     case "guess": {
@@ -481,6 +551,22 @@ function act(room, pid, msg) {
       kOwe(room, to, 1, `Answered ${me.name}'s question`);
       return null;
     }
+    case "answer": {
+      const t = room.trivia;
+      if (room.screen !== "trivia" || !t || t.phase !== "question") return null;
+      const i = Number(msg.i);
+      if (!Number.isInteger(i) || i < 0 || i > 3 || t.answers[pid]) return null;
+      t.answers[pid] = { i, ms: Date.now() - t.startedAt };
+      if (!(pid in t.scores)) { t.scores[pid] = 0; t.streak[pid] = 0; }
+      return null;
+    }
+    case "setTriviaLen":
+      if (hostOnly()) return hostOnly();
+      if (![10, 15, 20].includes(msg.n)) return "Pick 10, 15 or 20.";
+      room.settings.triviaLen = msg.n; return null;
+    case "triviaAgain":
+      if (hostOnly()) return hostOnly();
+      newTrivia(room); return null;
     case "kingsAgain":
       if (hostOnly()) return hostOnly();
       newKings(room); return null;
@@ -501,12 +587,18 @@ function publicState(room) {
     current: room.current, row: room.row, stage: room.stage, phase: room.phase, lastGood: room.lastGood,
     next: room.screen === "play" ? nextUp(room, room.current) : null,
     autoPassMs: AUTO_PASS_MS, giveOnOff: GIVE_ON_OFF, offlineSkipMs: OFFLINE_SKIP_MS,
-    turnMs: TURN_MS, turnLeftMs: clockRunning(room) ? Math.max(0, deadline(room) - Date.now()) : null,
+    turnMs: room.screen === "trivia" ? TRIVIA.question : TURN_MS, turnLeftMs: room.screen === "trivia" && room.trivia ? (room.trivia.phase === "question" ? Math.max(0, room.trivia.endsAt - Date.now()) : null) : clockRunning(room) ? Math.max(0, deadline(room) - Date.now()) : null,
     grudges: Object.entries(room.grudges || {}).map(([k, n]) => { const [from, to] = k.split(">"); return { from, to, n }; }),
     race: r && {
       id: r.id, len: r.len, side: r.side.map((c, i) => r.sideUp[i] ? c : null), sideUp: r.sideUp,
       pos: r.pos, last: r.last, msg: r.msg, back: r.back, flips: r.flips, winner: r.winner, results: r.results, flipper: r.flipper,
     },
+    trivia: room.trivia && (({ order, correct, answers, startedAt, endsAt, ...t }) => ({
+      ...t, total: order.length, msLeft: Math.max(0, endsAt - Date.now()),
+      answered: Object.keys(answers),
+      correct: t.phase === "reveal" || t.phase === "board" ? correct : -1,
+      picks: t.phase === "reveal" || t.phase === "board" ? Object.fromEntries(Object.entries(answers).map(([id, a]) => [id, a.i])) : {},
+    }))(room.trivia),
     kings: room.kings && (({ deck: d, pending: pk, ...k }) => ({
       ...k, left: d.length,
       pending: pk && { ...pk, taps: pk.taps ? Object.keys(pk.taps) : undefined, msLeft: pk.type === "race" ? Math.max(0, pk.at + KINGS_RACE_MS - Date.now()) : undefined },
@@ -538,6 +630,7 @@ function timeout(room) {
   bump(room, "miss", stage, { by: p.id, timeout: true });
 }
 function tick(room, now = Date.now()) {
+  if (room.screen === "trivia" && room.trivia) return triviaTick(room, now);
   const k = room.kings;
   if (room.screen === "kings" && k && !k.over) {
     const pk = k.pending;
@@ -575,7 +668,7 @@ function tick(room, now = Date.now()) {
 
 // Actions that depend on what the player saw. A tap sent against an older state (double tap, or two
 // players flipping at once) is dropped instead of being applied to the next card.
-const SEQ_CHECKED = new Set(["guess", "pass", "skip", "flip", "draw", "startRace", "raceAgain", "kingsAgain", "start", "restart", "menu"]);
+const SEQ_CHECKED = new Set(["guess", "pass", "skip", "flip", "draw", "startRace", "raceAgain", "kingsAgain", "triviaAgain", "start", "restart", "menu"]);
 const isStale = (room, msg) => SEQ_CHECKED.has(msg && msg.a) && Number.isInteger(msg.seq) && msg.seq !== room.ev.seq;
 
 module.exports = { tick, createRoom, addPlayer, removePlayer, setConnected, reassignHost, cleanName, act, isStale, publicState, player, SUIT_KEYS, MAX_PLAYERS };
