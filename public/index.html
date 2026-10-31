@@ -1068,7 +1068,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     const flashLine = v.lastGood ? `<p class="flash ok">${esc(v.lastGood)}</p>` : "";
     let controls;
     if (mine && armed) {
-      controls = `${choices}<button class="primary flip-btn" id="flip-now">Flip it</button>`;
+      controls = choices;
     } else if (mine) {
       controls = choices;
     } else if (amHost() && !p.connected) {
@@ -1157,8 +1157,8 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     const last = r.last ? `<div class="draw-slot"><div class="card up${fresh ? (sw ? " swipe-in" : " deal") : ""}" data-key="f${r.flips}"${fresh && sw ? ` style="--dir:${sw.dir};--spd:${sw.spd}ms"` : ""}><div class="back"></div>${miniFace(r.last)}</div></div>` : "";
     const who = myFlip ? "<b>Your flip!</b> Swipe across the screen."
       : f && !f.connected && amHost() ? `<b>${esc(f.name)}</b> is offline.` : `<b>${f ? esc(f.name) : "Someone"}</b> is flipping…`;
-    const button = myFlip ? '<button class="primary flip-btn" id="flip">Flip a card</button>'
-      : f && !f.connected && amHost() ? `<button class="ghost wide" id="flip">Flip for ${esc(f.name)}</button>` : "";
+    // Only the host gets a button, to flip for someone whose phone has dropped. Everyone else swipes.
+    const button = !myFlip && f && !f.connected && amHost() ? `<button class="ghost wide" id="flip">Flip for ${esc(f.name)}</button>` : "";
     return `<section class="console race-console">
       <div class="deck-row">${deck}${last}<div style="min-width:0"><p class="flipper-line">${who}</p><p class="race-msg" aria-live="polite">${esc(r.msg)}</p></div></div>
       ${button}
@@ -1476,14 +1476,13 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
       case "react-toggle": trayOpen = !trayOpen; return render();
       case "restart-yes": confirming = false; return act("restart");
       case "restart-no": confirming = false; return render();
-      case "flip-now": return commitFlip(1, .3);
       case "skip": return act("skip");
       case "start-race": return act("startRace");
       case "race-again": return act("raceAgain");
       case "to-menu": sheetOpen = false; return act("menu");
       case "show-awards": sheetOpen = false; return act("awards");
       case "new-night": return act("restart");
-      case "flip": return S.race && S.race.flipper === me ? commitFlip(1, .3) : act("flip");
+      case "flip": return act("flip");
       case "len-down": return act("setTrackLen", { delta: -1 });
       case "len-up": return act("setTrackLen", { delta: 1 });
     }
