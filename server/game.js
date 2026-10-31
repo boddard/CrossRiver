@@ -192,7 +192,7 @@ function nextFlipper(room, fromId) {
   for (let k = 1; k <= n; k++) { const p = room.players[((from < 0 ? -1 : from) + k + n) % n]; if (p.connected) return p.id; }
   return room.players[0] ? room.players[0].id : null;
 }
-function flip(room) {
+function flip(room, by) {
   const r = room.race;
   r.flipper = nextFlipper(room, r.flipper);
   if (!r.deck.length) { r.deck = shuffle(r.discard); r.discard = []; }
@@ -221,9 +221,9 @@ function flip(room) {
       else { p.drinks += p.bet.amt; p.lost += p.bet.amt; owe(p, p.bet.amt, `Lost your ${SUITS[p.bet.suit].sym} bet`); }
       return { id: p.id, name: p.name, suit: p.bet.suit, amt: p.bet.amt, won };
     });
-    bump(room, "won");
+    bump(room, "won", -1, { by });
   } else {
-    bump(room, "flip");
+    bump(room, "flip", -1, { by });
   }
 }
 
@@ -329,7 +329,7 @@ function act(room, pid, msg) {
       if (room.screen !== "race" || !room.race || room.race.winner) return "The race is over.";
       const f = player(room, room.race.flipper);
       if (f && pid !== f.id && !(host && !f.connected)) return `It's ${f.name}'s flip.`;
-      flip(room); return null;
+      flip(room, pid); return null;
     }
     case "give": {
       // Hand one drink to another player. Doesn't touch the turn, so it never makes a rider's tap stale.

@@ -180,10 +180,12 @@ wss.on("connection", ws => {
     // Live swipe progress from the rider (or the horse race flipper), so everyone watches the card lift.
     if (msg.t === "drag") {
       if (!allow(ws, "drag", 30, 1000)) return;
-      const p = Math.max(0, Math.min(1, Number(msg.p) || 0));
+      // p runs 0-2: 0-1 turns the card to edge-on, 1-2 turns it face up (after the server has dealt it).
+      const p = Math.max(0, Math.min(2, Number(msg.p) || 0));
       const riding = room.screen === "play" && room.phase === "guess" && room.current === ws.pid;
       const flipping = room.screen === "race" && room.race && !room.race.winner && room.race.flipper === ws.pid;
-      if (!riding && !flipping) return;
+      const finishing = room.ev.by === ws.pid && Date.now() - (room.phaseAt || 0) < 8000; // turning the card they just drew
+      if (!riding && !flipping && !finishing) return;
       const g = riding && typeof msg.g === "string" && /^[a-zSHDC]{1,8}$/.test(msg.g) ? msg.g : undefined;
       const dir = Number(msg.dir) < 0 ? -1 : 1;
       const spd = Number.isFinite(+msg.spd) && msg.spd ? Math.round(Math.min(600, Math.max(100, +msg.spd))) : undefined;

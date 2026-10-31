@@ -469,6 +469,19 @@ details p { max-width: 65ch; color: var(--muted); }
 }
 .dragging .card { transition: none !important; }
 html.swipe-turn, html.swipe-turn body { touch-action: none; }
+/* The giant card: fills the screen while it's being swiped and turns with the finger, face and all */
+.bigcard { position: fixed; inset: 0; z-index: 46; display: grid; place-items: center; align-content: center; gap: 18px; padding: 0 16px; background: rgba(8,9,12,.86); pointer-events: none; animation: fade .12s ease-out both; }
+.bc-who { margin: 0; font: 900 clamp(26px, 8vw, 40px)/1 var(--display); text-transform: uppercase; color: var(--bus); text-align: center; text-wrap: balance; }
+.bc-card { width: min(72vw, calc(60dvh * 5 / 7)); aspect-ratio: 5 / 7; perspective: 1800px; container-type: inline-size; }
+.bc-inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transform: rotateY(var(--rot, 0deg)); transition: transform var(--rt, 0ms) linear; }
+.bc-back, .bc-face { position: absolute; inset: 0; border-radius: 6cqw; backface-visibility: hidden; -webkit-backface-visibility: hidden; box-shadow: 0 30px 70px rgba(0,0,0,.6); }
+.bc-back { background: repeating-linear-gradient(135deg, var(--bus) 0 22px, #e2a400 22px 44px); border: 5px solid #0b0c0f; box-shadow: inset 0 0 0 7px var(--bus), 0 30px 70px rgba(0,0,0,.6); display: grid; place-items: center; }
+.bc-back::after { content: "BUS"; font: 900 26cqw/1 var(--display); color: #0b0c0f; letter-spacing: .06em; }
+.bc-face { transform: rotateY(180deg); background: var(--card); color: var(--card-ink); border: 1px solid #d9d5c8; display: grid; grid-template-rows: auto 1fr auto; padding: 6cqw 7cqw; }
+.bc-face.red { color: var(--suit-red); }
+.bc-face .c { font: 700 15cqw/1 var(--mono); letter-spacing: -.04em; }
+.bc-face .c.b { justify-self: end; transform: rotate(180deg); }
+.bc-face .pp { display: grid; place-items: center; font-size: 46cqw; line-height: 1; }
 .slot.armed, .draw-slot.armed { cursor: grab; }
 .slot.armed .back, .draw-slot.armed .back { box-shadow: inset 0 0 0 3px var(--bus), 0 0 0 3px rgba(245,179,1,.35), 0 0 30px rgba(245,179,1,.35); }
 .swipe-hint { position: absolute; left: 50%; bottom: -4px; transform: translate(-50%, 100%); white-space: nowrap; font: 700 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--bus); animation: nudgex 1.2s ease-in-out infinite; pointer-events: none; }
@@ -519,6 +532,10 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
 <div class="toast" id="toast" role="status" hidden></div>
 <div class="floats" id="floats" aria-hidden="true"></div>
 <div class="takeover" id="takeover" aria-live="assertive" hidden><span></span></div>
+<div class="bigcard" id="bigcard" aria-hidden="true" hidden>
+  <p class="bc-who" id="bc-who"></p>
+  <div class="bc-card"><div class="bc-inner" id="bc-inner"><div class="bc-back"></div><div class="bc-face" id="bc-face"></div></div></div>
+</div>
 
 <script>
 (() => {
@@ -555,7 +572,8 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
   let sheetOpen = false, sheetRules = false, leaveArmed = false;
   let oweReadyAt = 0;
   let lastSwipe = null;   // { dir, spd, at }: how the latest card was swiped, so the face lands the same way
-  let pendingFlip = null; // my swipe is done and sent; hold the card edge-on until the answer arrives  // the Drink card waits until the reveal and callouts have played
+  let pendingFlip = null; // my swipe is done and sent; hold the card edge-on until the answer arrives
+  let flip = null;        // the giant card being turned right now: { by, dir, committed, faceKnown, done, autoSpd, after }  // the Drink card waits until the reveal and callouts have played
   const TITLE = document.title;
   const calm = () => window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -714,7 +732,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
       return;
     }
     if (m.t === "pong") return;
-    if (m.t === "stale") { clearPending(); m.t = "state"; }
+    if (m.t === "stale") { clearPending(); if (flip && flip.by === me && !flip.faceKnown) { big.hide(); flip = null; pendingFlip = null; } m.t = "state"; }
     if (m.t === "state") return onState(m.state);
     if (m.t === "react") {
       floatUp(`<b>${REACTIONS[m.e] || ""}</b><small>${m.from === me ? "You" : nameOf(m.from)}</small>`, m.from);
@@ -741,10 +759,63 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     if (m.t === "drag") return onDrag(m);
     if (m.t === "error") {
       clearPending();
+      if (flip && flip.by === me && !flip.faceKnown) { big.hide(); flip = null; pendingFlip = null; render(); }
       if (m.code === "no_room" || m.code === "need_name") { leaveLocal(); if (m.code === "need_name") return toast(m.msg); }
       return toast(m.msg);
     }
     if (m.t === "left") return leaveLocal();
+  }
+
+  // ---- the giant card ----
+  // Angles: 0 is face down, 90 edge-on, 180 face up. dir is the swipe direction (-1 left, 1 right).
+  const big = {
+    show(label) {
+      const el = document.getElementById("bigcard");
+      document.getElementById("bc-who").textContent = label || "";
+      if (el.hidden) { this.face(null); this.turn(0, 0); el.hidden = false; }
+    },
+    turn(deg, ms = 0) {
+      const inner = document.getElementById("bc-inner");
+      inner.style.setProperty("--rt", `${Math.round(ms)}ms`);
+      inner.style.setProperty("--rot", `${deg}deg`);
+    },
+    face(c) {
+      const el = document.getElementById("bc-face");
+      if (!c) { el.className = "bc-face"; el.innerHTML = ""; return; }
+      const sd = suitOf(c);
+      el.className = `bc-face${sd.red ? " red" : ""}`;
+      el.innerHTML = `<span class="c">${c.r}${sd.sym}</span><span class="pp">${sd.sym}</span><span class="c b">${c.r}${sd.sym}</span>`;
+    },
+    hide() { document.getElementById("bigcard").hidden = true; },
+  };
+  function flipLabel(by) {
+    const mine = by === me, name = plainName(by);
+    if (S && S.screen === "race") return mine ? "Your flip" : `${name}'s flip`;
+    const g = mine ? armed : remote && remote.g;
+    return g ? `${mine ? "You call" : `${name} calls`} ${CALLS[g] || g}` : mine ? "Your card" : `${name}'s card`;
+  }
+  // Turn the giant card the rest of the way, hold the face up for a moment, then show the result.
+  function finishFlip(ms) {
+    if (!flip || flip.done) return;
+    flip.done = true;
+    const f = flip;
+    big.turn(f.dir * 180, ms);
+    if (f.by === me) sendTurn(2, f.dir, { spd: Math.round(ms) }, true);
+    setTimeout(() => {
+      big.hide();
+      if (flip === f) flip = null;
+      if (f.after) f.after();
+    }, ms + 650);
+  }
+  // The card is dealt: put its face on the giant card. The rider keeps turning it with their finger;
+  // if they've already let go it finishes at their speed. Watchers wait for the rider (with a safety net).
+  function faceArrived(card, after) {
+    flip.faceKnown = true; flip.after = after;
+    big.face(card);
+    if (flip.by === me && !drag) finishFlip(flip.autoSpd || 260);
+    clearTimeout(flip.safety);
+    const f = flip;
+    f.safety = setTimeout(() => { if (flip === f && !f.done) finishFlip(240); }, f.by === me ? 6000 : 3000);
   }
 
   function onState(next) {
@@ -753,8 +824,8 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     S = next;
     const was = prev && prev.players.find(p => p.id === me), now = S.players.find(p => p.id === me);
     if (now && now.owe > ((was && was.owe) || 0)) {
-      oweReadyAt = Date.now() + (S.ev.call ? REVEAL_MS + 1700 : 1200);
-      setTimeout(render, oweReadyAt - Date.now() + 30);
+      oweReadyAt = Date.now() + (S.ev.call ? 60000 : 1200);  // after a guess, the reveal decides when
+      setTimeout(render, Math.min(1230, oweReadyAt - Date.now() + 30));
     }
     const fresh = lastSeq !== null && S.ev.seq !== lastSeq;
     lastSeq = S.ev.seq;
@@ -763,11 +834,18 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     if (S.screen !== "play" || S.current !== me || S.phase !== "guess" || (prev && prev.stage !== S.stage)) armed = null;
     if (suspense && S.ev.seq !== suspense.seq) { clearTimeout(suspense.timer); suspense = null; }
     turnAlert();
-    // A guess just landed: hold on the call for everyone, then turn the card.
+    // A guess just landed: keep the new card hidden on the table until the giant card has been turned over.
     if (fresh && S.screen === "play" && S.ev.call && ["good", "miss", "won"].includes(fx)) {
-      suspense = { seq: S.ev.seq, fx, dealt, call: S.ev.call, lastGood: prev ? prev.lastGood : "", timer: setTimeout(reveal, REVEAL_MS) };
+      suspense = { seq: S.ev.seq, fx, dealt, call: S.ev.call, lastGood: prev ? prev.lastGood : "" };
       fx = ""; dealt = -1;
-      sfx.drum();
+      if (flip && flip.by === S.ev.by) faceArrived(S.row[suspense.dealt], reveal);
+      else { sfx.drum(); suspense.timer = setTimeout(reveal, REVEAL_MS); }
+      return render();
+    }
+    // Horse race: the horses move straight away; the callouts wait for the giant card to land.
+    if (fresh && S.screen === "race" && S.race && (fx === "flip" || fx === "won") && flip && flip.by === S.ev.by) {
+      const f = fx;
+      faceArrived(S.race.last, () => { const keep = fx; fx = f; cue(prev); fx = keep; });
       return render();
     }
     if (fresh) cue(prev);
@@ -778,10 +856,10 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     if (!S || !s || S.ev.seq !== s.seq) return;
     fx = s.fx; dealt = s.dealt;
     const p = byId(S.ev.by), mine = S.ev.by === me, name = p ? p.name : "Someone";
-    sfx.flip();
-    if (s.fx === "miss") { setTimeout(() => { takeover(mine ? "Drink!" : `${name} drinks!`, "miss"); sfx.gulp(); if (mine) buzz(250); }, 350); }
-    else if (s.fx === "won") { setTimeout(() => { takeover(mine ? "You're off!" : `${name} is off!`, "won"); sfx.horn(); }, 350); }
-    else setTimeout(sfx.ding, 250);
+    if (s.fx === "miss") { setTimeout(() => { takeover(mine ? "Drink!" : `${name} drinks!`, "miss"); sfx.gulp(); if (mine) buzz(250); }, 150); }
+    else if (s.fx === "won") { setTimeout(() => { takeover(mine ? "You're off!" : `${name} is off!`, "won"); sfx.horn(); }, 150); }
+    else sfx.ding();
+    oweReadyAt = Date.now() + 1700; setTimeout(render, 1750);
     render();
   }
   // Sounds and callouts for events that don't go through a reveal.
@@ -807,19 +885,24 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     if (myFlip && !wasMyFlip && prev && prev.screen === "race") { sfx.chime(); buzz(80); }
     wasMyFlip = myFlip;
   }
-  // Live swipe from another phone: show the call straight away, then turn the card with their finger.
+  // Live swipe from another phone: the call shows straight away; the giant card turns with their finger.
   function onDrag(m) {
-    if (m.by === me || !S || m.seq !== S.ev.seq) return;
+    if (m.by === me || !S) return;
+    if (m.seq !== S.ev.seq && !(flip && flip.by === m.by)) return;
     const callChanged = !remote || remote.g !== m.g;
-    remote = { by: m.by, g: m.g, p: m.p, dir: m.dir || 1, t: m.t };
-    if (m.spd) lastSwipe = { dir: m.dir || 1, spd: m.spd, at: Date.now() };
-    if (callChanged) { if (m.g) sfx.pop(); render(); }
-    const el = document.getElementById("swipe-card");
-    if (el) {
-      el.classList.add("calling");
-      el.style.setProperty("--rt", `${m.t || 90}ms`);
-      el.style.setProperty("--rot", `${remote.dir * Math.min(1, m.p) * EDGE}deg`);
+    remote = { by: m.by, g: m.g !== undefined ? m.g : remote && remote.g, p: m.p, dir: m.dir || 1, t: m.t };
+    if (callChanged && m.g) { sfx.pop(); render(); }
+    if (m.p > 0 && !flip) { flip = { by: m.by, dir: remote.dir, committed: false, faceKnown: false, done: false }; big.show(flipLabel(m.by)); }
+    if (!flip || flip.by !== m.by || flip.done) return;
+    if (m.p >= 2) return finishFlip(m.spd || 260);
+    if (m.p === 0 && !flip.committed) {
+      big.turn(0, m.t || 200);
+      const f = flip; setTimeout(() => { if (flip === f && !f.committed) { big.hide(); flip = null; } }, (m.t || 200) + 30);
+      return;
     }
+    flip.dir = remote.dir;
+    if (m.p >= 1) flip.committed = true;
+    big.turn(flip.dir * (flip.faceKnown ? Math.min(180, m.p * 90) : Math.min(90, m.p * 90)), 70);
   }
   const recentSwipe = () => lastSwipe && Date.now() - lastSwipe.at < 8000 ? lastSwipe : null;
   function leaveLocal() {
@@ -1007,9 +1090,8 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
         <span class="corner">${c.r}${s.sym}</span><span class="pip">${s.sym}</span><span class="corner bot">${c.r}${s.sym}</span></div>`;
     }
     // A swiped card lands the way it was swiped; a dealt one (Higher or Lower's start card) drops in.
-    const sw = recentSwipe(), swiped = i === landed && ev.call && sw;
-    const cardCls = c ? (i === landed ? (swiped ? "card up swipe-in" : "card deal up") : "card up") : "card";
-    const cardStyle = swiped ? ` style="--dir:${sw.dir};--spd:${sw.spd}ms"` : "";
+    const cardCls = c ? (i === landed && !ev.call ? "card deal up" : "card up") : "card";
+    const cardStyle = "";
     const key = c ? ` data-key="k${i}${c.r}${c.s}"` : "";
     const aria = c ? `${c.r === "A" ? "Ace" : c.r} of ${suitOf(c).name}` : slotCls.includes("armed") ? "Your card. Swipe it sideways to flip it" : "Face-down card";
     const hint = slotCls.includes("armed") && !pendingFlip ? '<span class="swipe-hint">← Swipe anywhere →</span>' : "";
@@ -1349,78 +1431,74 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
   }
 
   // ---- swipe to flip ----
-  // Drag the card sideways and it turns with your finger (up to nearly edge-on). Let go past halfway, or
-  // flick it, and it finishes at your swipe's speed; the face then lands at that same speed. Let go early
-  // and it springs back. The turn is shared live so everyone watches it.
+  // Swipe sideways anywhere (not on a button) and a giant card turns with your finger. Half the screen's
+  // width turns it edge-on and sends your call; the real card is dealt, and the rest of the swipe turns
+  // its face into view. Let go after halfway and it finishes at your speed; let go before and it springs back.
   let drag = null, lastDragSent = 0;
-  const canSwipe = () => S && !pendingFlip && ((S.screen === "play" && S.current === me && S.phase === "guess" && armed && !suspense)
+  const canSwipe = () => S && !pendingFlip && !flip && ((S.screen === "play" && S.current === me && S.phase === "guess" && armed && !suspense)
     || (S.screen === "race" && S.race && !S.race.winner && S.race.flipper === me));
+  const halfWidth = () => Math.max(120, innerWidth / 2);
   function sendTurn(p, dir, extra = {}, force = false) {
     const now = Date.now();
-    if (!force && now - lastDragSent < 60) return;
+    if (!force && now - lastDragSent < 50) return;
     lastDragSent = now;
     send({ t: "drag", p, dir, g: S.screen === "play" ? armed : undefined, ...extra }, true);
   }
-  // angVel: degrees per millisecond at release (a default for the Flip button).
-  function commitFlip(dir = 1, angVel = .35, p = 0) {
-    if (!canSwipe()) return;
-    const v = Math.max(angVel, .06);
-    const t = Math.round(Math.min(380, Math.max(60, EDGE * (1 - p) / v)));
-    const spd = Math.round(Math.min(560, Math.max(140, (180 - EDGE) / v)));
-    pendingFlip = { dir, t };
-    lastSwipe = { dir, spd, at: Date.now() };
-    const el = document.getElementById("swipe-card");
-    if (el) {
-      el.classList.remove("dragging");
-      el.style.setProperty("--rt", `${t}ms`);
-      el.style.setProperty("--rot", `${dir * EDGE}deg`);
-      const hint = el.querySelector(".swipe-hint"); if (hint) hint.remove();
-    }
+  function commitFlip() {
+    pendingFlip = { dir: flip.dir, t: 0 };
+    flip.committed = true;
     sfx.flip();
-    sendTurn(1, dir, { spd, t }, true);
+    sendTurn(1, flip.dir, {}, true);
     if (S.screen === "play") act("guess", { g: armed }); else act("flip");
   }
-  // Full-screen swipe: start anywhere that isn't a button, and the card turns as the finger moves.
-  // Half the screen's width turns it edge-on, and at that point it flips over by itself.
-  const halfWidth = () => Math.max(120, innerWidth / 2);
+  // Degrees per millisecond, from the last ~100ms of finger movement.
+  function fingerSpeed(d) {
+    const now = performance.now(), recent = d.pts.filter(pt => now - pt.t < 110);
+    const a = recent[0] || d.pts[0], b = d.pts[d.pts.length - 1];
+    const pxPerMs = b.t > a.t ? Math.abs(b.x - a.x) / (b.t - a.t) : 0;
+    return pxPerMs / halfWidth() * 90;
+  }
   document.addEventListener("pointerdown", e => {
     if (!canSwipe() || e.button > 0) return;
     if (e.target.closest("button, input, a, label, .crew, .sheet, .drink-card, .confirm, .tray")) return;
-    const el = document.getElementById("swipe-card");
-    if (!el) return;
     audio();
-    drag = { el, x: e.clientX, id: e.pointerId, p: 0, dir: 1, pts: [{ x: e.clientX, t: performance.now() }] };
-    el.classList.add("dragging");
+    drag = { x: e.clientX, id: e.pointerId, started: false, pts: [{ x: e.clientX, t: performance.now() }] };
   });
   document.addEventListener("pointermove", e => {
     if (!drag || e.pointerId !== drag.id) return;
     const dx = e.clientX - drag.x;
-    drag.dir = dx < 0 ? -1 : 1;
-    drag.p = Math.min(1, Math.abs(dx) / halfWidth());
     drag.pts.push({ x: e.clientX, t: performance.now() });
     if (drag.pts.length > 8) drag.pts.shift();
-    if (drag.p >= 1) {
-      // Halfway across the screen: flip it now, at the speed the finger was moving.
-      const d = drag; drag = null;
-      return commitFlip(d.dir, releaseSpeed(d), 1);
+    if (!drag.started) {
+      if (Math.abs(dx) < 8) return;
+      drag.started = true;
+      flip = { by: me, dir: dx < 0 ? -1 : 1, committed: false, faceKnown: false, done: false };
+      big.show(flipLabel(me));
     }
-    drag.el.style.setProperty("--rot", `${drag.dir * drag.p * EDGE}deg`);
-    sendTurn(drag.p, drag.dir);
+    if (!flip || flip.done) return;
+    if (!flip.committed) flip.dir = dx < 0 ? -1 : 1;
+    const prog = Math.min(2, Math.abs(dx) / halfWidth());
+    if (!flip.committed && prog >= 1) commitFlip();
+    // Before the card is dealt it stops at edge-on; once the face is known the finger turns it face up.
+    const angle = !flip.committed ? Math.min(90, prog * 90) : flip.faceKnown ? Math.max(90, Math.min(180, prog * 90)) : 90;
+    big.turn(flip.dir * angle, 0);
+    sendTurn(angle / 90, flip.dir);
+    if (flip.faceKnown && angle >= 180) { drag = null; finishFlip(120); }
   });
-  // Degrees per millisecond, from the last ~100ms of finger movement.
-  function releaseSpeed(d) {
-    const now = performance.now(), recent = d.pts.filter(pt => now - pt.t < 110);
-    const a = recent[0] || d.pts[0], b = d.pts[d.pts.length - 1];
-    const pxPerMs = b.t > a.t ? Math.abs(b.x - a.x) / (b.t - a.t) : 0;
-    return pxPerMs / halfWidth() * EDGE;
-  }
   const endDrag = e => {
     if (!drag || e.pointerId !== drag.id) return;
     const d = drag; drag = null;
-    d.el.classList.remove("dragging");
-    d.el.style.setProperty("--rt", "220ms");
-    d.el.style.setProperty("--rot", "0deg");
-    sendTurn(0, d.dir, { t: 220 }, true);
+    if (!d.started || !flip || flip.by !== me || flip.done) return;
+    if (!flip.committed) {
+      big.turn(0, 200);
+      sendTurn(0, flip.dir, { t: 200 }, true);
+      const f = flip; setTimeout(() => { if (flip === f) { big.hide(); flip = null; } }, 230);
+      return;
+    }
+    // Let go after halfway: finish at the speed the finger was moving.
+    const v = Math.max(fingerSpeed(d), .25);
+    flip.autoSpd = Math.min(520, Math.max(140, 90 / v));
+    if (flip.faceKnown) finishFlip(flip.autoSpd);
   };
   document.addEventListener("pointerup", endDrag);
   document.addEventListener("pointercancel", endDrag);
