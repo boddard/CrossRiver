@@ -198,6 +198,7 @@ wss.on("connection", ws => {
       const err = game.act(room, ws.pid, msg);
       if (err) return send(ws, { t: "error", msg: err });
       if (msg.a === "give") toRoom(room.code, { t: "gift", from: ws.pid, to: msg.to });
+      if (msg.a === "drank" && room.lastDrank) { toRoom(room.code, { t: "drank", by: ws.pid, n: room.lastDrank }); room.lastDrank = 0; }
       broadcast(room.code);
     }
   });

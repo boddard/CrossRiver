@@ -51,6 +51,8 @@ function addPlayer(room, name) {
     drinks: 0, rides: 0, best: null, tries: 0, roundDrinks: 0, off: false,
     // Stats for the end-of-night awards, and drinks this player still has to hand out.
     give: 0, given: 0, taken: 0, guesses: 0, correct: 0, won: 0, reacts: 0,
+    // Drinks owed but not yet confirmed with Done, and why. Plus ride stats for the awards.
+    owe: 0, oweLog: [], maxTries: 0, oneShots: 0, streak: 0, worstStreak: 0,
     bet: { suit: SUIT_KEYS[room.players.length % 4], amt: 2 },
   };
   room.players.push(p);
@@ -61,6 +63,11 @@ function addPlayer(room, name) {
 const player = (room, id) => room.players.find(p => p.id === id);
 const idx = (room, id) => room.players.findIndex(p => p.id === id);
 const isHost = (room, id) => room.hostId === id;
+// Every drink a player gets is owed until they tap Done on their phone.
+function owe(p, n, why, from) {
+  p.owe += n;
+  p.oweLog = [...p.oweLog, { why, n, from: from || null }].slice(-6);
+}
 function bump(room, type, dealt = -1, extra = {}) { room.ev = { seq: room.ev.seq + 1, type, dealt, ...extra }; room.phaseAt = Date.now(); }
 
 // Hand host to the next connected player when the host leaves or drops.
@@ -139,16 +146,20 @@ function guess(room, g) {
   p.guesses += 1;
   if (!judge(room, stage, g, card)) {
     p.drinks += 1; p.roundDrinks += 1;
+    p.streak += 1; p.worstStreak = Math.max(p.worstStreak, p.streak);
+    owe(p, 1, `Missed card ${stage + 1}`);
     room.phase = "miss";
     bump(room, "miss", stage, call);
   } else if (stage === 3) {
-    p.correct += 1;
+    p.correct += 1; p.streak = 0;
     p.rides += 1; p.off = true; p.give += GIVE_ON_OFF;
+    p.maxTries = Math.max(p.maxTries, p.tries);
+    if (p.tries === 1) p.oneShots += 1;
     if (p.best === null || p.tries < p.best) p.best = p.tries;
     room.phase = "won";
     bump(room, "won", stage, call);
   } else {
-    p.correct += 1;
+    p.correct += 1; p.streak = 0;
     room.stage += 1;
     room.lastGood = room.settings.mode === "hilo"
       ? `${label(card)}. ${stage} right, ${3 - stage} to go.`
@@ -204,7 +215,8 @@ function flip(room) {
     // Settle bets for players who were in the room when the race started.
     r.results = room.players.filter(p => r.entrants.includes(p.id)).map(p => {
       const won = p.bet.suit === r.winner;
-      if (won) { p.rides += 1; p.won += p.bet.amt; p.give += p.bet.amt * 2; } else p.drinks += p.bet.amt;
+      if (won) { p.rides += 1; p.won += p.bet.amt; p.give += p.bet.amt * 2; }
+      else { p.drinks += p.bet.amt; owe(p, p.bet.amt, `Lost your ${SUITS[p.bet.suit].sym} bet`); }
       return { id: p.id, name: p.name, suit: p.bet.suit, amt: p.bet.amt, won };
     });
     bump(room, "won");
@@ -275,7 +287,9 @@ function act(room, pid, msg) {
       room.screen = "lobby"; bump(room, "screen"); return null;
     case "restart":
       if (hostOnly()) return hostOnly();
-      room.players.forEach(p => Object.assign(p, { drinks: 0, rides: 0, best: null, give: 0, given: 0, taken: 0, guesses: 0, correct: 0, won: 0, reacts: 0 }));
+      room.players.forEach(p => Object.assign(p, { drinks: 0, rides: 0, best: null, give: 0, given: 0, taken: 0, guesses: 0, correct: 0, won: 0, reacts: 0,
+        owe: 0, oweLog: [], maxTries: 0, oneShots: 0, streak: 0, worstStreak: 0 }));
+      room.grudges = {};
       room.starter = 0; room.deck = [];
       if (room.screen === "awards") { room.screen = "lobby"; bump(room, "screen"); return null; }
       if (room.settings.mode === "horse") { room.race = null; room.screen = "bets"; bump(room, "screen"); return null; }
@@ -321,9 +335,18 @@ function act(room, pid, msg) {
       if (!to || to.id === pid) return "Pick someone else to drink.";
       me.give -= 1; me.given += 1;
       to.taken += 1; to.drinks += 1;
+      owe(to, 1, "From", me.id);
+      room.grudges = room.grudges || {};
+      room.grudges[`${me.id}>${to.id}`] = (room.grudges[`${me.id}>${to.id}`] || 0) + 1;
       if (room.screen === "play") to.roundDrinks += 1;
       return null;
     }
+    case "drank":
+      // Done: the player confirms they've had every drink they owed.
+      if (me.owe < 1) return null;
+      room.lastDrank = me.owe;
+      me.owe = 0; me.oweLog = [];
+      return null;
     case "awards":
       if (hostOnly()) return hostOnly();
       room.screen = "awards"; bump(room, "screen"); return null;
@@ -344,6 +367,7 @@ function publicState(room) {
     current: room.current, row: room.row, stage: room.stage, phase: room.phase, lastGood: room.lastGood,
     next: room.screen === "play" ? nextUp(room, room.current) : null,
     autoPassMs: AUTO_PASS_MS, giveOnOff: GIVE_ON_OFF, offlineSkipMs: OFFLINE_SKIP_MS,
+    grudges: Object.entries(room.grudges || {}).map(([k, n]) => { const [from, to] = k.split(">"); return { from, to, n }; }),
     race: r && {
       id: r.id, len: r.len, side: r.side.map((c, i) => r.sideUp[i] ? c : null), sideUp: r.sideUp,
       pos: r.pos, last: r.last, msg: r.msg, back: r.back, flips: r.flips, winner: r.winner, results: r.results, flipper: r.flipper,

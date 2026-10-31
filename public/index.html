@@ -75,6 +75,17 @@ button:active { transform: scale(.97); }
 .sheet details { border-top: 0; padding: 0 4px; }
 .sheet .pax { padding: 0 2px; }
 .sheet table { font-size: 15px; }
+/* Drinks you owe: a card you have to clear with Done, and a badge on your bubble until you do */
+.owe { position: absolute; top: -4px; left: -2px; z-index: 2; padding: 2px 5px; border-radius: 999px; background: var(--miss); color: #fff; font: 800 11px/1.2 var(--body); box-shadow: 0 0 0 2px var(--asphalt); animation: pop .4s cubic-bezier(.2,1.6,.4,1); }
+.drink-back { position: fixed; inset: 0; z-index: 52; background: rgba(8,9,12,.78); display: flex; align-items: flex-end; animation: fade .2s ease-out both; }
+.drink-card {
+  width: 100%; max-width: 480px; margin: 0 auto; display: grid; gap: 14px; text-align: center;
+  padding: 22px max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 22px) max(16px, env(safe-area-inset-left, 0px));
+  background: var(--panel); border-top: 2px solid var(--miss); border-radius: 20px 20px 0 0; animation: rise .25s ease-out both;
+}
+.drink-card .big { font: 900 clamp(56px, 18vw, 84px)/.95 var(--display); text-transform: uppercase; color: var(--miss); }
+.drink-why { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; color: var(--muted); font-weight: 600; }
+.drink-card .primary { min-height: 72px; font-size: 28px; }
 .install { display: grid; gap: 6px; padding: 12px 14px; border-radius: 10px; border: 1px dashed var(--line); background: var(--asphalt); }
 .install b { font: 900 18px/1 var(--display); text-transform: uppercase; color: var(--bus); }
 .install p { margin: 0; color: var(--muted); font-size: 14px; }
@@ -538,6 +549,7 @@ details p { max-width: 65ch; color: var(--muted); }
   let remote = null;     // the rider's (or flipper's) call and live swipe, seen from another phone
   let trayOpen = false, trayTimer = null, prevPos = null;
   let sheetOpen = false, sheetRules = false, leaveArmed = false;
+  let oweReadyAt = 0;  // the Drink card waits until the reveal and callouts have played
   const TITLE = document.title;
   const calm = () => window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -715,6 +727,11 @@ details p { max-width: 65ch; color: var(--muted); }
       flash(m.to, "hit");
       return;
     }
+    if (m.t === "drank") {
+      if (m.by !== me) floatUp(`<b>${nameOf(m.by)} drank ${m.n} 🍺</b>`, m.by, true);
+      flash(m.by, "pop");
+      return;
+    }
     if (m.t === "drag") return onDrag(m);
     if (m.t === "error") {
       clearPending();
@@ -728,6 +745,11 @@ details p { max-width: 65ch; color: var(--muted); }
     clearPending();
     const prev = S;
     S = next;
+    const was = prev && prev.players.find(p => p.id === me), now = S.players.find(p => p.id === me);
+    if (now && now.owe > ((was && was.owe) || 0)) {
+      oweReadyAt = Date.now() + (S.ev.call ? REVEAL_MS + 1700 : 1200);
+      setTimeout(render, oweReadyAt - Date.now() + 30);
+    }
     const fresh = lastSeq !== null && S.ev.seq !== lastSeq;
     lastSeq = S.ev.seq;
     fx = fresh ? S.ev.type : ""; dealt = fresh ? S.ev.dealt : -1;
@@ -896,7 +918,7 @@ details p { max-width: 65ch; color: var(--muted); }
       const cls = ["bub", p.id === riderId ? "riding" : "", p.connected ? "" : "away", S.screen === "play" && p.off ? "out" : "", giving && p.id !== me ? "target" : ""].filter(Boolean).join(" ");
       const what = giving && p.id !== me ? `Give ${p.name} a drink` : p.id === riderId && p.id !== me ? `Nudge ${p.name}` : p.name;
       return `<button class="${cls}" data-bub="${p.id}" style="--c:${p.color}" aria-label="${esc(what)}">
-        <span class="av">${esc(initial(p.name))}</span><span class="bn">${p.id === me ? "You" : esc(p.name)}</span>${p.id === S.hostId ? '<span class="crown">★</span>' : ""}</button>`;
+        ${p.owe ? `<span class="owe" title="Owes ${plural(p.owe, "drink")}">🍺${p.owe}</span>` : ""}<span class="av">${esc(initial(p.name))}</span><span class="bn">${p.id === me ? "You" : esc(p.name)}</span>${p.id === S.hostId ? '<span class="crown">★</span>' : ""}</button>`;
     }).join("");
     const note = giving ? `<p class="give-note">Hand out ${plural(mine.give, "drink")}: tap a player</p>` : "";
     const tray = trayOpen ? `<div class="tray" role="group" aria-label="Reactions">${REACTIONS.map((e, i) => `<button class="rx" data-rx="${i}" aria-label="React ${e}">${e}</button>`).join("")}</div>` : "";
@@ -1163,22 +1185,26 @@ details p { max-width: 65ch; color: var(--muted); }
   // ---- end of night ----
   function awardsHTML() {
     const P = S.players;
-    const top = (fn, min = 1) => {
+    const top = fn => {
       const best = Math.max(...P.map(fn));
-      return best >= min ? { who: P.filter(p => fn(p) === best), val: best } : null;
+      return best >= 1 ? { who: P.filter(p => fn(p) === best), val: best } : null;
     };
-    const rate = p => p.guesses >= 4 ? Math.round(100 * p.correct / p.guesses) : -1;
-    const awards = [
-      ["Most drinks", top(p => p.drinks), v => `${plural(v, "drink")} tonight`],
-      ["Bus champion", top(p => p.rides), v => `off the bus or a winning bet ${plural(v, "time")}`],
-      ["Luckiest", top(rate, 0), v => `${v}% of calls right`],
-      ["Best gambler", top(p => p.won), v => `won ${plural(v, "drink")} in bets`],
-      ["Most generous", top(p => p.given), v => `handed out ${plural(v, "drink")}`],
-      ["Most picked on", top(p => p.taken), v => `was handed ${plural(v, "drink")}`],
-      ["Hype machine", top(p => p.reacts), v => `${plural(v, "reaction")}`],
-    ].filter(a => a[1]);
-    const list = awards.map(([title, a, stat], i) => `<li class="award" style="--i:${i}"><span class="label">${title}</span>
-      <strong>${a.who.map(p => esc(p.name)).join(" & ")}</strong><span class="hint">${stat(a.val)}</span></li>`).join("");
+    const names = a => a.who.map(p => esc(p.name)).join(" & ");
+    const grudge = (S.grudges || []).filter(g => byId(g.from) && byId(g.to)).sort((a, b) => b.n - a.n)[0];
+    const awards = [];
+    const ride = top(p => p.maxTries);
+    if (ride) awards.push(["Longest ride", names(ride), `${plural(ride.val, "try")} before getting off`.replace("trys", "tries")]);
+    const one = top(p => p.oneShots);
+    if (one) awards.push(["One-shot wonder", names(one), `off the bus on the first try ${plural(one.val, "time")}`]);
+    const cursed = top(p => p.worstStreak);
+    if (cursed && cursed.val >= 2) awards.push(["Cursed", names(cursed), `${cursed.val} misses in a row`]);
+    if (grudge) awards.push(["Biggest grudge", `${nameOf(grudge.from)} → ${nameOf(grudge.to)}`, `${plural(grudge.n, "drink")} handed over`]);
+    const picked = top(p => p.taken);
+    if (picked) awards.push(["Most picked on", names(picked), `was handed ${plural(picked.val, "drink")}`]);
+    const generous = top(p => p.given);
+    if (generous) awards.push(["Most generous", names(generous), `handed out ${plural(generous.val, "drink")}`]);
+    const list = awards.map(([title, who, stat], i) => `<li class="award" style="--i:${i}"><span class="label">${title}</span>
+      <strong>${who}</strong><span class="hint">${stat}</span></li>`).join("");
     return `${confirmHTML()}<section class="console setup">
       ${crewHTML()}
       <h2>End of the night</h2>
@@ -1227,15 +1253,26 @@ details p { max-width: 65ch; color: var(--muted); }
       <button class="primary" id="sheet-close">Back to the game</button>
     </div></div>`);
   }
+  // Your drinks: stays up until you tap Done. Everyone else sees a badge on your bubble meanwhile.
+  function drinkHTML() {
+    const mine = S && byId(me);
+    if (!mine || mine.owe < 1 || suspense || Date.now() < oweReadyAt) return layer("");
+    const why = mine.oweLog.map(x => `<li>${x.why === "From" ? `From ${nameOf(x.from)}` : esc(x.why)}${x.n > 1 ? ` ×${x.n}` : ""}</li>`).join("");
+    return layer(`<div class="drink-back"><div class="drink-card" role="dialog" aria-modal="true" aria-label="Drink ${mine.owe}">
+      <span class="big">Drink ${mine.owe}</span>
+      <ul class="drink-why">${why}</ul>
+      <button class="primary" id="drank">Done 🍺</button>
+    </div></div>`);
+  }
   function confirmHTML() {
-    if (!confirming) return sheetHTML();
+    if (!confirming) return layer("") + sheetHTML() + drinkHTML();
     const what = horse()
       ? "Everyone's drink totals and stats go back to zero and the room goes back to the betting screen."
       : "Everyone's drinks, stats and best rides go back to zero, and a new round starts from the top of the list.";
     return layer(`<div class="confirm-back"><div class="confirm" role="dialog" aria-modal="true" aria-labelledby="rs-title">
         <h2 id="rs-title">Restart the game?</h2><p>${what} This restarts it for the whole room.</p>
         <div class="row"><button class="primary" id="restart-yes">Restart</button><button class="ghost" id="restart-no">Keep playing</button></div>
-      </div></div>`) + sheetHTML();
+      </div></div>`) + sheetHTML() + layer("");
   }
 
   let lastScreen = null;
@@ -1352,6 +1389,7 @@ details p { max-width: 65ch; color: var(--muted); }
       case "leave":
         if (!leaveArmed) { leaveArmed = true; return render(); }
         leaveArmed = false; sheetOpen = false; return send({ t: "leave" });
+      case "drank": sfx.gulp(); buzz(60); return act("drank");
       case "sheet-close": sheetOpen = false; leaveArmed = false; return render();
       case "rules-toggle": sheetRules = !sheetRules; return render();
       case "restart-ask": sheetOpen = false; confirming = true; return render();
