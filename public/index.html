@@ -42,6 +42,7 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; } /* overlays set their own display; hidden must always win */
 html, body { min-height: 100%; }
 /* Feel like an app, not a web page: no double-tap zoom, no text selection or long-press menus,
    no grey tap flash, no pull-to-refresh bounce. Typing still works in the name and code boxes. */
