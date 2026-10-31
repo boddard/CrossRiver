@@ -1,13 +1,23 @@
 #!/usr/bin/env bash
 # Install or update F the Bus online on an Ubuntu server. Safe to run again to update.
 #
-#   bash setup.sh bus.example.com you@example.com   # domain + free HTTPS certificate (recommended)
-#   bash setup.sh bus.example.com                   # domain, plain HTTP
-#   bash setup.sh                                   # no domain: http://SERVER-IP:3000
+#   bash setup.sh tunnel <TOKEN>                    # Cloudflare Tunnel: HTTPS via Cloudflare, no open ports
+#   bash setup.sh bus.example.com you@example.com   # nginx + free Let's Encrypt HTTPS certificate
+#   bash setup.sh bus.example.com                   # nginx, plain HTTP
+#   bash setup.sh                                   # update; or, first time with no tunnel, http://SERVER-IP:3000
 #
-# Point the domain's DNS A record at this server before running with a domain.
+# For a tunnel, create it in the Cloudflare dashboard with a public hostname pointing at http://localhost:3000
+# and pass the token from its install command. For nginx, point the domain's DNS A record here first.
 set -euo pipefail
 
+TUNNEL_TOKEN=""
+if [ "${1:-}" = "tunnel" ]; then
+  TUNNEL_TOKEN="${2:-}"
+  if [ "${#TUNNEL_TOKEN}" -lt 50 ]; then
+    echo "That doesn't look like a tunnel token. Copy the long token from the Cloudflare install command."; exit 1
+  fi
+  set --
+fi
 DOMAIN="${1:-}"
 EMAIL="${2:-}"
 APP=/opt/crossriver
@@ -42,8 +52,10 @@ id crossriver >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/
 echo "==> Installing the service"
 cp deploy/crossriver.service /etc/systemd/system/crossriver.service
 mkdir -p /etc/systemd/system/crossriver.service.d
-if [ -z "$DOMAIN" ]; then
-  # No domain: listen on all addresses so phones can reach http://SERVER-IP:3000 directly.
+HAS_TUNNEL=0
+if [ -n "$TUNNEL_TOKEN" ] || systemctl is-enabled -q cloudflared 2>/dev/null; then HAS_TUNNEL=1; fi
+if [ -z "$DOMAIN" ] && [ "$HAS_TUNNEL" -eq 0 ]; then
+  # No domain and no tunnel: listen on all addresses so phones can reach http://SERVER-IP:3000 directly.
   printf '[Service]\nEnvironment=HOST=0.0.0.0\n' > /etc/systemd/system/crossriver.service.d/override.conf
 else
   rm -f /etc/systemd/system/crossriver.service.d/override.conf
@@ -53,6 +65,30 @@ systemctl enable -q crossriver
 systemctl restart crossriver
 sleep 1
 curl -fsS http://127.0.0.1:3000/healthz >/dev/null && echo "    game server is running"
+
+if [ -n "$TUNNEL_TOKEN" ]; then
+  echo "==> Connecting the Cloudflare Tunnel"
+  if ! command -v cloudflared >/dev/null; then
+    mkdir -p --mode=0755 /usr/share/keyrings
+    curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg -o /usr/share/keyrings/cloudflare-main.gpg
+    echo "deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared any main" > /etc/apt/sources.list.d/cloudflared.list
+    apt-get update -qq
+    apt-get install -y -qq cloudflared >/dev/null
+  fi
+  # Replace any earlier tunnel so a new token takes effect.
+  if [ -f /etc/systemd/system/cloudflared.service ]; then cloudflared service uninstall >/dev/null 2>&1 || true; fi
+  cloudflared service install "$TUNNEL_TOKEN"
+  sleep 3
+  systemctl is-active -q cloudflared && echo "    tunnel is connected"
+  echo
+  echo "Done. Open the public hostname you set on the tunnel (for example https://bus.b21g.com) on your phone."
+  exit 0
+fi
+if [ "$HAS_TUNNEL" -eq 1 ] && [ -z "$DOMAIN" ]; then
+  echo
+  echo "Done. Updated and restarted. The Cloudflare Tunnel keeps serving it on your public hostname."
+  exit 0
+fi
 
 if [ -z "$DOMAIN" ]; then
   if command -v ufw >/dev/null && ufw status | grep -q "Status: active"; then ufw allow 3000/tcp >/dev/null; fi

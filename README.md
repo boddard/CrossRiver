@@ -23,7 +23,22 @@ The Node.js server holds every room's state and does all the dealing, so nobody 
 - A phone that locks or loses signal rejoins its seat automatically. If the host drops, the next online player becomes host.
 - Rooms are cleared 30 minutes after everyone has left, or after 6 hours idle.
 
-### Install on the server
+### Install on the server with a Cloudflare Tunnel (recommended)
+
+Cloudflare serves the game over HTTPS on your own hostname. The server needs no open ports, nginx or certificates.
+
+1. In the Cloudflare dashboard, open **Zero Trust → Networks → Tunnels**, create a **Cloudflared** tunnel, and copy the token from the install command it shows (the long string after `--token` or `service install`).
+2. Add a **public hostname** to the tunnel, for example `bus` on `b21g.com`, with service type **HTTP** and URL `localhost:3000`.
+3. On the server, as root:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/boddard/CrossRiver/main/deploy/setup.sh -o setup.sh
+bash setup.sh tunnel PASTE_TOKEN_HERE
+```
+
+To update later: `bash /opt/crossriver/deploy/setup.sh`
+
+### Or install with nginx
 
 On the Ubuntu server, as root:
 
@@ -41,7 +56,8 @@ The script installs Node.js 20, puts the code in `/opt/crossriver`, runs it as a
 ### Update after a new push
 
 ```bash
-bash /opt/crossriver/deploy/setup.sh bus.b21g.com you@example.com
+bash /opt/crossriver/deploy/setup.sh                                  # tunnel installs
+bash /opt/crossriver/deploy/setup.sh bus.b21g.com you@example.com     # nginx installs
 ```
 
 It pulls the latest `main`, reinstalls dependencies and restarts the service.
