@@ -1183,28 +1183,46 @@ details p { max-width: 65ch; color: var(--muted); }
   }
 
   // ---- end of night ----
+  // Party awards. Each one only shows when someone actually earned it.
   function awardsHTML() {
     const P = S.players;
-    const top = fn => {
-      const best = Math.max(...P.map(fn));
-      return best >= 1 ? { who: P.filter(p => fn(p) === best), val: best } : null;
+    const pick = (fn, { min = 1, low = false, eligible = () => true } = {}) => {
+      const pool = P.filter(eligible);
+      if (!pool.length) return null;
+      const vals = pool.map(fn), best = low ? Math.min(...vals) : Math.max(...vals);
+      if (!low && !(best >= min)) return null;
+      return { who: pool.filter(p => fn(p) === best), val: best };
     };
     const names = a => a.who.map(p => esc(p.name)).join(" & ");
-    const grudge = (S.grudges || []).filter(g => byId(g.from) && byId(g.to)).sort((a, b) => b.n - a.n)[0];
+    const secs = ms => ms < 60000 ? `${Math.round(ms / 1000)}s` : `${Math.floor(ms / 60000)}m ${Math.round((ms % 60000) / 1000)}s`;
+    const avgDone = p => p.drankTimes ? p.drankMs / p.drankTimes : 0;
+    const played = p => p.drinks > 0 || p.guesses > 0 || p.won > 0;
     const awards = [];
-    const ride = top(p => p.maxTries);
-    if (ride) awards.push(["Longest ride", names(ride), `${plural(ride.val, "try")} before getting off`.replace("trys", "tries")]);
-    const one = top(p => p.oneShots);
-    if (one) awards.push(["One-shot wonder", names(one), `off the bus on the first try ${plural(one.val, "time")}`]);
-    const cursed = top(p => p.worstStreak);
-    if (cursed && cursed.val >= 2) awards.push(["Cursed", names(cursed), `${cursed.val} misses in a row`]);
-    if (grudge) awards.push(["Biggest grudge", `${nameOf(grudge.from)} → ${nameOf(grudge.to)}`, `${plural(grudge.n, "drink")} handed over`]);
-    const picked = top(p => p.taken);
-    if (picked) awards.push(["Most picked on", names(picked), `was handed ${plural(picked.val, "drink")}`]);
-    const generous = top(p => p.given);
-    if (generous) awards.push(["Most generous", names(generous), `handed out ${plural(generous.val, "drink")}`]);
-    const list = awards.map(([title, who, stat], i) => `<li class="award" style="--i:${i}"><span class="label">${title}</span>
-      <strong>${who}</strong><span class="hint">${stat}</span></li>`).join("");
+    const add = (emoji, title, a, stat, who) => { if (a) awards.push({ emoji, title, who: who || names(a), stat: stat(a.val) }); };
+
+    // The drinking
+    add("🏆", "Liver of steel", pick(p => p.drinks), v => `${plural(v, "drink")} tonight`);
+    add("🪶", "Lightweight", P.filter(played).length > 1 ? pick(p => p.drinks, { low: true, eligible: played }) : null, v => `only ${plural(v, "drink")}`);
+    add("⚡", "Chugger", pick(avgDone, { low: true, eligible: p => p.drankTimes >= 2 }), v => `tapped Done in ${secs(v)} on average`);
+    add("🐌", "Still holding it", pick(avgDone, { min: 15000, eligible: p => p.drankTimes >= 1 }), v => `took ${secs(v)} on average to drink up`);
+    const owing = P.filter(p => p.owe > 0);
+    if (owing.length) awards.push({ emoji: "🚨", title: "Still owes", who: owing.map(p => esc(p.name)).join(" & "), stat: owing.map(p => `${esc(p.name)}: ${plural(p.owe, "drink")}`).join(", ") });
+
+    // The bus
+    add("🚌", "Bus driver", pick(p => p.maxTries, { min: 3 }), v => `${v} tries before getting off`);
+    add("🎯", "Sniper", pick(p => p.oneShots), v => `off the bus first try ${plural(v, "time")}`);
+    add("🔥", "Hot hand", pick(p => p.bestRun, { min: 3 }), v => `${v} calls right in a row`);
+    add("💀", "Cursed", pick(p => p.worstStreak, { min: 3 }), v => `${v} misses in a row`);
+    add("🎰", "Degenerate gambler", pick(p => p.lost, { min: 2 }), v => `lost ${plural(v, "drink")} on horse bets`);
+
+    // The beef
+    const grudge = (S.grudges || []).filter(g => byId(g.from) && byId(g.to)).sort((a, b) => b.n - a.n)[0];
+    if (grudge && grudge.n >= 2) awards.push({ emoji: "😤", title: "Grudge match", who: `${nameOf(grudge.from)} → ${nameOf(grudge.to)}`, stat: `${plural(grudge.n, "drink")} handed over` });
+    add("🥊", "Punching bag", pick(p => p.taken, { min: 2 }), v => `was handed ${plural(v, "drink")}`);
+    add("🍻", "Bartender", pick(p => p.given, { min: 2 }), v => `poured out ${plural(v, "drink")}`);
+
+    const list = awards.map((a, i) => `<li class="award" style="--i:${i}"><span class="label">${a.emoji} ${a.title}</span>
+      <strong>${a.who}</strong><span class="hint">${a.stat}</span></li>`).join("");
     return `${confirmHTML()}<section class="console setup">
       ${crewHTML()}
       <h2>End of the night</h2>

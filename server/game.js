@@ -53,6 +53,7 @@ function addPlayer(room, name) {
     give: 0, given: 0, taken: 0, guesses: 0, correct: 0, won: 0, reacts: 0,
     // Drinks owed but not yet confirmed with Done, and why. Plus ride stats for the awards.
     owe: 0, oweLog: [], maxTries: 0, oneShots: 0, streak: 0, worstStreak: 0,
+    run: 0, bestRun: 0, lost: 0, oweSince: 0, drankMs: 0, drankTimes: 0,
     bet: { suit: SUIT_KEYS[room.players.length % 4], amt: 2 },
   };
   room.players.push(p);
@@ -65,6 +66,7 @@ const idx = (room, id) => room.players.findIndex(p => p.id === id);
 const isHost = (room, id) => room.hostId === id;
 // Every drink a player gets is owed until they tap Done on their phone.
 function owe(p, n, why, from) {
+  if (!p.owe) p.oweSince = Date.now();
   p.owe += n;
   p.oweLog = [...p.oweLog, { why, n, from: from || null }].slice(-6);
 }
@@ -146,12 +148,12 @@ function guess(room, g) {
   p.guesses += 1;
   if (!judge(room, stage, g, card)) {
     p.drinks += 1; p.roundDrinks += 1;
-    p.streak += 1; p.worstStreak = Math.max(p.worstStreak, p.streak);
+    p.streak += 1; p.worstStreak = Math.max(p.worstStreak, p.streak); p.run = 0;
     owe(p, 1, `Missed card ${stage + 1}`);
     room.phase = "miss";
     bump(room, "miss", stage, call);
   } else if (stage === 3) {
-    p.correct += 1; p.streak = 0;
+    p.correct += 1; p.streak = 0; p.run += 1; p.bestRun = Math.max(p.bestRun, p.run);
     p.rides += 1; p.off = true; p.give += GIVE_ON_OFF;
     p.maxTries = Math.max(p.maxTries, p.tries);
     if (p.tries === 1) p.oneShots += 1;
@@ -159,7 +161,7 @@ function guess(room, g) {
     room.phase = "won";
     bump(room, "won", stage, call);
   } else {
-    p.correct += 1; p.streak = 0;
+    p.correct += 1; p.streak = 0; p.run += 1; p.bestRun = Math.max(p.bestRun, p.run);
     room.stage += 1;
     room.lastGood = room.settings.mode === "hilo"
       ? `${label(card)}. ${stage} right, ${3 - stage} to go.`
@@ -216,7 +218,7 @@ function flip(room) {
     r.results = room.players.filter(p => r.entrants.includes(p.id)).map(p => {
       const won = p.bet.suit === r.winner;
       if (won) { p.rides += 1; p.won += p.bet.amt; p.give += p.bet.amt * 2; }
-      else { p.drinks += p.bet.amt; owe(p, p.bet.amt, `Lost your ${SUITS[p.bet.suit].sym} bet`); }
+      else { p.drinks += p.bet.amt; p.lost += p.bet.amt; owe(p, p.bet.amt, `Lost your ${SUITS[p.bet.suit].sym} bet`); }
       return { id: p.id, name: p.name, suit: p.bet.suit, amt: p.bet.amt, won };
     });
     bump(room, "won");
@@ -288,7 +290,8 @@ function act(room, pid, msg) {
     case "restart":
       if (hostOnly()) return hostOnly();
       room.players.forEach(p => Object.assign(p, { drinks: 0, rides: 0, best: null, give: 0, given: 0, taken: 0, guesses: 0, correct: 0, won: 0, reacts: 0,
-        owe: 0, oweLog: [], maxTries: 0, oneShots: 0, streak: 0, worstStreak: 0 }));
+        owe: 0, oweLog: [], maxTries: 0, oneShots: 0, streak: 0, worstStreak: 0,
+        run: 0, bestRun: 0, lost: 0, oweSince: 0, drankMs: 0, drankTimes: 0 }));
       room.grudges = {};
       room.starter = 0; room.deck = [];
       if (room.screen === "awards") { room.screen = "lobby"; bump(room, "screen"); return null; }
@@ -345,7 +348,8 @@ function act(room, pid, msg) {
       // Done: the player confirms they've had every drink they owed.
       if (me.owe < 1) return null;
       room.lastDrank = me.owe;
-      me.owe = 0; me.oweLog = [];
+      if (me.oweSince) { me.drankMs += Date.now() - me.oweSince; me.drankTimes += 1; }
+      me.owe = 0; me.oweLog = []; me.oweSince = 0;
       return null;
     case "awards":
       if (hostOnly()) return hostOnly();
