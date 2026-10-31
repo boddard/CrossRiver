@@ -123,6 +123,12 @@ button:active { transform: scale(.97); }
 .pod .blk { width: 100%; border-radius: 10px 10px 0 0; background: var(--panel); border: 1px solid var(--line); display: grid; place-items: start center; padding-top: 8px; font: 900 28px/1 var(--display); color: var(--bus); animation: grow .8s calc(var(--i) * 200ms) cubic-bezier(.2,.8,.3,1) both; transform-origin: bottom; }
 .pod .pts { font: 700 13px/1 var(--mono); color: var(--muted); }
 @keyframes grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+.cats { display: flex; flex-wrap: wrap; gap: 6px; }
+.cat { min-height: 38px; padding: 0 12px; border-radius: 999px; border: 2px solid var(--line); background: var(--asphalt); font: 600 14px var(--body); }
+.cat small { color: var(--muted); font: 500 11px var(--mono); }
+.cat.on { border-color: var(--bus); color: var(--bus); background: rgba(245,179,1,.12); }
+.cat[disabled] { opacity: 1; cursor: default; }
+.cat[disabled]:not(.on) { display: none; }
 .len-pick { display: flex; gap: 8px; }
 .len-pick button { flex: 1; min-height: 44px; border-radius: 10px; border: 2px solid var(--line); background: var(--asphalt); font: 700 16px var(--body); }
 .len-pick button.on { border-color: var(--bus); color: var(--bus); }
@@ -1243,12 +1249,13 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     const modes = amHost()
       ? `<fieldset class="modes"><legend class="label">Game mode</legend>${Object.entries(MODES).map(([k, m]) =>
           `<label class="mode"><input type="radio" name="mode" value="${k}" ${mode() === k ? "checked" : ""}><span><b>${m.name}</b><small>${m.blurb}</small></span></label>`).join("")}</fieldset>
-        ${trivia() ? `<div class="field"><span class="label">Questions</span><div class="len-pick">${[10, 15, 20].map(n => `<button class="${S.settings.triviaLen === n ? "on" : ""}" data-tl="${n}">${n}</button>`).join("")}</div></div>` : ""}
+        ${trivia() ? `<div class="field"><span class="label">Questions</span><div class="len-pick">${[10, 15, 20].map(n => `<button class="${S.settings.triviaLen === n ? "on" : ""}" data-tl="${n}">${n}</button>`).join("")}</div></div>
+          ${catPickHTML(true)}` : ""}
         <div class="opts"${horse() || kings() || trivia() ? " hidden" : ""}>
           <label class="opt"><input type="checkbox" id="aces" ${S.settings.acesHigh ? "checked" : ""}><span>Aces high<small>Off makes aces the lowest card.</small></span></label>
           <label class="opt"><input type="checkbox" id="ties" ${S.settings.tiesMiss ? "checked" : ""}><span>Ties are a miss<small>A card matching the one it's compared to means you drink. Off gives a free pass.</small></span></label>
         </div>`
-      : `<div class="field"><span class="label">Game mode</span><div class="mode-read"><b>${MODES[mode()].name}</b><p class="hint">${MODES[mode()].blurb}</p></div></div>`;
+      : `<div class="field"><span class="label">Game mode</span><div class="mode-read"><b>${MODES[mode()].name}</b><p class="hint">${MODES[mode()].blurb}</p></div></div>${trivia() ? catPickHTML(false) : ""}`;
     const go = amHost()
       ? `<button class="primary wide" id="start">${horse() ? "Place your bets" : kings() ? "Start Kings Cup" : trivia() ? "Start Trivia" : "Start the game"}</button>`
       : `<p class="waiting">Waiting for <b>${nameOf(S.hostId)}</b> to start the game.</p>`;
@@ -1509,6 +1516,15 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
   }
 
   // ---- Trivia ----
+  // Categories: the host taps to pick (none picked means everything); everyone else sees the choice.
+  function catPickHTML(editable) {
+    const cats = S.triviaCategories || [], on = S.settings.triviaCats || [];
+    if (!cats.length) return "";
+    const total = cats.reduce((n, c) => n + c.n, 0);
+    const chips = cats.map(c => `<button class="cat${on.includes(c.name) ? " on" : ""}" data-cat="${esc(c.name)}"${editable ? "" : " disabled"}>${esc(c.name)} <small>${c.n}</small></button>`).join("");
+    return `<div class="field"><span class="label">Categories ${on.length ? `· ${on.length} picked` : `· all ${total.toLocaleString()} questions`}</span>
+      <div class="cats">${editable ? `<button class="cat${on.length ? "" : " on"}" data-cat="">All</button>` : ""}${chips}</div></div>`;
+  }
   const ordinal = n => { const v = n % 100; return n + (["th", "st", "nd", "rd"][(v - 20) % 10] || ["th", "st", "nd", "rd"][v] || "th"); };
   const ANS_STYLE = [["#e5484d", "▲"], ["#3e8ef7", "◆"], ["#d99a00", "●"], ["#2fa75a", "■"]];
   let myAnswer = null;  // shown straight away, before the server confirms
@@ -1670,7 +1686,8 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
   function rulesHTML() {
     const tail = `Aces are ${S.settings.acesHigh ? "high" : "low"}. A tie with the card you're comparing against ${S.settings.tiesMiss ? "counts as a miss" : "is a free pass"}.`;
     if (trivia()) return `<details><summary>How Trivia works</summary>
-      <p>Everyone answers on their own phone. You've got ${Math.round((S.turnMs || 15000) / 1000)} seconds a question; the question ends early once everyone has answered. A right answer scores 500 to 1,000 points, more the faster you are, plus up to 300 bonus for answering right several times in a row.</p></details>`;
+      <p>Pick categories in the lobby, or leave it on All. Everyone answers on their own phone. You've got ${Math.round((S.turnMs || 15000) / 1000)} seconds a question; the question ends early once everyone has answered. A right answer scores 500 to 1,000 points, more the faster you are, plus up to 300 bonus for answering right several times in a row.</p>
+      <p class="hint">Extra questions from Open Trivia DB (opentdb.com), used under CC BY-SA 4.0.</p></details>`;
     if (kings()) return `<details><summary>House rules: Kings Cup</summary><ol>
       ${Object.entries(KC).sort((a, b) => "A2345678910JQK".indexOf(a[0]) - "A2345678910JQK".indexOf(b[0])).map(([r, [t, d]]) => `<li><b>${r} · ${t}.</b> ${d}</li>`).join("")}</ol>
       <p>Take turns drawing by swiping across the screen. Anyone mated to a drinker drinks too.</p></details>`;
@@ -1873,6 +1890,11 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
       send({ t: "act", a: "answer", i: myAnswer }); return render();
     }
     if (t.dataset.tl) return act("setTriviaLen", { n: +t.dataset.tl });
+    if (t.dataset.cat !== undefined && amHost()) {
+      const on = new Set(S.settings.triviaCats || []), c = t.dataset.cat;
+      if (!c) on.clear(); else if (on.has(c)) on.delete(c); else on.add(c);
+      return act("setTriviaCats", { cats: [...on] });
+    }
     if (t.dataset.kcCatch) { catchOpen = false; return act("catch", { to: t.dataset.kcCatch }); }
     switch (t.id) {
       case "create": {

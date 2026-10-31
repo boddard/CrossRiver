@@ -12,7 +12,19 @@ const SUITS = {
 const SUIT_KEYS = ["S", "H", "D", "C"];
 const RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
 const MODES = ["classic", "hilo", "horse", "kings", "trivia"];
-const QUESTIONS = require("./trivia-questions");
+// Our own pack plus Open Trivia DB's verified questions (opentdb.com, CC BY-SA 4.0) when bundled.
+const QUESTIONS = (() => {
+  const own = require("./trivia-questions");
+  try { return own.concat(require("./opentdb-questions.json")); } catch (e) { return own; }
+})();
+const CATEGORY_ORDER = ["Aussie", "Pop culture", "Music", "Movies & TV", "Sport", "Food & drink", "Science & nature",
+  "History & geography", "Books & art", "Tech", "Games", "Anime & comics", "Random"];
+const CATEGORIES = (() => {
+  const n = {};
+  QUESTIONS.forEach(q => { n[q[0]] = (n[q[0]] || 0) + 1; });
+  return Object.keys(n).sort((a, b) => (CATEGORY_ORDER.indexOf(a) + 99) % 99 - (CATEGORY_ORDER.indexOf(b) + 99) % 99)
+    .map(name => ({ name, n: n[name] }));
+})();
 const MAX_PLAYERS = 16;
 const GIVE_ON_OFF = 3; // drinks a player hands out when they get off the bus
 // Bubble colours, picked in join order so neighbours differ.
@@ -32,7 +44,7 @@ const label = c => c.r + SUITS[c.s].sym;
 function createRoom(code) {
   return {
     code, hostId: null, players: [],
-    settings: { mode: "classic", acesHigh: true, tiesMiss: true, trackLen: 7, triviaLen: 10 },
+    settings: { mode: "classic", acesHigh: true, tiesMiss: true, trackLen: 7, triviaLen: 10, triviaCats: [] },
     screen: "lobby",
     current: null, starter: 0, deck: [], row: [], stage: 0, phase: "guess", lastGood: "",
     race: null,
@@ -179,7 +191,11 @@ function guess(room, g) {
 // more, with a bonus for answering several right in a row. Each question goes question -> reveal -> scores.
 const TRIVIA = { ready: 2500, question: 15000, reveal: 4500, board: 4000 };
 function newTrivia(room) {
-  const order = shuffle(QUESTIONS.map((_, i) => i)).slice(0, room.settings.triviaLen);
+  // Draw from the host's chosen categories (all of them when none are picked or too few questions match).
+  const cats = room.settings.triviaCats || [];
+  let pool = QUESTIONS.map((_, i) => i).filter(i => !cats.length || cats.includes(QUESTIONS[i][0]));
+  if (pool.length < room.settings.triviaLen) pool = QUESTIONS.map((_, i) => i);
+  const order = shuffle(pool).slice(0, room.settings.triviaLen);
   room.trivia = {
     id: token(4), order, n: 0, phase: "ready", endsAt: Date.now() + TRIVIA.ready,
     q: null, correct: -1, answers: {}, scores: {}, streak: {}, gained: {}, prevRank: {},
@@ -564,6 +580,12 @@ function act(room, pid, msg) {
       if (hostOnly()) return hostOnly();
       if (![10, 15, 20].includes(msg.n)) return "Pick 10, 15 or 20.";
       room.settings.triviaLen = msg.n; return null;
+    case "setTriviaCats": {
+      if (hostOnly()) return hostOnly();
+      const valid = new Set(CATEGORIES.map(c => c.name));
+      room.settings.triviaCats = Array.isArray(msg.cats) ? [...new Set(msg.cats.filter(c => valid.has(c)))] : [];
+      return null;
+    }
     case "triviaAgain":
       if (hostOnly()) return hostOnly();
       newTrivia(room); return null;
@@ -587,6 +609,7 @@ function publicState(room) {
     current: room.current, row: room.row, stage: room.stage, phase: room.phase, lastGood: room.lastGood,
     next: room.screen === "play" ? nextUp(room, room.current) : null,
     autoPassMs: AUTO_PASS_MS, giveOnOff: GIVE_ON_OFF, offlineSkipMs: OFFLINE_SKIP_MS,
+    triviaCategories: room.screen === "lobby" && room.settings.mode === "trivia" ? CATEGORIES : undefined,
     turnMs: room.screen === "trivia" ? TRIVIA.question : TURN_MS, turnLeftMs: room.screen === "trivia" && room.trivia ? (room.trivia.phase === "question" ? Math.max(0, room.trivia.endsAt - Date.now()) : null) : clockRunning(room) ? Math.max(0, deadline(room) - Date.now()) : null,
     grudges: Object.entries(room.grudges || {}).map(([k, n]) => { const [from, to] = k.split(">"); return { from, to, n }; }),
     race: r && {

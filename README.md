@@ -5,7 +5,7 @@ The F the Bus drinking game, built for phones. Three modes:
 - **Classic**: red or black, higher or lower, inside or outside, then the suit. Every miss is 1 drink and passes the bus to the next player.
 - **Higher or Lower**: a free start card, then 3 higher-or-lower calls in a row to get off.
 - **Horse Race**: bet drinks on one of the four aces and flip cards to race them up the track.
-- **Trivia** (online version): a quick-fire quiz with about 300 built-in questions. Everyone answers on their own phone against a 15-second clock; faster right answers score more, with streak bonuses, a scoreboard after each question and a podium at the end.
+- **Trivia** (online version): a quick-fire quiz with thousands of questions (our own pack plus Open Trivia DB), and the host can pick categories. Everyone answers on their own phone against a 15-second clock; faster right answers score more, with streak bonuses, a scoreboard after each question and a podium at the end.
 - **Kings Cup** (online version): take turns drawing from a ring of cards. Each rank has a rule, and the phones run the interactive ones: races to tap for Heaven and Floor, picking who drinks, mates, rules shown on every phone, and the Question Master. The 4th King drinks the cup.
 
 There are two versions:
@@ -86,3 +86,7 @@ npm start            # http://localhost:3000
 ```
 
 `PORT` and `HOST` environment variables change where it listens.
+
+## Credits
+
+Extra trivia questions in `server/opentdb-questions.json` come from [Open Trivia DB](https://opentdb.com), licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
