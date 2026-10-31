@@ -16,7 +16,16 @@ const EMPTY_ROOM_MS = 30 * 60 * 1000;      // or 30 min after everyone has disco
 const OFFLINE_GRACE_MS = 5000;             // show a player offline only after 5s without a connection
 const HOST_GRACE_MS = 30000;               // hand the host role on after 30s offline
 
-const INDEX = path.join(__dirname, "..", "public", "index.html");
+const PUBLIC = path.join(__dirname, "..", "public");
+const INDEX = path.join(PUBLIC, "index.html");
+// The few other files the app needs: install manifest, service worker and icons. Read once at start.
+const STATIC = Object.fromEntries([
+  ["/manifest.webmanifest", "application/manifest+json"],
+  ["/sw.js", "text/javascript; charset=utf-8"],
+  ["/icon-192.png", "image/png"],
+  ["/icon-512.png", "image/png"],
+  ["/apple-touch-icon.png", "image/png"],
+].map(([p, type]) => [p, { type, body: fs.readFileSync(path.join(PUBLIC, p.slice(1))) }]));
 let indexHtml = fs.readFileSync(INDEX);
 fs.watchFile(INDEX, { interval: 2000 }, () => { try { indexHtml = fs.readFileSync(INDEX); } catch (e) {} });
 
@@ -42,6 +51,11 @@ const server = http.createServer((req, res) => {
   if (url.pathname === "/" || url.pathname === "/index.html") {
     res.writeHead(200, { ...headers, "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" });
     return res.end(req.method === "HEAD" ? undefined : indexHtml);
+  }
+  const file = STATIC[url.pathname];
+  if (file) {
+    res.writeHead(200, { ...headers, "Content-Type": file.type, "Cache-Control": url.pathname === "/sw.js" ? "no-cache" : "public, max-age=86400" });
+    return res.end(req.method === "HEAD" ? undefined : file.body);
   }
   res.writeHead(404, { ...headers, "Content-Type": "text/plain" });
   res.end("Not found\n");

@@ -2,8 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>F the Bus Online</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>F the Bus</title>
+<meta name="theme-color" content="#14161b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="F the Bus">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
@@ -34,6 +43,39 @@
 }
 * { box-sizing: border-box; }
 html, body { min-height: 100%; }
+/* Feel like an app, not a web page: no double-tap zoom, no text selection or long-press menus,
+   no grey tap flash, no pull-to-refresh bounce. Typing still works in the name and code boxes. */
+html { touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; overscroll-behavior: none; background: var(--asphalt); }
+body { overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+input, textarea { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+img, svg { -webkit-user-drag: none; }
+button:active { transform: scale(.97); }
+/* Built for thumbs after a few drinks: big targets, one obvious action per screen */
+.choice { min-height: 76px; font-size: clamp(22px, 6vw, 28px); border-radius: 14px; }
+.choice.suit { font-size: clamp(32px, 9vw, 42px); }
+.primary { min-height: 60px; font-size: 24px; border-radius: 14px; padding: 14px 20px; }
+.ghost { min-height: 48px; border-radius: 12px; font-size: 16px; }
+.prompt { font-size: clamp(24px, 6.5vw, 30px); }
+.turn-head { margin: 0; font: 900 clamp(34px, 10vw, 48px)/1 var(--display); text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.turn-head.mine { color: var(--bus); }
+.join-or { margin: 0; color: var(--muted); text-align: center; font-weight: 600; }
+.code-row { display: flex; gap: 10px; }
+.code-row input { flex: 1; min-width: 0; }
+.code-row button { flex: none; width: 110px; }
+.sheet-back { position: fixed; inset: 0; z-index: 55; background: rgba(8,9,12,.72); display: flex; align-items: flex-end; animation: fade .15s ease-out both; }
+.sheet {
+  width: 100%; max-width: 480px; margin: 0 auto; background: var(--panel); border-top: 1px solid var(--line); border-radius: 18px 18px 0 0;
+  padding: 18px max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 18px) max(16px, env(safe-area-inset-left, 0px));
+  display: grid; gap: 10px; max-height: 85dvh; overflow-y: auto; animation: rise .2s ease-out both;
+}
+.sheet .label { text-align: center; }
+.sheet button { width: 100%; min-height: 56px; font-size: 18px; font-weight: 600; text-align: left; padding: 0 18px; }
+.sheet button.danger { color: var(--miss); border-color: rgba(239,90,95,.5); }
+.sheet button.armed-danger { background: var(--miss); color: #fff; border-color: var(--miss); }
+.sheet details { border-top: 0; padding: 0 4px; }
+.install { display: grid; gap: 6px; padding: 12px 14px; border-radius: 10px; border: 1px dashed var(--line); background: var(--asphalt); }
+.install b { font: 900 18px/1 var(--display); text-transform: uppercase; color: var(--bus); }
+.install p { margin: 0; color: var(--muted); font-size: 14px; }
 body {
   margin: 0;
   background: var(--asphalt);
@@ -41,7 +83,8 @@ body {
   font: 16px/1.5 var(--body);
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: var(--pad-y) 32px;
+  padding-top: calc(env(safe-area-inset-top, 0px) + var(--pad-y));
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 32px);
 }
 .wrap { max-width: 480px; margin: 0 auto; display: grid; gap: var(--gap); }
 button { font: inherit; color: inherit; cursor: pointer; }
@@ -70,7 +113,7 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 
 /* Cards: sized from both the screen width and the height left over after the bar, status and buttons */
 .route-line {
-  --cols: 2; --rows: 2; --reserve: 450px; --col-gap: 12px;
+  --cols: 2; --rows: 2; --reserve: 470px; --col-gap: 12px;
   --cw: min(calc((100% - (var(--cols) - 1) * var(--col-gap)) / var(--cols)),
             calc(((100dvh - var(--safe-y) - var(--reserve)) / var(--rows) - 34px) * 5 / 7));
   flex: 1; display: grid; grid-template-columns: repeat(var(--cols), max(84px, var(--cw)));
@@ -296,7 +339,7 @@ details p { max-width: 65ch; color: var(--muted); }
   width: 100%; background: var(--asphalt); color: var(--ink); border: 2px solid var(--line); border-radius: 10px;
   padding: 13px 14px; font: 500 18px var(--body);
 }
-.field input.code { font: 700 28px/1 var(--mono); letter-spacing: .3em; text-transform: uppercase; text-align: center; }
+.field input.code, .code-row input.code { width: 100%; background: var(--asphalt); color: var(--ink); border: 2px solid var(--line); border-radius: 12px; padding: 12px; font: 700 26px/1 var(--mono); letter-spacing: .3em; text-transform: uppercase; text-align: center; }
 .or { display: flex; align-items: center; gap: 10px; color: var(--muted); font: 600 12px var(--body); letter-spacing: .12em; text-transform: uppercase; }
 .or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 .wide { width: 100%; }
@@ -441,8 +484,7 @@ details p { max-width: 65ch; color: var(--muted); }
     <h1>F the Bus</h1>
     <div class="sign-end">
       <button class="sign-btn icon" id="sound" type="button" aria-label="Sound on" aria-pressed="true"></button>
-      <button class="sign-btn" id="menu" type="button" hidden>Menu</button>
-      <button class="sign-btn" id="restart" type="button" hidden>Restart</button>
+      <button class="sign-btn icon" id="more" type="button" aria-label="Menu" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
     </div>
   </header>
   <main id="app"></main>
@@ -483,6 +525,7 @@ details p { max-width: 65ch; color: var(--muted); }
   let armed = null;      // the call I've picked and am about to swipe for
   let remote = null;     // the rider's (or flipper's) call and live swipe, seen from another phone
   let trayOpen = false, trayTimer = null, prevPos = null;
+  let sheetOpen = false, sheetRules = false, leaveArmed = false;
   const TITLE = document.title;
   const calm = () => window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -786,24 +829,49 @@ details p { max-width: 65ch; color: var(--muted); }
   }
 
   // ---- join screen ----
+  // ---- install as an app ----
+  // Installed, the game opens full screen with its own icon. iPhones add it from Safari's Share menu;
+  // Android offers an install prompt we can show from a button.
+  const standalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  let installPrompt = null;
+  window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installPrompt = e; if (!S) render(); });
+  window.addEventListener("appinstalled", () => { installPrompt = null; render(); });
+  function installHTML() {
+    if (standalone()) return "";
+    if (installPrompt) return `<div class="install"><b>Play full screen</b><p>Install F the Bus on your phone. It opens like an app, with no browser bars.</p><button class="ghost" id="install">Install the app</button></div>`;
+    if (isIOS) return `<div class="install"><b>Play full screen</b><p>In Safari, tap the Share button, then <b>Add to Home Screen</b>. Open F the Bus from your home screen and it runs like an app.</p></div>`;
+    return "";
+  }
+
   function joinHTML() {
     const code = linkRoom || "";
     const rejoining = session.room && session.token;
     if (rejoining) return `<section class="console join"><h2>Rejoining ${esc(session.room)}…</h2>
       <p class="waiting">${connected ? "Finding your seat." : "Connecting to the server."}</p>
       <button class="ghost" id="forget">Join a different room</button></section>`;
+    const nameField = `<label class="field"><span class="label">Your name</span>
+      <input id="name" maxlength="20" autocomplete="nickname" enterkeyhint="go" placeholder="Your name" value="${esc(session.name)}"></label>`;
+    const status = connected ? "" : '<p class="waiting">Connecting…</p>';
+    // Arriving from an invite link: just a name and one button.
+    if (code) return `<section class="console join">
+      <h2>Join room ${esc(code)}</h2>
+      <form id="joinform" class="join">${nameField}<input id="code" type="hidden" value="${esc(code)}">
+        <button class="primary wide" type="submit" id="join">Join</button></form>
+      ${status}
+      <button class="ghost" id="nocode">Start my own room instead</button>
+      ${installHTML()}
+    </section>`;
     return `<section class="console join">
-      <h2>${code ? `Join room ${esc(code)}` : "Play online"}</h2>
-      <form id="joinform" class="join">
-        <label class="field"><span class="label">Your name</span>
-          <input id="name" maxlength="20" autocomplete="nickname" placeholder="What do your mates call you?" value="${esc(session.name)}"></label>
-        <label class="field"><span class="label">Room code</span>
-          <input id="code" class="code" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD" value="${esc(code)}"></label>
-        <button class="primary wide" type="submit" id="join">Join room</button>
+      ${nameField}
+      <button class="primary wide" id="create">Start a room</button>
+      <p class="join-or">or join a friend's room</p>
+      <form id="joinform" class="code-row">
+        <input id="code" class="code field-input" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" enterkeyhint="go" placeholder="CODE" aria-label="Room code" value="">
+        <button class="ghost" type="submit" id="join">Join</button>
       </form>
-      ${code ? "" : `<div class="or">or</div><button class="ghost wide" id="create">Create a new room</button>`}
-      ${connected ? "" : '<p class="waiting">Connecting to the server…</p>'}
-      ${code ? '<button class="ghost" id="nocode">Create a new room instead</button>' : ""}
+      ${status}
+      ${installHTML()}
     </section>`;
   }
 
@@ -839,19 +907,16 @@ details p { max-width: 65ch; color: var(--muted); }
           <label class="opt"><input type="checkbox" id="ties" ${S.settings.tiesMiss ? "checked" : ""}><span>Ties are a miss<small>A card matching the one it's compared to means you drink. Off gives a free pass.</small></span></label>
         </div>`
       : `<div class="field"><span class="label">Game mode</span><div class="mode-read"><b>${MODES[mode()].name}</b><p class="hint">${MODES[mode()].blurb}</p></div></div>`;
-    const played = S.players.some(p => p.guesses || p.drinks || p.won);
     const go = amHost()
-      ? `<button class="primary" id="start">${horse() ? "Place your bets" : "Board the bus"}</button>${played ? '<button class="ghost" id="show-awards">End of night awards</button>' : ""}`
+      ? `<button class="primary wide" id="start">${horse() ? "Place your bets" : "Start the game"}</button>`
       : `<p class="waiting">Waiting for <b>${nameOf(S.hostId)}</b> to start the game.</p>`;
     return `${confirmHTML()}<section class="console setup">
       <div class="roomcode"><div><span class="label">Room code</span><br><strong>${esc(S.code)}</strong></div>
         <button class="ghost" id="invite">Invite friends</button></div>
-      ${crewHTML()}
       <span class="label">Players (${S.players.length})</span>
       <ul class="people">${people}</ul>
       ${modes}
       <div class="row">${go}</div>
-      <button class="ghost" id="leave">Leave room</button>
       ${rulesHTML()}
     </section>`;
   }
@@ -917,7 +982,7 @@ details p { max-width: 65ch; color: var(--muted); }
       return `<section class="console calling" aria-live="polite"><p class="call-by">${mine ? "You call" : `${esc(p.name)} calls`}</p>
         <h2 class="call" data-key="c${v.call}">${esc(CALLS[v.call] || v.call)}</h2>
         <div class="drum"><span></span><span></span><span></span></div>
-        ${v.revealing ? "" : `<p class="waiting">Waiting for ${esc(p.name)} to flip…</p>`}</section>`;
+        </section>`;
     }
     const next = S.next;
     const upNext = next === S.current ? (mine ? "You go again from card 1." : `${esc(p.name)} goes again from card 1.`)
@@ -944,16 +1009,15 @@ details p { max-width: 65ch; color: var(--muted); }
     const flashLine = v.lastGood ? `<p class="flash ok">${esc(v.lastGood)}</p>` : "";
     let controls;
     if (mine && armed) {
-      controls = `<p class="waiting">You call <b>${esc(CALLS[armed])}</b>. Swipe the card up to flip it, or change your call.</p>${choices}
-        <button class="primary flip-btn" id="flip-now">Flip it</button>`;
+      controls = `${choices}<button class="primary flip-btn" id="flip-now">Flip ↑</button>`;
     } else if (mine) {
       controls = choices;
     } else if (amHost() && !p.connected) {
       controls = `<p class="waiting"><b>${esc(p.name)}</b> is offline. Skipping them in ${Math.round(S.offlineSkipMs / 1000)} seconds, or skip now.</p><button class="ghost" id="skip">Skip ${esc(p.name)}'s turn</button>`;
     } else {
-      controls = `<p class="waiting">Waiting for <b>${esc(p.name)}</b> to call…<span class="nudge-hint">Tap their bubble at the top to hurry them up.</span></p>`;
+      controls = `<p class="waiting">Tap <b>${esc(p.name)}</b> at the top to hurry them up.</p>`;
     }
-    return `<section class="console">${flashLine}<h2 class="prompt">${mine ? prompt : `${esc(p.name)}: ${prompt}`}</h2>${controls}</section>`;
+    return `<section class="console">${flashLine}<h2 class="prompt">${mine && armed ? "Swipe the card up" : prompt}</h2>${controls}</section>`;
   }
   function paxHTML() {
     const rows = S.players.map(p => {
@@ -963,10 +1027,9 @@ details p { max-width: 65ch; color: var(--muted); }
       <td class="n">${p.roundDrinks}</td><td class="n">${p.drinks}</td><td class="n">${p.best ?? "–"}</td></tr>`;
     }).join("");
     return `<section class="pax">
-      <div class="pax-head"><span class="label">Passengers · room ${esc(S.code)}</span><button class="ghost" id="invite">Invite</button></div>
+      <div class="pax-head"><span class="label">Scores · room ${esc(S.code)}</span></div>
       <div style="overflow-x:auto"><table><thead><tr><th>Name</th><th class="n">This round</th><th class="n">Total</th><th class="n">Best</th></tr></thead><tbody>${rows}</tbody></table></div>
-      <p class="hint">Turns go down the list and pass on by themselves. New players join at the end of the list.</p>
-      <div class="row">${amHost() ? '<button class="ghost" id="show-awards">End of night awards</button>' : ""}<button class="ghost" id="leave">Leave room</button></div>
+
     </section>`;
   }
   function playHTML() {
@@ -976,11 +1039,7 @@ details p { max-width: 65ch; color: var(--muted); }
     return `${confirmHTML()}${layer(fx === "miss" ? '<div class="miss-flash"></div>' : "")}<div class="wrap" style="max-width:none"><div class="stage">
       ${crewHTML()}
       <section class="status">
-        <div><span class="label">Room ${esc(S.code)} · ${MODES[mode()].name}</span><p class="rider${fx === "turn" ? " slide" : ""}">${mine ? "Your turn" : esc(p.name)}</p></div>
-        <div class="meters">
-          <div class="meter"><span class="label">Try</span><strong>${p.tries}</strong></div>
-          <div class="meter"><span class="label">Drinks</span><strong>${p.roundDrinks}</strong></div>
-        </div>
+        <p class="turn-head${mine ? " mine" : ""}${fx === "turn" ? " slide" : ""}">${mine ? "Your turn" : `${esc(p.name)}'s turn`}</p>
       </section>
       ${stopsHTML(v)}${consoleHTML(v)}</div>${paxHTML()}${rulesHTML()}</div>`;
   }
@@ -1047,9 +1106,9 @@ details p { max-width: 65ch; color: var(--muted); }
       ${crewHTML()}
       <section class="status">${raceStatusHTML(r)}</section>
       ${trackHTML(r)}${raceConsoleHTML(r)}</div>
-      <section class="pax"><div class="pax-head"><span class="label">Bets · room ${esc(S.code)}</span><button class="ghost" id="invite">Invite</button></div>
+      <section class="pax"><div class="pax-head"><span class="label">Bets · room ${esc(S.code)}</span></div>
       <div style="overflow-x:auto"><table><thead><tr><th>Name</th><th>Horse</th><th class="n">Bet</th><th class="n">Total drinks</th></tr></thead><tbody>${rows}</tbody></table></div>
-      <div class="row">${amHost() ? '<button class="ghost" id="show-awards">End of night awards</button>' : ""}<button class="ghost" id="leave">Leave room</button></div></section>
+</section>
       ${rulesHTML()}</div>`;
   }
   // After a flip, the horse that moved jumps; the one knocked back stumbles.
@@ -1139,27 +1198,45 @@ details p { max-width: 65ch; color: var(--muted); }
   }
   // Overlays sit in fixed slots so showing or hiding one never shifts the page below it.
   const layer = html => `<div class="layer">${html}</div>`;
+  // Everything that isn't the game itself lives in one menu, away from the big buttons.
+  function sheetHTML() {
+    if (!sheetOpen || !S) return layer("");
+    const host = amHost();
+    return layer(`<div class="sheet-back" id="sheet-back"><div class="sheet" role="dialog" aria-modal="true" aria-label="Menu">
+      <span class="label">Room ${esc(S.code)} · ${MODES[mode()].name}</span>
+      <button class="ghost" id="invite">Invite friends</button>
+      <button class="ghost" id="rules-toggle" aria-expanded="${sheetRules}">How to play</button>
+      ${sheetRules ? rulesHTML().replace("<details>", "<details open>") : ""}
+      ${host && S.screen !== "lobby" ? '<button class="ghost" id="to-menu">Change game</button>' : ""}
+      ${host && S.screen !== "awards" ? '<button class="ghost" id="show-awards">End of night awards</button>' : ""}
+      ${host ? '<button class="ghost danger" id="restart-ask">Restart for everyone</button>' : ""}
+      <button class="ghost ${leaveArmed ? "armed-danger" : "danger"}" id="leave">${leaveArmed ? "Tap again to leave" : "Leave room"}</button>
+      <button class="primary" id="sheet-close">Back to the game</button>
+    </div></div>`);
+  }
   function confirmHTML() {
-    if (!confirming) return layer("");
+    if (!confirming) return sheetHTML();
     const what = horse()
       ? "Everyone's drink totals and stats go back to zero and the room goes back to the betting screen."
       : "Everyone's drinks, stats and best rides go back to zero, and a new round starts from the top of the list.";
     return layer(`<div class="confirm-back"><div class="confirm" role="dialog" aria-modal="true" aria-labelledby="rs-title">
         <h2 id="rs-title">Restart the game?</h2><p>${what} This restarts it for the whole room.</p>
         <div class="row"><button class="primary" id="restart-yes">Restart</button><button class="ghost" id="restart-no">Keep playing</button></div>
-      </div></div>`);
+      </div></div>`) + sheetHTML();
   }
 
+  let lastScreen = null;
   function render() {
+    // A new screen (lobby to game, game to awards) starts at the top; updates within a screen keep their place.
+    const screen = S ? S.screen : "join";
+    if (screen !== lastScreen) { lastScreen = screen; scrollTo(0, 0); }
     paint(!S ? joinHTML()
       : S.screen === "lobby" ? lobbyHTML()
       : S.screen === "bets" ? betsHTML()
       : S.screen === "race" && S.race ? raceHTML()
       : S.screen === "awards" ? awardsHTML()
       : playHTML());
-    const hostBtns = !!S && amHost() && S.screen !== "lobby";
-    document.getElementById("restart").hidden = !hostBtns;
-    document.getElementById("menu").hidden = !hostBtns;
+    document.getElementById("more").hidden = !S;
     animateHorses();
     if (fx === "won") celebrate();
     fx = ""; dealt = -1;
@@ -1257,7 +1334,13 @@ details p { max-width: 65ch; color: var(--muted); }
       case "nocode": history.replaceState(null, "", location.pathname); return location.reload();
       case "forget": leaveLocal(); return;
       case "invite": return invite();
-      case "leave": return send({ t: "leave" });
+      case "install": if (installPrompt) { installPrompt.prompt(); installPrompt.userChoice.finally(() => { installPrompt = null; render(); }); } return;
+      case "leave":
+        if (!leaveArmed) { leaveArmed = true; return render(); }
+        leaveArmed = false; sheetOpen = false; return send({ t: "leave" });
+      case "sheet-close": sheetOpen = false; leaveArmed = false; return render();
+      case "rules-toggle": sheetRules = !sheetRules; return render();
+      case "restart-ask": sheetOpen = false; confirming = true; return render();
       case "start": return act("start");
       case "react-toggle": trayOpen = !trayOpen; return render();
       case "restart-yes": confirming = false; return act("restart");
@@ -1266,8 +1349,8 @@ details p { max-width: 65ch; color: var(--muted); }
       case "skip": return act("skip");
       case "start-race": return act("startRace");
       case "race-again": return act("raceAgain");
-      case "to-menu": return act("menu");
-      case "show-awards": return act("awards");
+      case "to-menu": sheetOpen = false; return act("menu");
+      case "show-awards": sheetOpen = false; return act("awards");
       case "new-night": return act("restart");
       case "flip": return S.race && S.race.flipper === me ? commitFlip() : act("flip");
       case "len-down": return act("setTrackLen", { delta: -1 });
@@ -1288,11 +1371,12 @@ details p { max-width: 65ch; color: var(--muted); }
     if (e.target.id === "aces") return act("setSetting", { key: "acesHigh", value: e.target.checked });
     if (e.target.id === "ties") return act("setSetting", { key: "tiesMiss", value: e.target.checked });
   });
-  document.getElementById("restart").addEventListener("click", () => { confirming = true; render(); });
-  document.getElementById("menu").addEventListener("click", () => { confirming = false; act("menu"); scrollTo(0, 0); });
+  document.getElementById("more").addEventListener("click", () => { audio(); sheetOpen = !sheetOpen; leaveArmed = false; render(); });
+  // Tapping the dark area around the menu closes it.
+  app.addEventListener("click", e => { if (e.target.id === "sheet-back") { sheetOpen = false; leaveArmed = false; render(); } });
   document.getElementById("sound").addEventListener("click", () => { session.muted = !session.muted; saveSession(); soundIcon(); if (!session.muted) sfx.pop(); });
   document.addEventListener("keydown", e => {
-    if (e.key === "Escape" && (confirming || trayOpen)) { confirming = false; trayOpen = false; render(); }
+    if (e.key === "Escape" && (confirming || trayOpen || sheetOpen)) { confirming = false; trayOpen = false; sheetOpen = false; render(); }
   });
 
   // ---- celebration ----
@@ -1335,6 +1419,12 @@ details p { max-width: 65ch; color: var(--muted); }
       if (t < 2200) requestAnimationFrame(frame); else c.remove();
     })(performance.now());
   }
+
+  // iOS Safari still pinch-zooms despite the viewport setting; stop two-finger gestures here.
+  document.addEventListener("gesturestart", e => e.preventDefault());
+  document.addEventListener("touchmove", e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+  document.addEventListener("dblclick", e => e.preventDefault());
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
 
   soundIcon();
   render();
