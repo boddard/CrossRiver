@@ -73,6 +73,8 @@ button:active { transform: scale(.97); }
 .sheet button.danger { color: var(--miss); border-color: rgba(239,90,95,.5); }
 .sheet button.armed-danger { background: var(--miss); color: #fff; border-color: var(--miss); }
 .sheet details { border-top: 0; padding: 0 4px; }
+.sheet .pax { padding: 0 2px; }
+.sheet table { font-size: 15px; }
 .install { display: grid; gap: 6px; padding: 12px 14px; border-radius: 10px; border: 1px dashed var(--line); background: var(--asphalt); }
 .install b { font: 900 18px/1 var(--display); text-transform: uppercase; color: var(--bus); }
 .install p { margin: 0; color: var(--muted); font-size: 14px; }
@@ -112,14 +114,24 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px 
 .meter strong { display: block; font: 700 22px/1.1 var(--mono); font-variant-numeric: tabular-nums; }
 
 /* Cards: sized from both the screen width and the height left over after the bar, status and buttons */
-.route-line {
-  --cols: 2; --rows: 2; --reserve: 470px; --col-gap: 12px;
-  --cw: min(calc((100% - (var(--cols) - 1) * var(--col-gap)) / var(--cols)),
-            calc(((100dvh - var(--safe-y) - var(--reserve)) / var(--rows) - 34px) * 5 / 7));
-  flex: 1; display: grid; grid-template-columns: repeat(var(--cols), max(84px, var(--cw)));
-  justify-content: center; align-content: center; gap: 14px var(--col-gap);
+/* Play screens are a fixed frame the size of the phone: player bar, headline, the table, and a control
+   panel of fixed height. Only the contents of each area change, so nothing shifts and nothing scrolls. */
+html.framed, html.framed body { overflow: hidden; height: 100%; }
+html.framed body { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--pad-y)); }
+.frame {
+  height: calc(100dvh - var(--safe-y) - 2 * var(--pad-y) - var(--sign-h) - var(--gap));
+  display: grid; grid-template-rows: auto 48px minmax(0, 1fr) 236px; gap: 10px;
 }
-.stop { display: grid; gap: 8px; justify-items: center; min-width: 0; container-type: inline-size; }
+.frame.race { grid-template-rows: auto 48px minmax(0, 1fr) 196px; }
+.frame > .status { min-height: 0; align-items: center; }
+.frame > .console { height: 100%; margin: 0; overflow-y: auto; align-content: center; }
+.table-area { container-type: size; min-height: 0; display: grid; place-items: center; }
+.route-line {
+  --col-gap: 12px; --row-gap: 12px; --head: 30px;
+  --cw: min(calc((100cqw - var(--col-gap)) / 2), calc((100cqh - var(--row-gap) - 2 * var(--head)) / 2 * 5 / 7));
+  display: grid; grid-template-columns: repeat(2, var(--cw)); justify-content: center; align-content: center; gap: var(--row-gap) var(--col-gap);
+}
+.stop { display: grid; grid-template-rows: 22px auto; gap: 8px; justify-items: center; min-width: 0; container-type: inline-size; }
 .stop-name .short { display: none; }
 @container (max-width: 150px) { .stop-name .long { display: none; } .stop-name .short { display: inline; } }
 .stop-head { display: flex; align-items: center; gap: 7px; min-width: 0; max-width: 100%; }
@@ -269,8 +281,8 @@ details p { max-width: 65ch; color: var(--muted); }
 /* Horse race: a vertical track. Sideline cards run up the left; four lanes, finish at the top */
 .track {
   --rgap: 4px;
-  --row: clamp(28px, calc((100dvh - var(--safe-y) - 428px) / var(--rows) - var(--rgap)), 72px);
-  flex: 1; align-self: center; width: min(100%, 520px);
+  --row: min(72px, calc((100cqh - (var(--rows) - 1) * var(--rgap) - 14px) / var(--rows)));
+  width: min(100cqw, 520px);
   display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0 8px; align-content: center;
 }
 .tcol { position: relative; display: grid; grid-template-rows: repeat(var(--rows), var(--row)); gap: var(--rgap); }
@@ -392,7 +404,7 @@ details p { max-width: 65ch; color: var(--muted); }
 @keyframes glow { 50% { box-shadow: 0 0 0 2px var(--asphalt), 0 0 0 4px var(--bus), 0 0 16px 4px rgba(245,179,1,.45); } }
 @keyframes wiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-6deg); } 75% { transform: rotate(6deg); } }
 @keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.25); } 100% { transform: scale(1); } }
-.give-note { margin: 0; padding: 8px 12px; border-radius: 8px; background: rgba(70,196,106,.14); border: 1px solid rgba(70,196,106,.5); font-weight: 600; text-align: center; animation: rise .3s ease-out both; }
+.give-note { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 20; margin: 0; padding: 8px 12px; background-color: var(--panel); box-shadow: 0 8px 20px rgba(0,0,0,.4); border-radius: 8px; background: rgba(70,196,106,.14); border: 1px solid rgba(70,196,106,.5); font-weight: 600; text-align: center; animation: rise .3s ease-out both; }
 .react-btn { flex: none; width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--line); background: var(--panel); font-size: 22px; line-height: 1; }
 .react-btn[aria-expanded="true"] { border-color: var(--bus); }
 .tray { position: absolute; right: 0; top: calc(100% + 4px); z-index: 30; display: flex; gap: 4px; padding: 6px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,.45); animation: rise .2s ease-out both; }
@@ -959,13 +971,13 @@ details p { max-width: 65ch; color: var(--muted); }
     return `<div class="${slotCls.filter(Boolean).join(" ")}"${extra} role="img" aria-label="${aria}"><div class="${cardCls}"${key}><div class="back"></div>${face}</div>${hint}</div>`;
   }
   function stopsHTML(v) {
-    return `<section class="route-line" aria-label="The four cards">${MODES[mode()].stops.map((name, i) => {
+    return `<div class="table-area"><section class="route-line" aria-label="The four cards">${MODES[mode()].stops.map((name, i) => {
       let cls = "stop" + (S.ev.type === "turn" ? " enter" : S.ev.type === "won" && !v.revealing ? " cheer" : "");
       if (v.phase === "miss" && i === v.stage) cls += " bust";
       else if (i < v.stage || v.phase === "won") cls += " done";
       else if (i === v.stage) cls += " on";
       return `<div class="${cls}" style="--i:${i}"><div class="stop-head"><span class="dot">${MODES[mode()].dots[i]}</span><span class="stop-name"><span class="long">${name[0]}</span><span class="short">${name[1]}</span></span></div>${cardHTML(i, v)}</div>`;
-    }).join("")}</section>`;
+    }).join("")}</section></div>`;
   }
   function choicesHTML(v) {
     const r = v.row, picked = g => (S.current === me && armed === g ? " picked" : "");
@@ -1000,7 +1012,7 @@ details p { max-width: 65ch; color: var(--muted); }
       let note = "";
       if (next === null && S.players.length > 1) {
         const worst = S.players.reduce((a, b) => b.roundDrinks > a.roundDrinks ? b : a);
-        note = ` ${esc(p.name)} was last off, and ${esc(worst.name)} drank the most this round (${worst.roundDrinks}).`;
+        note = ` Round over: ${esc(worst.name)} drank the most (${worst.roundDrinks}).`;
       }
       const give = mine ? ` Hand out ${plural(S.giveOnOff, "drink")}: tap players at the top.` : ` ${esc(p.name)} hands out ${plural(S.giveOnOff, "drink")}.`;
       return `<section class="console" aria-live="polite">
@@ -1021,6 +1033,10 @@ details p { max-width: 65ch; color: var(--muted); }
     }
     return `<section class="console">${flashLine}<h2 class="prompt">${mine && armed ? "Swipe the card up" : prompt}</h2>${controls}</section>`;
   }
+  function betsTableHTML() {
+    const rows = S.players.map(p => `<tr><td><span class="pname">${esc(p.name)}</span>${youTag(p.id)}</td><td><span class="${isRed(p.bet.suit) ? "r" : ""}">${suitSym(p.bet.suit)}</span></td><td class="n">${p.bet.amt}</td><td class="n">${p.drinks}</td></tr>`).join("");
+    return `<section class="pax"><div style="overflow-x:auto"><table><thead><tr><th>Name</th><th>Horse</th><th class="n">Bet</th><th class="n">Drinks</th></tr></thead><tbody>${rows}</tbody></table></div></section>`;
+  }
   function paxHTML() {
     const rows = S.players.map(p => {
       const tag = p.id === S.current && S.phase !== "won" ? '<span class="tag">RIDING</span>' : p.off ? '<span class="tag off">OFF</span>' : "";
@@ -1029,7 +1045,6 @@ details p { max-width: 65ch; color: var(--muted); }
       <td class="n">${p.roundDrinks}</td><td class="n">${p.drinks}</td><td class="n">${p.best ?? "–"}</td></tr>`;
     }).join("");
     return `<section class="pax">
-      <div class="pax-head"><span class="label">Scores · room ${esc(S.code)}</span></div>
       <div style="overflow-x:auto"><table><thead><tr><th>Name</th><th class="n">This round</th><th class="n">Total</th><th class="n">Best</th></tr></thead><tbody>${rows}</tbody></table></div>
 
     </section>`;
@@ -1038,12 +1053,12 @@ details p { max-width: 65ch; color: var(--muted); }
     const v = view();
     const p = byId(S.current) || { name: "", tries: 0, roundDrinks: 0 };
     const mine = S.current === me;
-    return `${confirmHTML()}${layer("")}<div class="wrap" style="max-width:none"><div class="stage">
+    return `${confirmHTML()}${layer("")}<div class="frame">
       ${crewHTML()}
       <section class="status">
         <p class="turn-head${mine ? " mine" : ""}${S.ev.type === "turn" ? " slide" : ""}">${mine ? "Your turn" : `${esc(p.name)}'s turn`}</p>
       </section>
-      ${stopsHTML(v)}${consoleHTML(v)}</div>${paxHTML()}${rulesHTML()}</div>`;
+      ${stopsHTML(v)}${consoleHTML(v)}</div>`;
   }
 
   // ---- horse race ----
@@ -1073,7 +1088,7 @@ details p { max-width: 65ch; color: var(--muted); }
       const mine = myBet && myBet.suit === k;
       return `<div class="tcol${mine ? " mine" : ""}"${mine ? ` style="--c:${byId(me).color}"` : ""}>${cells}<div class="${cls}" data-h="${k}" style="--p:${r.pos[k]}" aria-label="Ace of ${suitName(k)}, spot ${r.pos[k]}"><div class="hface">A<span>${suitSym(k)}</span></div><div class="riders">${riders}</div></div></div>`;
     }).join("");
-    return `<section class="track" id="track" style="--rows:${r.len + 2}" aria-label="Race track">${side}${lanes}</section>`;
+    return `<div class="table-area"><section class="track" id="track" style="--rows:${r.len + 2}" aria-label="Race track">${side}${lanes}</section></div>`;
   }
   function raceConsoleHTML(r) {
     if (r.winner) {
@@ -1103,15 +1118,10 @@ details p { max-width: 65ch; color: var(--muted); }
   }
   function raceHTML() {
     const r = S.race;
-    const rows = S.players.map(p => `<tr><td><span class="pname">${esc(p.name)}</span>${youTag(p.id)}</td><td><span class="${isRed(p.bet.suit) ? "r" : ""}">${suitSym(p.bet.suit)}</span></td><td class="n">${p.bet.amt}</td><td class="n">${p.drinks}</td></tr>`).join("");
-    return `${confirmHTML()}<div class="wrap" style="max-width:none"><div class="stage race-stage">
+    return `${confirmHTML()}<div class="frame race">
       ${crewHTML()}
       <section class="status">${raceStatusHTML(r)}</section>
-      ${trackHTML(r)}${raceConsoleHTML(r)}</div>
-      <section class="pax"><div class="pax-head"><span class="label">Bets · room ${esc(S.code)}</span></div>
-      <div style="overflow-x:auto"><table><thead><tr><th>Name</th><th>Horse</th><th class="n">Bet</th><th class="n">Total drinks</th></tr></thead><tbody>${rows}</tbody></table></div>
-</section>
-      ${rulesHTML()}</div>`;
+      ${trackHTML(r)}${raceConsoleHTML(r)}</div>`;
   }
   // After a flip, the horse that moved jumps; the one knocked back stumbles.
   function animateHorses() {
@@ -1206,6 +1216,7 @@ details p { max-width: 65ch; color: var(--muted); }
     const host = amHost();
     return layer(`<div class="sheet-back" id="sheet-back"><div class="sheet" role="dialog" aria-modal="true" aria-label="Menu">
       <span class="label">Room ${esc(S.code)} · ${MODES[mode()].name}</span>
+      ${S.screen === "play" ? paxHTML() : S.screen === "race" && S.race ? betsTableHTML() : ""}
       <button class="ghost" id="invite">Invite friends</button>
       <button class="ghost" id="rules-toggle" aria-expanded="${sheetRules}">How to play</button>
       ${sheetRules ? rulesHTML().replace("<details>", "<details open>") : ""}
@@ -1232,6 +1243,7 @@ details p { max-width: 65ch; color: var(--muted); }
     // A new screen (lobby to game, game to awards) starts at the top; updates within a screen keep their place.
     const screen = S ? S.screen : "join";
     if (screen !== lastScreen) { lastScreen = screen; scrollTo(0, 0); }
+    document.documentElement.classList.toggle("framed", screen === "play" || (screen === "race" && !!S.race));
     paint(!S ? joinHTML()
       : S.screen === "lobby" ? lobbyHTML()
       : S.screen === "bets" ? betsHTML()
