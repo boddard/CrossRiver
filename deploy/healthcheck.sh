@@ -26,7 +26,7 @@ if has ufw; then ufw status verbose 2>/dev/null | sed -n '1,25p'; else echo "ufw
 has nft && echo "nftables rules: $(nft list ruleset 2>/dev/null | grep -c 'accept\|drop')"
 
 h "Listening ports (what the outside world can reach if the firewall allows it)"
-ss -tulpn 2>/dev/null | awk 'NR==1 || /LISTEN|UNCONN/' | awk '{print $1, $5, $7}' | column -t | sed -n '1,40p'
+ss -tulpn 2>/dev/null | awk 'NR==1 || /LISTEN|UNCONN/ {printf "%-5s %-28s %s\n", $1, $5, $7}' | sed -n '1,40p'
 
 h "SSH settings"
 if has sshd; then
