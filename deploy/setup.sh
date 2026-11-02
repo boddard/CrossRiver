@@ -55,7 +55,7 @@ echo "==> Installing the service"
 cp deploy/crossriver.service /etc/systemd/system/crossriver.service
 mkdir -p /etc/systemd/system/crossriver.service.d
 HAS_TUNNEL=0
-if [ -n "$TUNNEL_TOKEN" ] || systemctl is-enabled -q cloudflared 2>/dev/null; then HAS_TUNNEL=1; fi
+if [ -n "$TUNNEL_TOKEN" ] || systemctl is-enabled -q crossriver-tunnel 2>/dev/null || systemctl is-enabled -q cloudflared 2>/dev/null; then HAS_TUNNEL=1; fi
 if [ -z "$DOMAIN" ] && [ "$HAS_TUNNEL" -eq 0 ]; then
   # No domain and no tunnel: listen on all addresses so phones can reach http://SERVER-IP:3100 directly.
   printf '[Service]\nEnvironment=HOST=0.0.0.0\n' > /etc/systemd/system/crossriver.service.d/override.conf
@@ -86,11 +86,30 @@ if [ -n "$TUNNEL_TOKEN" ]; then
     apt-get update -qq
     apt-get install -y -qq cloudflared >/dev/null
   fi
-  # Replace any earlier tunnel so a new token takes effect.
-  if [ -f /etc/systemd/system/cloudflared.service ]; then cloudflared service uninstall >/dev/null 2>&1 || true; fi
-  cloudflared service install "$TUNNEL_TOKEN"
+  # Run the game's tunnel as its own service, so any other tunnel on this server (the standard
+  # "cloudflared" service) is left alone. The token is kept in a root-only file.
+  mkdir -p /etc/crossriver
+  umask 077; printf 'TUNNEL_TOKEN=%s\n' "$TUNNEL_TOKEN" > /etc/crossriver/tunnel.env; umask 022
+  cat > /etc/systemd/system/crossriver-tunnel.service <<UNIT
+[Unit]
+Description=Cloudflare Tunnel for F the Bus
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+EnvironmentFile=/etc/crossriver/tunnel.env
+ExecStart=$(command -v cloudflared) --no-autoupdate tunnel run
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+  systemctl daemon-reload
+  systemctl enable -q crossriver-tunnel
+  systemctl restart crossriver-tunnel
   sleep 3
-  systemctl is-active -q cloudflared && echo "    tunnel is connected"
+  systemctl is-active -q crossriver-tunnel && echo "    tunnel is connected"
   echo
   echo "Done. Open the public hostname you set on the tunnel (for example https://bus.b21g.com) on your phone."
   exit 0
