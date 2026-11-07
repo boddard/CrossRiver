@@ -361,7 +361,7 @@ function newKings(room) {
   room.kings = {
     id: token(4), deck: deck(), last: null, drawer: (room.players.find(p => p.connected) || room.players[0]).id,
     kings: 0, rules: [], mates: [], qm: null, pending: null, claim: null, over: null, draws: 0,
-    msg: "Swipe to draw the first card.",
+    msg: "Tap the screen to draw the first card.",
   };
   room.screen = "kings";
   bump(room, "kings");
@@ -792,7 +792,7 @@ const AUTO_PASS_MS = 4200;
 const OFFLINE_SKIP_MS = 15000;
 // Each card gets 5 seconds. The clock starts once the previous card's animation has had time to play.
 const TURN_MS = 5000;
-const CLOCK_GRACE = { good: 1800, turn: 1300, flip: 900, race: 1000, draw: 1800, raced: 1500, picked: 1500, ruled: 1500, kings: 1000 };
+const CLOCK_GRACE = { good: 2300, turn: 1300, flip: 1700, race: 1000, draw: 2200, raced: 1500, picked: 1500, ruled: 1500, kings: 1000 };
 const deadline = room => (room.phaseAt || 0) + TURN_MS + (CLOCK_GRACE[room.ev.type] || 0);
 function clockRunning(room) {
   if (room.screen === "play") return room.phase === "guess" && !!player(room, room.current);
@@ -836,7 +836,8 @@ function tick(room, now = Date.now()) {
     return false;
   }
   if (room.screen !== "play" || !room.current) return false;
-  if (room.phase !== "guess" && now - (room.phaseAt || now) >= AUTO_PASS_MS) { passTurn(room); return true; }
+  const hold = AUTO_PASS_MS + (room.settings.mode === "classic" && room.stage === 3 ? 3000 : 0);  // the last card gets a longer reveal
+  if (room.phase !== "guess" && now - (room.phaseAt || now) >= hold) { passTurn(room); return true; }
   const rider = player(room, room.current);
   if (room.phase === "guess" && rider && rider.connected && now >= deadline(room)) { timeout(room); return true; }
   if (room.phase === "guess" && rider && !rider.connected && room.players.some(p => p.connected)

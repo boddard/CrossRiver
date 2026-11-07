@@ -26,10 +26,10 @@ The Node.js server holds every room's state and does all the dealing, so nobody 
 - A phone that locks or loses signal rejoins its seat automatically. If the host drops, the next online player becomes host.
 - Rooms are cleared 30 minutes after everyone has left, or after 6 hours idle.
 - Player bar with everyone's bubble; tap the rider's bubble to nudge them ("Hurry up!") and tap 🍻 for live reactions on every phone.
-- Swipe to flip: the rider makes a call, then swipes the card up. Everyone sees the call, watches the card lift live, and the card turns on every phone after a short drumroll. Misses and get-offs get full-screen callouts on every phone.
+- Tap to flip: the rider taps their call and a giant card turns over by itself on every phone. Classic's last card gets a walkout-style reveal: lights down, then the colour, then the suit, then the card. Misses and get-offs get full-screen callouts on every phone.
 - The bus passes to the next player by itself; riders who have dropped are skipped after 15 seconds.
 - Get off the bus (or win a horse race) and you hand out drinks by tapping players' bubbles; their phone tells them.
-- Horse Race: players take turns flipping (swipe the deck), backers ride on their horse, and every phone shows its own result.
+- Horse Race: players take turns flipping (tap the screen), backers ride on their horse, and every phone shows its own result.
 - Sound effects (mute button in the top bar) and end-of-night awards.
 
 ### Install on the server with a Cloudflare Tunnel (recommended)

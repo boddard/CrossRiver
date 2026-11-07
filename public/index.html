@@ -828,7 +828,7 @@ button:active { transition-duration: .05s; }
 @keyframes fadeout { to { opacity: 0; } }
 /* The card lands on the table where the giant card came down. */
 .card.land { animation: land .34s var(--out) both; }
-@keyframes land { from { transform: translateY(-14%) scale(1.22) rotateY(180deg); opacity: 0; } to { transform: rotateY(180deg); opacity: 1; } }
+@keyframes land { from { transform: translateY(-16%) scale(1.25) rotateY(180deg); } to { transform: rotateY(180deg); } }
 /* A new screen eases in. */
 #app.screen-in { animation: screenin .28s var(--out); }
 @keyframes screenin { from { opacity: 0; } to { opacity: 1; } }
@@ -881,6 +881,35 @@ button:active { transition-duration: .05s; }
 .lobby-go .primary[disabled] { filter: grayscale(.7); opacity: .6; }
 .lobby-go .waiting { margin: 0; }
 @media (max-width: 360px) { .games { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ===== Walkout: Classic's last card ===== */
+.bc-rays, .bc-clue { display: none; }
+.bigcard.walkout { background: #050608; transition: background .6s var(--out); }
+.bigcard.walkout .bc-rays { display: block; position: fixed; inset: -50%; z-index: -1; opacity: 0; pointer-events: none;
+  background: repeating-conic-gradient(from 0deg at 50% 50%, rgba(var(--glow), .0) 0deg 9deg, rgba(var(--glow), .22) 12deg 15deg, rgba(var(--glow), 0) 18deg 24deg);
+  -webkit-mask: radial-gradient(circle at 50% 50%, #000 0, transparent 46%); mask: radial-gradient(circle at 50% 50%, #000 0, transparent 46%);
+  animation: rays 9s linear infinite; transition: opacity .7s var(--out); }
+.bigcard.walkout { isolation: isolate; }
+.bigcard.walkout .bc-card { animation: bcin .26s var(--out) backwards, tremble .09s 0.1s linear infinite; }
+.bigcard.walkout.wo-1 .bc-rays { opacity: .55; }
+.bigcard.walkout.wo-2 .bc-rays { opacity: 1; animation-duration: 4s; }
+.bigcard.walkout.wo-1 { background: radial-gradient(ellipse at 50% 55%, rgba(var(--glow), .28) 0, transparent 60%), #050608; }
+.bigcard.walkout.wo-2 { background: radial-gradient(ellipse at 50% 55%, rgba(var(--glow), .5) 0, transparent 65%), #050608; }
+.bigcard.walkout .bc-back { transition: box-shadow .5s var(--out); }
+.bigcard.walkout.wo-1 .bc-back { box-shadow: inset 0 0 0 3px var(--fabric-plum), 0 0 60px 10px rgba(var(--glow), .55) !important; }
+.bigcard.walkout.wo-2 .bc-back { box-shadow: inset 0 0 0 3px var(--fabric-plum), 0 0 90px 24px rgba(var(--glow), .8) !important; }
+.bigcard.walkout.wo-3 .bc-card { animation: none; }
+.bigcard.walkout .bc-clue { display: block; order: 2; margin: 0; min-height: 1em; font: 900 clamp(34px, 11vw, 56px)/1 var(--led-font); text-transform: uppercase;
+  color: rgb(var(--glow)); text-shadow: 0 0 10px rgba(var(--glow), .9), 0 0 34px rgba(var(--glow), .6); }
+.bigcard.walkout .bc-clue.show { animation: clue .5s var(--out) both; }
+.bigcard.walkout.wo-open::after { content: ""; position: fixed; inset: 0; pointer-events: none; background: radial-gradient(circle at 50% 50%, #fff 0, rgba(var(--glow), .7) 25%, transparent 70%); animation: burst .7s var(--out) forwards; }
+.bigcard.walkout.wo-open .bc-face { box-shadow: 0 0 0 4px rgba(var(--glow), .9), 0 0 80px 20px rgba(var(--glow), .6) !important; }
+.bigcard.walkout.wo-open .bc-clue { opacity: 0; transition: opacity .2s; }
+@keyframes rays { to { transform: rotate(360deg); } }
+@keyframes tremble { 0% { translate: 0 0; } 25% { translate: 1.5px -1px; } 50% { translate: -1px 1.5px; } 75% { translate: 1px 1px; } 100% { translate: 0 0; } }
+@keyframes clue { from { opacity: 0; transform: scale(1.6); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes burst { 0% { opacity: 0; } 15% { opacity: .95; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .bigcard.walkout .bc-rays { animation: none; } }
 </style>
 </head>
 <body>
@@ -899,7 +928,7 @@ button:active { transition-duration: .05s; }
 <div class="floats" id="floats" aria-hidden="true"></div>
 <div class="takeover" id="takeover" aria-live="assertive" hidden><span></span></div>
 <div class="bigcard" id="bigcard" aria-hidden="true" hidden>
-  <p class="bc-who" id="bc-who"></p>
+  <div class="bc-rays" aria-hidden="true"></div><p class="bc-who" id="bc-who"></p><p class="bc-clue" id="bc-clue"></p>
   <div class="bc-card"><div class="bc-inner" id="bc-inner"><div class="bc-back"></div><div class="bc-face" id="bc-face"></div></div></div>
 </div>
 
@@ -1239,38 +1268,64 @@ button:active { transition-duration: .05s; }
       if (el.hidden) return;
       el.classList.add("out");
       clearTimeout(this.hideTimer);
-      this.hideTimer = setTimeout(() => { el.hidden = true; el.classList.remove("out"); }, 230);
+      this.hideTimer = setTimeout(() => { el.hidden = true; el.classList.remove("out", "walkout", "wo-1", "wo-2", "wo-3", "wo-open"); document.getElementById("bc-clue").textContent = ""; }, 230);
     },
   };
   function flipLabel(by) {
     const mine = by === me, name = plainName(by);
     if (S && S.screen === "race") return mine ? "Your flip" : `${name}'s flip`;
     if (S && S.screen === "kings") return mine ? "Your draw" : `${name}'s draw`;
-    const g = mine ? armed : remote && remote.g;
+    const g = mine ? armed : (remote && remote.g) || (S.ev.by === by && S.ev.call);
     return g ? `${mine ? "You call" : `${name} calls`} ${CALLS[g] || g}` : mine ? "Your card" : `${name}'s card`;
   }
-  // Turn the giant card the rest of the way, hold the face up for a moment, then show the result.
+  // The giant card rises face down and leans back while the server deals.
+  function autoFlip(by) {
+    clearFlipTimers();
+    flip = { by, dir: 1, committed: true, faceKnown: false, done: false, t0: Date.now() };
+    big.show(flipLabel(by));
+    big.turn(-16, 320);
+    const f = flip;
+    f.safety = setTimeout(() => { if (flip === f && !f.faceKnown) { big.hide(); flip = null; pendingFlip = null; render(); } }, 6000);
+  }
+  function clearFlipTimers() { if (flip) { clearTimeout(flip.safety); (flip.timers || []).forEach(clearTimeout); } }
+  // Turn it over, hold the face up for a moment, then show the result.
   function finishFlip(ms) {
     if (!flip || flip.done) return;
     flip.done = true;
     const f = flip;
     big.turn(f.dir * 180, ms);
-    if (f.by === me) sendTurn(2, f.dir, { spd: Math.round(ms) }, true);
+    if (f.walk) setTimeout(() => { if (flip === f) { document.getElementById("bigcard").classList.add("wo-open"); } }, ms * .45);
     setTimeout(() => {
-      big.hide();
-      if (flip === f) flip = null;
+      if (flip === f) { big.hide(); flip = null; }
       if (f.after) f.after();
-    }, ms + 520);
+    }, ms + (f.walk ? 1500 : 520));
   }
-  // The card is dealt: put its face on the giant card. The rider keeps turning it with their finger;
-  // if they've already let go it finishes at their speed. Watchers wait for the rider (with a safety net).
+  // The card is dealt: put its face on the giant card and turn it once it has had a moment in the air.
   function faceArrived(card, after) {
-    flip.faceKnown = true; flip.after = after;
-    big.face(card);
-    if (flip.by === me && !drag) finishFlip(flip.autoSpd || 260);
-    clearTimeout(flip.safety);
     const f = flip;
-    f.safety = setTimeout(() => { if (flip === f && !f.done) finishFlip(240); }, f.by === me ? 6000 : 3000);
+    f.faceKnown = true; f.after = after;
+    big.face(card);
+    clearTimeout(f.safety);
+    f.safety = setTimeout(() => { if (flip === f && !f.done) finishFlip(560); }, Math.max(0, f.t0 + 620 - Date.now()));
+  }
+  // Classic's last card gets a walkout: lights down, then the colour, then the suit, then the card.
+  function walkout(card, after) {
+    const f = flip;
+    f.faceKnown = true; f.after = after; f.walk = true;
+    clearTimeout(f.safety);
+    big.face(card);
+    const el = document.getElementById("bigcard"), sd = suitOf(card), clue = document.getElementById("bc-clue");
+    el.style.setProperty("--glow", sd.red ? "255,58,58" : "150,178,255");
+    el.classList.add("walkout");
+    clue.textContent = ""; clue.className = "bc-clue";
+    const show = text => { clue.textContent = text; clue.className = "bc-clue"; void clue.offsetWidth; clue.className = "bc-clue show"; };
+    sfx.drum(); buzz([30, 80, 30]);
+    const step = (ms, fn) => setTimeout(() => { if (flip === f) fn(); }, ms);
+    f.timers = [
+      step(750, () => { el.classList.add("wo-1"); show(sd.red ? "Red" : "Black"); sfx.chime(); buzz(60); }),
+      step(1650, () => { el.classList.add("wo-2"); show(`${sd.sym} ${sd.name}`); sfx.chime(); sfx.drum(); buzz(90); }),
+      step(2600, () => { el.classList.add("wo-3"); sfx.flip(); buzz([60, 40, 160]); finishFlip(520); }),
+    ];
   }
 
   function onState(next) {
@@ -1294,19 +1349,22 @@ button:active { transition-duration: .05s; }
     if (fresh && S.screen === "play" && S.ev.call && ["good", "miss", "won"].includes(fx)) {
       suspense = { seq: S.ev.seq, fx, dealt, call: S.ev.call, lastGood: prev ? prev.lastGood : "" };
       fx = ""; dealt = -1;
-      if (flip && flip.by === S.ev.by) faceArrived(S.row[suspense.dealt], reveal);
-      else { sfx.drum(); suspense.timer = setTimeout(reveal, REVEAL_MS); }
+      if (!flip || flip.by !== S.ev.by || flip.faceKnown) autoFlip(S.ev.by);
+      if (mode() === "classic" && suspense.dealt === 3) walkout(S.row[3], reveal);
+      else faceArrived(S.row[suspense.dealt], reveal);
       return render();
     }
     // Kings Cup: the card's rule shows once the giant card has landed.
-    if (fresh && S.screen === "kings" && S.kings && (fx === "draw" || fx === "kingscup") && flip && flip.by === S.ev.by) {
+    if (fresh && S.screen === "kings" && S.kings && (fx === "draw" || fx === "kingscup")) {
       const f = fx;
+      if (!flip || flip.by !== S.ev.by || flip.faceKnown) autoFlip(S.ev.by);
       faceArrived(S.kings.last, () => { const keep = fx; fx = f; cue(prev); fx = keep; render(); });
       return render();
     }
     // Horse race: the horses move straight away; the callouts wait for the giant card to land.
-    if (fresh && S.screen === "race" && S.race && (fx === "flip" || fx === "won") && flip && flip.by === S.ev.by) {
+    if (fresh && S.screen === "race" && S.race && (fx === "flip" || fx === "won")) {
       const f = fx;
+      if (!flip || flip.by !== S.ev.by || flip.faceKnown) autoFlip(S.ev.by);
       faceArrived(S.race.last, () => { const keep = fx; fx = f; cue(prev); fx = keep; });
       return render();
     }
@@ -1377,7 +1435,7 @@ button:active { transition-duration: .05s; }
     }
     if (fx === "miss" && S.ev.timeout) {
       const mine = S.ev.by === me;
-      if (mine && flip && flip.by === me) { big.hide(); flip = null; drag = null; pendingFlip = null; }
+      if (mine && flip && flip.by === me) { clearFlipTimers(); big.hide(); flip = null; pendingFlip = null; }
       takeover(mine ? "Too slow! Drink" : `${plainName(S.ev.by)} too slow!`, "miss"); sfx.gulp(); if (mine) buzz(250);
       oweReadyAt = Date.now() + 1700; setTimeout(render, 1750);
     }
@@ -1407,19 +1465,9 @@ button:active { transition-duration: .05s; }
     if (m.by === me || !S) return;
     if (m.seq !== S.ev.seq && !(flip && flip.by === m.by)) return;
     const callChanged = !remote || remote.g !== m.g;
-    remote = { by: m.by, g: m.g !== undefined ? m.g : remote && remote.g, p: m.p, dir: m.dir || 1, t: m.ms };
+    remote = { by: m.by, g: m.g !== undefined ? m.g : remote && remote.g, p: m.p, dir: 1, t: m.ms };
     if (callChanged && m.g) { sfx.pop(); render(); }
-    if (m.p > 0 && !flip) { flip = { by: m.by, dir: remote.dir, committed: false, faceKnown: false, done: false }; big.show(flipLabel(m.by)); }
-    if (!flip || flip.by !== m.by || flip.done) return;
-    if (m.p >= 2) return finishFlip(m.spd || 260);
-    if (m.p === 0 && !flip.committed) {
-      big.turn(0, m.ms || 200);
-      const f = flip; setTimeout(() => { if (flip === f && !f.committed) { big.hide(); flip = null; } }, (m.ms || 200) + 30);
-      return;
-    }
-    flip.dir = remote.dir;
-    if (m.p >= 1) flip.committed = true;
-    big.turn(flip.dir * (flip.faceKnown ? Math.min(180, m.p * 90) : Math.min(90, m.p * 90)), 0, true);
+    if (m.p >= 1 && !flip) autoFlip(m.by);
   }
   const recentSwipe = () => lastSwipe && Date.now() - lastSwipe.at < 8000 ? lastSwipe : null;
   function leaveLocal() {
@@ -1647,8 +1695,8 @@ button:active { transition-duration: .05s; }
     const cardCls = c ? (i === landed ? (ev.call ? "card up land" : "card deal up") : "card up") : "card";
     const cardStyle = "";
     const key = c ? ` data-key="k${i}${c.r}${c.s}"` : "";
-    const aria = c ? `${c.r === "A" ? "Ace" : c.r} of ${suitOf(c).name}` : slotCls.includes("armed") ? "Your card. Swipe it sideways to flip it" : "Face-down card";
-    const hint = slotCls.includes("armed") && !pendingFlip ? '<span class="swipe-hint">← Swipe anywhere →</span>' : "";
+    const aria = c ? `${c.r === "A" ? "Ace" : c.r} of ${suitOf(c).name}` : slotCls.includes("armed") ? "Your card" : "Face-down card";
+    const hint = "";
     return `<div class="${slotCls.filter(Boolean).join(" ")}"${extra} role="img" aria-label="${aria}"><div class="${cardCls}"${key}${cardStyle}><div class="back"></div>${face}</div>${hint}</div>`;
   }
   function stopsHTML(v) {
@@ -1682,7 +1730,7 @@ button:active { transition-duration: .05s; }
     const next = S.next;
     const upNext = next === S.current ? (mine ? "You go again from card 1." : `${esc(p.name)} goes again from card 1.`)
       : next === null ? "Everyone's off. New round starting…" : next === me ? "You're up next!" : `${nameOf(next)} is up next.`;
-    const bar = `<div class="autopass" data-key="a${S.ev.seq}" style="--ms:${Math.max(800, S.autoPassMs - REVEAL_MS)}ms" aria-hidden="true"><span></span></div><p class="waiting">${upNext}</p>`;
+    const bar = `<div class="autopass" data-key="a${S.ev.seq}" style="--ms:${S.stage === 3 && mode() === "classic" ? 2900 : 2500}ms" aria-hidden="true"><span></span></div><p class="waiting">${upNext}</p>`;
     if (v.phase === "miss" && S.ev.timeout) {
       return `<section class="console" aria-live="polite">
         <div class="verdict miss"><span class="big slam">Too slow</span>
@@ -1717,7 +1765,7 @@ button:active { transition-duration: .05s; }
     } else {
       controls = `<p class="waiting">Tap <b>${esc(p.name)}</b> at the top to hurry them up.</p>`;
     }
-    return `<section class="console">${flashLine}<h2 class="prompt">${mine && armed ? "Swipe across the screen" : prompt}</h2>${controls}</section>`;
+    return `<section class="console">${flashLine}<h2 class="prompt">${prompt}</h2>${controls}</section>`;
   }
   function betsTableHTML() {
     const rows = S.players.map(p => `<tr><td><span class="pname">${esc(p.name)}</span>${youTag(p.id)}</td><td><span class="${isRed(p.bet.suit) ? "r" : ""}">${suitSym(p.bet.suit)}</span></td><td class="n">${p.bet.amt}</td><td class="n">${p.drinks}</td></tr>`).join("");
@@ -1792,13 +1840,13 @@ button:active { transition-duration: .05s; }
     const watching = remote && remote.by === r.flipper;
     const rot = myFlip ? (pendingFlip ? pendingFlip.dir * EDGE : 0) : watching ? remote.dir * Math.min(1, remote.p) * EDGE : 0;
     const rt = myFlip ? (pendingFlip ? pendingFlip.t : 0) : watching ? remote.t || 90 : 0;
-    const deck = `<div class="draw-slot ${myFlip ? "armed" : "calling"}" id="swipe-card" style="--rot:${rot}deg;--rt:${rt}ms" role="img" aria-label="${myFlip ? "The deck. Swipe it sideways to flip a card" : "The deck"}">
-      <div class="card" data-key="d${r.flips}"><div class="back"></div></div>${myFlip && !pendingFlip ? '<span class="swipe-hint">← Swipe anywhere →</span>' : ""}</div>`;
-    const sw = recentSwipe(), fresh = fx === "flip" || fx === "won";
-    const last = r.last ? `<div class="draw-slot"><div class="card up${fresh ? (sw ? " swipe-in" : " deal") : ""}" data-key="f${r.flips}"${fresh && sw ? ` style="--dir:${sw.dir};--spd:${sw.spd}ms"` : ""}><div class="back"></div>${miniFace(r.last)}</div></div>` : "";
-    const who = myFlip ? "<b>Your flip!</b> Swipe across the screen."
+    const deck = `<div class="draw-slot ${myFlip ? "armed" : "calling"}" id="swipe-card" style="--rot:${rot}deg;--rt:${rt}ms" role="img" aria-label="${myFlip ? "The deck. Tap to flip a card" : "The deck"}">
+      <div class="card" data-key="d${r.flips}"><div class="back"></div></div></div>`;
+    const fresh = fx === "flip" || fx === "won";
+    const last = r.last ? `<div class="draw-slot"><div class="card up${fresh ? " land" : ""}" data-key="f${r.flips}"><div class="back"></div>${miniFace(r.last)}</div></div>` : "";
+    const who = myFlip ? "<b>Your flip!</b> Tap anywhere."
       : f && !f.connected && amHost() ? `<b>${esc(f.name)}</b> is offline.` : `<b>${f ? esc(f.name) : "Someone"}</b> is flipping…`;
-    // Only the host gets a button, to flip for someone whose phone has dropped. Everyone else swipes.
+    // Only the host gets a button, to flip for someone whose phone has dropped. Everyone else taps.
     const button = !myFlip && f && !f.connected && amHost() ? `<button class="ghost wide" id="flip">Flip for ${esc(f.name)}</button>` : "";
     return `<section class="console race-console">
       <div class="deck-row">${deck}${last}<div style="min-width:0"><p class="flipper-line">${who}</p><p class="race-msg" aria-live="polite">${esc(r.msg)}</p></div></div>
@@ -2076,7 +2124,7 @@ button:active { transition-duration: .05s; }
       <p class="hint">Extra questions from Open Trivia DB (opentdb.com), used under CC BY-SA 4.0.</p></details>`;
     if (kings()) return `<details><summary>House rules: Kings Cup</summary><ol>
       ${Object.entries(KC).sort((a, b) => "A2345678910JQK".indexOf(a[0]) - "A2345678910JQK".indexOf(b[0])).map(([r, [t, d]]) => `<li><b>${r}: ${t}.</b> ${d}</li>`).join("")}</ol>
-      <p>Take turns drawing by swiping across the screen. Anyone mated to a drinker drinks too.</p></details>`;
+      <p>Take turns drawing: tap the screen when it's your go. Anyone mated to a drinker drinks too.</p></details>`;
     if (horse()) return `<details><summary>House rules: Horse Race</summary><ol>
       <li>Everyone backs one of the four aces and bets 1 to 5 drinks.</li>
       <li>Players take turns flipping a card from the deck. The ace of that suit moves forward one spot.</li>
@@ -2085,14 +2133,14 @@ button:active { transition-duration: .05s; }
       <p>Losers drink what they bet. Winners hand out double their bet to anyone they like.</p></details>`;
     const off = `Get off the bus and you hand out ${plural(S.giveOnOff, "drink")}, then sit out until everyone else is off.`;
     if (hilo()) return `<details><summary>House rules: Higher or Lower</summary>
-      <p>Each turn starts with a free card dealt face up. Call higher or lower, then swipe the next card up to flip it. Get 3 right in a row and you're off the bus.</p>
+      <p>Each turn starts with a free card dealt face up. Tap higher or lower and the next card flips. Get 3 right in a row and you're off the bus.</p>
       <p>Every miss is 1 drink, and the bus moves on to the next player by itself. ${off} ${tail}</p></details>`;
     return `<details><summary>House rules: Classic</summary><ol>
       <li><b>Red or black.</b></li>
       <li><b>Higher or lower</b> than card 1.</li>
       <li><b>Inside or outside</b> cards 1 and 2.</li>
       <li><b>Pick the suit.</b> Hit it and you're off the bus.</li></ol>
-      <p>Make your call, then swipe the card up to flip it. Every miss is 1 drink, and the bus moves on to the next player by itself. ${off} ${tail}</p></details>`;
+      <p>Tap your call and the card flips. The last card gets a proper reveal. Every miss is 1 drink, and the bus moves on to the next player by itself. ${off} ${tail}</p></details>`;
   }
   // Overlays sit in fixed slots so showing or hiding one never shifts the page below it.
   const layer = html => `<div class="layer">${html}</div>`;
@@ -2169,79 +2217,30 @@ button:active { transition-duration: .05s; }
     catch (e) { toast(`Send your friends this link: ${url}`); }
   }
 
-  // ---- swipe to flip ----
-  // Swipe sideways anywhere (not on a button) and a giant card turns with your finger. Half the screen's
-  // width turns it edge-on and sends your call; the real card is dealt, and the rest of the swipe turns
-  // its face into view. Let go after halfway and it finishes at your speed; let go before and it springs back.
+  // ---- tap to flip ----
+  // Tap your call (or anywhere, when it's your flip or draw): the giant card comes up on every phone and
+  // turns over by itself once the server has dealt it.
   let drag = null, lastDragSent = 0;
-  const canSwipe = () => S && !pendingFlip && !flip && ((S.screen === "play" && S.current === me && S.phase === "guess" && armed && !suspense)
-    || (S.screen === "kings" && S.kings && !S.kings.over && !S.kings.pending && S.kings.drawer === me)
+  const canSwipe = () => S && !pendingFlip && !flip && ((S.screen === "kings" && S.kings && !S.kings.over && !S.kings.pending && S.kings.drawer === me)
     || (S.screen === "race" && S.race && !S.race.winner && S.race.flipper === me));
-  const halfWidth = () => Math.max(120, innerWidth / 2);
   function sendTurn(p, dir, extra = {}, force = false) {
     const now = Date.now();
     if (!force && now - lastDragSent < 50) return;
     lastDragSent = now;
     send({ ...extra, t: "drag", p, dir, g: S.screen === "play" ? armed : undefined }, true);
   }
-  function commitFlip() {
-    pendingFlip = { dir: flip.dir, t: 0 };
-    flip.committed = true;
-    sfx.flip();
-    sendTurn(1, flip.dir, {}, true);
+  function startFlip() {
+    pendingFlip = { dir: 1, t: 0 };
+    sfx.flip(); buzz(30);
+    autoFlip(me);
+    sendTurn(1, 1, {}, true);
     if (S.screen === "play") act("guess", { g: armed }); else if (S.screen === "kings") act("draw"); else act("flip");
   }
-  // Degrees per millisecond, from the last ~100ms of finger movement.
-  function fingerSpeed(d) {
-    const now = performance.now(), recent = d.pts.filter(pt => now - pt.t < 110);
-    const a = recent[0] || d.pts[0], b = d.pts[d.pts.length - 1];
-    const pxPerMs = b.t > a.t ? Math.abs(b.x - a.x) / (b.t - a.t) : 0;
-    return pxPerMs / halfWidth() * 90;
-  }
-  document.addEventListener("pointerdown", e => {
-    if (!canSwipe() || e.button > 0) return;
+  document.addEventListener("click", e => {
+    if (!canSwipe()) return;
     if (e.target.closest("button, input, a, label, .crew, .sheet, .drink-card, .confirm, .tray")) return;
-    audio();
-    drag = { x: e.clientX, id: e.pointerId, started: false, pts: [{ x: e.clientX, t: performance.now() }] };
+    audio(); startFlip();
   });
-  document.addEventListener("pointermove", e => {
-    if (!drag || e.pointerId !== drag.id) return;
-    const dx = e.clientX - drag.x;
-    drag.pts.push({ x: e.clientX, t: performance.now() });
-    if (drag.pts.length > 8) drag.pts.shift();
-    if (!drag.started) {
-      if (Math.abs(dx) < 8) return;
-      drag.started = true;
-      flip = { by: me, dir: dx < 0 ? -1 : 1, committed: false, faceKnown: false, done: false };
-      big.show(flipLabel(me));
-    }
-    if (!flip || flip.done) return;
-    if (!flip.committed) flip.dir = dx < 0 ? -1 : 1;
-    const prog = Math.min(2, Math.abs(dx) / halfWidth());
-    if (!flip.committed && prog >= 1) commitFlip();
-    // Before the card is dealt it stops at edge-on; once the face is known the finger turns it face up.
-    const angle = !flip.committed ? Math.min(90, prog * 90) : flip.faceKnown ? Math.max(90, Math.min(180, prog * 90)) : 90;
-    big.turn(flip.dir * angle, 0);
-    sendTurn(angle / 90, flip.dir);
-    if (flip.faceKnown && angle >= 180) { drag = null; finishFlip(120); }
-  });
-  const endDrag = e => {
-    if (!drag || e.pointerId !== drag.id) return;
-    const d = drag; drag = null;
-    if (!d.started || !flip || flip.by !== me || flip.done) return;
-    if (!flip.committed) {
-      big.turn(0, 240);
-      sendTurn(0, flip.dir, { ms: 240 }, true);
-      const f = flip; setTimeout(() => { if (flip === f) { big.hide(); flip = null; } }, 250);
-      return;
-    }
-    // Let go after halfway: finish at the speed the finger was moving.
-    const v = Math.max(fingerSpeed(d), .25);
-    flip.autoSpd = Math.min(520, Math.max(140, 90 / v));
-    if (flip.faceKnown) finishFlip(flip.autoSpd);
-  };
-  document.addEventListener("pointerup", endDrag);
-  document.addEventListener("pointercancel", endDrag);
 
   // ---- events ----
   app.addEventListener("click", e => {
@@ -2251,9 +2250,9 @@ button:active { transition-duration: .05s; }
     audio(); keepAwake();
     if (t.dataset.g) {
       // Picking a call doesn't flip anything yet: it arms the card for a swipe and tells the room.
-      if (!(S.screen === "play" && S.current === me && S.phase === "guess") || suspense || pendingFlip) return;
-      armed = t.dataset.g; sfx.pop();
-      send({ t: "drag", p: 0, g: armed }, true);
+      if (!(S.screen === "play" && S.current === me && S.phase === "guess") || suspense || pendingFlip || flip) return;
+      armed = t.dataset.g;
+      startFlip();
       return render();
     }
     if (t.dataset.rx) {
