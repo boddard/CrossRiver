@@ -87,6 +87,43 @@ button:active { transform: scale(.97); }
 .drink-card .big { font: 900 clamp(56px, 18vw, 84px)/.95 var(--display); text-transform: uppercase; color: var(--miss); }
 .drink-why { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; color: var(--muted); font-weight: 600; }
 .drink-card .primary { min-height: 72px; font-size: 28px; }
+/* Uno: the discard pile and current colour in the middle, your hand fanned along the bottom */
+.uc {
+  --uw: 56px; position: relative; flex: none; width: var(--uw); aspect-ratio: 5 / 7; border-radius: calc(var(--uw) * .14);
+  background: var(--k); border: calc(var(--uw) * .06) solid #fff; box-shadow: 0 3px 8px rgba(0,0,0,.4);
+  display: grid; place-items: center; color: #fff; font: 900 calc(var(--uw) * .42)/1 var(--display); text-shadow: 0 2px 0 rgba(0,0,0,.35); padding: 0;
+}
+.uc::before { content: ""; position: absolute; inset: 14% 8%; border-radius: 50%; background: rgba(255,255,255,.18); transform: rotate(-30deg); }
+.uc span { position: relative; }
+.uc.wild { background: conic-gradient(#e5484d 0 25%, #3e8ef7 0 50%, #2fa75a 0 75%, #f5b301 0); }
+.uc.wild::before { background: #111; }
+.uc.uc-back { background: #111; }
+.uc.uc-back::before { background: #e5484d; }
+.uc.uc-back span { color: #f5b301; font-size: calc(var(--uw) * .3); transform: rotate(-20deg); }
+.uno-table { width: 100%; height: 100%; display: grid; place-items: center; align-content: center; gap: 12px; }
+.uno-pile { display: flex; align-items: center; gap: 22px; }
+.uno-pile .uc { --uw: min(26vw, 120px); }
+.uno-pile .uc.top { animation: slap .35s cubic-bezier(.2,1.5,.4,1); }
+@keyframes slap { from { transform: translateY(-40px) rotate(-12deg) scale(1.15); opacity: 0; } to { transform: none; opacity: 1; } }
+.uno-deck { display: grid; justify-items: center; gap: 4px; }
+.uno-deck small { font: 700 11px/1 var(--mono); color: var(--muted); }
+.uno-info { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.uno-dot { width: 18px; height: 18px; border-radius: 50%; background: var(--k); box-shadow: 0 0 0 3px var(--asphalt), 0 0 0 5px var(--k); }
+.uno-dir { font-size: 22px; color: var(--muted); }
+.uno-msg { margin: 0; color: var(--muted); text-align: center; min-height: 1.4em; }
+.hand { display: flex; overflow-x: auto; padding: 12px 6px 4px; scrollbar-width: none; }
+.hand::-webkit-scrollbar { display: none; }
+.hand .uc { --uw: 58px; margin-right: var(--overlap, 4px); cursor: default; transition: transform .15s, opacity .15s; }
+.hand.mine-turn .uc:not(.can) { opacity: .45; }
+.hand .uc.can { transform: translateY(-10px); box-shadow: 0 0 0 3px var(--bus), 0 8px 16px rgba(0,0,0,.4); cursor: pointer; }
+.uno-actions { display: flex; gap: 8px; }
+.uno-actions button { flex: 1; }
+.uno-call { background: #e5484d !important; color: #fff !important; animation: pop .6s cubic-bezier(.2,1.6,.4,1) infinite alternate; }
+.cnt { position: absolute; bottom: 12px; right: 0; z-index: 2; padding: 1px 4px; border-radius: 4px; background: #111; color: #fff; font: 700 10px/1.2 var(--mono); box-shadow: 0 0 0 1px var(--line); }
+.cnt.one { background: #e5484d; }
+.picker { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.picker button { min-height: 72px; border-radius: 14px; border: 0; background: var(--k); color: #fff; font: 900 22px var(--display); text-transform: uppercase; }
+
 /* Trivia: a big question card, four colour-coded answers, a reveal with who picked what, then scores */
 .q-card { width: 100%; max-height: 100%; display: grid; gap: 10px; align-content: center; text-align: center; padding: 8px; }
 .q-cat { justify-self: center; font: 700 12px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--bus); border: 1px solid var(--bus); padding: 5px 10px; border-radius: 999px; }
@@ -664,6 +701,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     hilo: { name: "Higher or Lower", blurb: "Get 3 higher-or-lower calls right in a row.", dots: ["S", "1", "2", "3"],
       stops: [["Start card", "Start"], ["Guess 1", "Guess 1"], ["Guess 2", "Guess 2"], ["Guess 3", "Guess 3"]] },
     horse: { name: "Horse Race", blurb: "Bet on an ace and take turns flipping cards to race them up the track." },
+    uno: { name: "Uno", blurb: "Match colours and numbers. First to empty their hand wins. Don't forget to call UNO!" },
     trivia: { name: "Trivia", blurb: "Quick-fire quiz on everyone's phone. Faster right answers score more." },
     kings: { name: "Kings Cup", blurb: "Take turns drawing from the ring. Every card has a rule; the 4th King drinks the cup." },
   };
@@ -727,6 +765,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
   const horse = () => mode() === "horse";
   const kings = () => mode() === "kings";
   const trivia = () => mode() === "trivia";
+  const unoMode = () => mode() === "uno";
   const byId = id => S.players.find(p => p.id === id);
   const amHost = () => S && S.hostId === me;
   const nameOf = id => { const p = byId(id); return p ? esc(p.name) : "Someone"; };
@@ -865,6 +904,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
       return;
     }
     if (m.t === "pong") return;
+    if (m.t === "stale" || m.t === "state") myCards = m.mine || null;
     if (m.t === "stale") { clearPending(); if (flip && flip.by === me && !flip.faceKnown) { big.hide(); flip = null; pendingFlip = null; } m.t = "state"; }
     if (m.t === "state") return onState(m.state);
     if (m.t === "react") {
@@ -919,7 +959,8 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     num.classList.toggle("late", late);
     const bar = document.getElementById("clock"); if (bar) bar.classList.toggle("late", late);
     const mine = (S.screen === "play" && S.current === me && S.phase === "guess" && !suspense) || (S.screen === "race" && S.race && !S.race.winner && S.race.flipper === me)
-      || (S.screen === "trivia" && S.trivia && S.trivia.phase === "question" && myAnswer === null && !S.trivia.answered.includes(me));
+      || (S.screen === "trivia" && S.trivia && S.trivia.phase === "question" && myAnswer === null && !S.trivia.answered.includes(me))
+      || (S.screen === "uno" && S.uno && !S.uno.winner && S.uno.current === me);
     const key = `${S.ev.seq}:${secs}`;
     if (mine && secs <= 3 && secs > 0 && lastTick !== key) { lastTick = key; tone(secs === 1 ? 1100 : 880, .06, "square", .08); buzz(25); }
   }, 200);
@@ -1030,6 +1071,20 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
   }
   // Sounds and callouts for events that don't go through a reveal.
   function cue(prev) {
+    if (S.screen === "uno" && S.uno) {
+      const u = S.uno, ev = S.ev, by = ev.by;
+      if (fx === "unoPlay" || fx === "unoReverse" || fx === "unoSkip" || fx === "unoDrawN") sfx.flip();
+      if (fx === "unoReverse") floatUp("<b>⇄ Reverse!</b>", by, true);
+      if (fx === "unoSkip") { if (ev.victim === me) { takeover("Skipped!", "miss"); sfx.bump(); } else floatUp(`<b>${nameOf(ev.victim)} skipped</b>`, ev.victim, true); }
+      if (fx === "unoDrawN") { if (ev.victim === me) { takeover(`+${ev.n}! Draw ${ev.n}`, "miss"); sfx.gulp(); buzz(200); } else floatUp(`<b>${nameOf(ev.victim)} +${ev.n}</b>`, ev.victim, true); }
+      if (fx === "unoCalled") { takeover(by === me ? "UNO!" : `${plainName(by)}: UNO!`, "turn"); sfx.horn(); }
+      if (fx === "unoCaught") { if (ev.victim === me) { takeover("Caught! +2", "miss"); sfx.gulp(); } else takeover(`${plainName(by)} caught ${plainName(ev.victim)}!`, ""); }
+      if (fx === "unoWin") { takeover(by === me ? "You win!" : `${plainName(by)} wins!`, "won"); sfx.horn(); celebrate(); }
+      const myTurnNow = !u.winner && u.current === me;
+      if (myTurnNow && !wasMyFlip && prev && prev.screen === "uno") { sfx.chime(); buzz(80); }
+      wasMyFlip = myTurnNow;
+      return;
+    }
     if (S.screen === "trivia" && S.trivia) {
       const t = S.trivia;
       if (fx === "question") sfx.chime();
@@ -1123,7 +1178,8 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
   function turnAlert() {
     const mine = !!S && S.screen === "play" && S.current === me && S.phase === "guess";
     const flipping = !!S && ((S.screen === "race" && S.race && !S.race.winner && S.race.flipper === me)
-      || (S.screen === "kings" && S.kings && !S.kings.over && !S.kings.pending && S.kings.drawer === me));
+      || (S.screen === "kings" && S.kings && !S.kings.over && !S.kings.pending && S.kings.drawer === me)
+      || (S.screen === "uno" && S.uno && !S.uno.winner && S.uno.current === me));
     if (mine && !wasMyTurn) buzz([120, 60, 120]);
     document.title = mine ? "Your turn · F the Bus" : flipping ? "Your flip · F the Bus" : TITLE;
     wasMyTurn = mine;
@@ -1217,6 +1273,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
   function slowpoke() {
     if (S.screen === "play" && S.phase === "guess") return S.current;
     if (S.screen === "race" && S.race && !S.race.winner) return S.race.flipper;
+    if (S.screen === "uno" && S.uno && !S.uno.winner) return S.uno.current;
     const k = S.screen === "kings" && S.kings;
     if (k && !k.over) return !k.pending ? k.drawer : k.pending.type !== "race" ? k.pending.by : null;
     return null;
@@ -1231,7 +1288,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
       const cls = ["bub", p.id === riderId ? "riding" : "", p.connected ? "" : "away", S.screen === "play" && p.off ? "out" : "", giving && p.id !== me ? "target" : ""].filter(Boolean).join(" ");
       const what = giving && p.id !== me ? `Give ${p.name} a drink` : p.id === riderId && p.id !== me ? `Nudge ${p.name}` : p.name;
       return `<button class="${cls}" data-bub="${p.id}" style="--c:${p.color}" aria-label="${esc(what)}">
-        ${p.owe ? `<span class="owe" title="Owes ${plural(p.owe, "drink")}">🍺${p.owe}</span>` : ""}<span class="av">${esc(initial(p.name))}</span><span class="bn">${p.id === me ? "You" : esc(p.name)}</span>${p.id === S.hostId ? '<span class="crown">★</span>' : ""}${S.screen === "kings" && S.kings ? `${S.kings.mates.some(m => m.includes(p.id)) ? '<span class="tagmini">🔗</span>' : ""}${S.kings.qm === p.id ? '<span class="tagmini qm">❓</span>' : ""}` : ""}</button>`;
+        ${p.owe ? `<span class="owe" title="Owes ${plural(p.owe, "drink")}">🍺${p.owe}</span>` : ""}<span class="av">${esc(initial(p.name))}</span><span class="bn">${p.id === me ? "You" : esc(p.name)}</span>${p.id === S.hostId ? '<span class="crown">★</span>' : ""}${S.screen === "uno" && S.uno && S.uno.counts[p.id] != null ? `<span class="cnt${S.uno.counts[p.id] === 1 ? " one" : ""}">${S.uno.counts[p.id]}</span>` : ""}${S.screen === "kings" && S.kings ? `${S.kings.mates.some(m => m.includes(p.id)) ? '<span class="tagmini">🔗</span>' : ""}${S.kings.qm === p.id ? '<span class="tagmini qm">❓</span>' : ""}` : ""}</button>`;
     }).join("");
     const note = giving ? `<p class="give-note">Hand out ${plural(mine.give, "drink")}: tap a player</p>` : "";
     const tray = trayOpen ? `<div class="tray" role="group" aria-label="Reactions">${REACTIONS.map((e, i) => `<button class="rx" data-rx="${i}" aria-label="React ${e}">${e}</button>`).join("")}</div>` : "";
@@ -1251,13 +1308,13 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
           `<label class="mode"><input type="radio" name="mode" value="${k}" ${mode() === k ? "checked" : ""}><span><b>${m.name}</b><small>${m.blurb}</small></span></label>`).join("")}</fieldset>
         ${trivia() ? `<div class="field"><span class="label">Questions</span><div class="len-pick">${[10, 15, 20].map(n => `<button class="${S.settings.triviaLen === n ? "on" : ""}" data-tl="${n}">${n}</button>`).join("")}</div></div>
           ${catPickHTML(true)}` : ""}
-        <div class="opts"${horse() || kings() || trivia() ? " hidden" : ""}>
+        <div class="opts"${horse() || kings() || trivia() || unoMode() ? " hidden" : ""}>
           <label class="opt"><input type="checkbox" id="aces" ${S.settings.acesHigh ? "checked" : ""}><span>Aces high<small>Off makes aces the lowest card.</small></span></label>
           <label class="opt"><input type="checkbox" id="ties" ${S.settings.tiesMiss ? "checked" : ""}><span>Ties are a miss<small>A card matching the one it's compared to means you drink. Off gives a free pass.</small></span></label>
         </div>`
       : `<div class="field"><span class="label">Game mode</span><div class="mode-read"><b>${MODES[mode()].name}</b><p class="hint">${MODES[mode()].blurb}</p></div></div>${trivia() ? catPickHTML(false) : ""}`;
     const go = amHost()
-      ? `<button class="primary wide" id="start">${horse() ? "Place your bets" : kings() ? "Start Kings Cup" : trivia() ? "Start Trivia" : "Start the game"}</button>`
+      ? `<button class="primary wide" id="start">${horse() ? "Place your bets" : kings() ? "Start Kings Cup" : trivia() ? "Start Trivia" : unoMode() ? "Start Uno" : "Start the game"}</button>`
       : `<p class="waiting">Waiting for <b>${nameOf(S.hostId)}</b> to start the game.</p>`;
     return `${confirmHTML()}<section class="console setup">
       <div class="roomcode"><div><span class="label">Room code</span><br><strong>${esc(S.code)}</strong></div>
@@ -1515,6 +1572,51 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     </section>`;
   }
 
+  // ---- Uno ----
+  const UNO_HEX = { R: "#e5484d", Y: "#f5b301", G: "#2fa75a", B: "#3e8ef7" };
+  const UNO_NAME = { R: "Red", Y: "Yellow", G: "Green", B: "Blue" };
+  const UNO_FACE = { S: "⊘", R: "⇄", D2: "+2", W: "W", W4: "+4" };
+  function unoCardHTML(c, opts = {}) {
+    const wild = c.c === "W";
+    const tag = opts.button ? "button" : "div";
+    const cls = ["uc", wild ? "wild" : "", opts.cls || ""].filter(Boolean).join(" ");
+    const attrs = opts.button ? ` data-uno="${c.id}" aria-label="${wild ? (c.v === "W4" ? "Wild draw four" : "Wild") : `${UNO_NAME[c.c]} ${c.v}`}"` : "";
+    return `<${tag} class="${cls}" style="--k:${UNO_HEX[c.c] || "#111"}"${attrs}${opts.key ? ` data-key="${opts.key}"` : ""}><span>${UNO_FACE[c.v] || c.v}</span></${tag}>`;
+  }
+  const UNO_ORDER = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "S", "R", "D2", "W", "W4"];
+  const unoSort = h => [...h].sort((a, b) => "RYGBW".indexOf(a.c) - "RYGBW".indexOf(b.c) || UNO_ORDER.indexOf(a.v) - UNO_ORDER.indexOf(b.v));
+  function unoHTML() {
+    const u = S.uno, myTurn = !u.winner && u.current === me, top = u.top;
+    const head = u.winner ? (u.winner === me ? "You win!" : `${nameOf(u.winner)} wins!`) : myTurn ? "Your turn" : `${nameOf(u.current)}'s turn`;
+    const table = `<div class="table-area"><div class="uno-table">
+      <div class="uno-pile"><div class="uno-deck">${unoCardHTML({ c: "X", v: "UNO" }, { cls: "uc-back" })}<small>${u.deckLeft} left</small></div>
+        ${unoCardHTML(top, { cls: "top", key: `t${top.id}` })}</div>
+      <div class="uno-info"><span class="uno-dot" style="--k:${UNO_HEX[u.color]}"></span>${UNO_NAME[u.color]}<span class="uno-dir" title="Direction">${u.dir === 1 ? "↻" : "↺"}</span></div>
+      <p class="uno-msg">${esc(u.msg || "")}</p></div></div>`;
+    if (u.winner) {
+      return `${confirmHTML()}${layer("")}<div class="frame">${crewHTML()}<section class="status"><p class="turn-head${u.winner === me ? " mine" : ""}">${head}</p></section>${table}
+        <section class="console"><p class="waiting" style="text-align:center">Wins tonight: ${S.players.map(p => `${esc(p.name)} ${u.wins[p.id] || 0}`).join(" · ")}</p>
+        ${amHost() ? '<div class="row"><button class="primary" id="uno-again">Play again</button><button class="ghost" id="to-menu">Change game</button></div>' : `<p class="waiting">Waiting for <b>${nameOf(S.hostId)}</b>.</p>`}</section></div>`;
+    }
+    const hand = myCards ? unoSort(myCards.hand) : [];
+    const drewId = myCards ? myCards.drewId : null;
+    const can = c => myTurn && (drewId == null || drewId === c.id) && (c.c === "W" || c.c === u.color || c.v === top.v);
+    const overlap = hand.length > 6 ? `${Math.max(-34, -Math.round((hand.length - 6) * 5))}px` : "4px";
+    const cards = hand.map(c => unoCardHTML(c, { button: true, cls: can(c) ? "can" : "" })).join("");
+    const actions = [];
+    if (myTurn) actions.push(drewId != null ? '<button class="ghost" id="uno-pass">Keep it &amp; pass</button>' : '<button class="primary" id="uno-draw">Draw</button>');
+    if (u.unoBy === me && !u.unoSafe) actions.push('<button class="primary uno-call" id="uno-call">UNO!</button>');
+    if (u.unoBy && !u.unoSafe && u.unoBy !== me) actions.push(`<button class="primary uno-call" id="uno-catch">Catch ${nameOf(u.unoBy)}!</button>`);
+    const picker = pendingWild != null ? layer(`<div class="confirm-back"><div class="confirm"><h2>Pick a colour</h2>
+      <div class="picker">${Object.keys(UNO_HEX).map(k => `<button data-ucolor="${k}" style="--k:${UNO_HEX[k]}">${UNO_NAME[k]}</button>`).join("")}</div>
+      <button class="ghost" id="wild-cancel">Cancel</button></div></div>`) : layer("");
+    return `${confirmHTML()}${picker}<div class="frame">${crewHTML()}
+      <section class="status"><p class="turn-head${myTurn ? " mine" : ""}">${head}</p>${clockHTML()}</section>
+      ${table}
+      <section class="console"><div class="hand${myTurn ? " mine-turn" : ""}" style="--overlap:${overlap}" aria-label="Your hand">${cards}</div>
+        ${actions.length ? `<div class="uno-actions">${actions.join("")}</div>` : ""}</section></div>`;
+  }
+
   // ---- Trivia ----
   // Categories: the host taps to pick (none picked means everything); everyone else sees the choice.
   function catPickHTML(editable) {
@@ -1581,6 +1683,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
 
   // ---- Kings Cup ----
   let catchOpen = false;
+  let myCards = null, pendingWild = null;  // Uno: my own hand (sent only to me), and a Wild waiting for its colour
   function ringHTML(k) {
     let cards = "";
     for (let i = 0; i < k.left; i++) cards += `<span class="rc" style="--a:${(i * 360 / 52).toFixed(2)}deg"></span>`;
@@ -1685,6 +1788,12 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
   // ---- shared ----
   function rulesHTML() {
     const tail = `Aces are ${S.settings.acesHigh ? "high" : "low"}. A tie with the card you're comparing against ${S.settings.tiesMiss ? "counts as a miss" : "is a free pass"}.`;
+    if (unoMode()) return `<details><summary>How Uno works</summary><ol>
+      <li>On your turn, play a card that matches the colour or the number/symbol, or play a Wild.</li>
+      <li>Can't (or don't want to)? Tap Draw. If the card you draw fits, you can play it straight away; otherwise play passes on.</li>
+      <li>Skip misses the next player. Reverse changes direction (with 2 players it works like Skip). +2 and Wild +4 make the next player draw and miss their turn.</li>
+      <li>Play your second-last card and tap UNO! straight away. If someone taps Catch! first, you draw 2.</li>
+      <li>First to empty their hand wins. You've got ${Math.round((S.turnMs || 20000) / 1000)} seconds a turn.</li></ol></details>`;
     if (trivia()) return `<details><summary>How Trivia works</summary>
       <p>Pick categories in the lobby, or leave it on All. Everyone answers on their own phone. You've got ${Math.round((S.turnMs || 15000) / 1000)} seconds a question; the question ends early once everyone has answered. A right answer scores 50 to 90 points, more the faster you are, plus up to 10 bonus for answering right several times in a row. No question is worth more than 100.</p>
       <p class="hint">Extra questions from Open Trivia DB (opentdb.com), used under CC BY-SA 4.0.</p></details>`;
@@ -1754,7 +1863,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     // A new screen (lobby to game, game to awards) starts at the top; updates within a screen keep their place.
     const screen = S ? S.screen : "join";
     if (screen !== lastScreen) { lastScreen = screen; scrollTo(0, 0); }
-    document.documentElement.classList.toggle("framed", screen === "play" || (screen === "race" && !!S.race) || (screen === "kings" && !!S.kings) || (screen === "trivia" && !!S.trivia));
+    document.documentElement.classList.toggle("framed", screen === "play" || (screen === "race" && !!S.race) || (screen === "kings" && !!S.kings) || (screen === "trivia" && !!S.trivia) || (screen === "uno" && !!S.uno));
     document.documentElement.classList.toggle("swipe-turn", !!canSwipe());
     paint(!S ? joinHTML()
       : S.screen === "lobby" ? lobbyHTML()
@@ -1763,6 +1872,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
       : S.screen === "awards" ? awardsHTML()
       : S.screen === "kings" && S.kings ? kingsHTML()
       : S.screen === "trivia" && S.trivia ? triviaHTML()
+      : S.screen === "uno" && S.uno ? unoHTML()
       : playHTML());
     document.getElementById("more").hidden = !S;
     animateHorses();
@@ -1884,6 +1994,14 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     if (t.dataset.ba) return act("setBet", { delta: +t.dataset.ba });
     if (t.dataset.kick) return act("kick", { id: t.dataset.kick });
     if (t.dataset.kcPick) return act("pick", { to: t.dataset.kcPick });
+    if (t.dataset.uno !== undefined) {
+      if (!t.classList.contains("can")) return;
+      const id = +t.dataset.uno, card = myCards && myCards.hand.find(c => c.id === id);
+      if (!card) return;
+      if (card.c === "W") { pendingWild = id; return render(); }
+      return act("unoPlay", { id });
+    }
+    if (t.dataset.ucolor) { const id = pendingWild; pendingWild = null; render(); return act("unoPlay", { id, color: t.dataset.ucolor }); }
     if (t.dataset.ta !== undefined) {
       if (myAnswer !== null || !S.trivia || S.trivia.phase !== "question") return;
       myAnswer = +t.dataset.ta; sfx.pop(); buzz(30);
@@ -1932,6 +2050,12 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
       case "kc-catch-open": catchOpen = true; return render();
       case "kings-again": return act("kingsAgain");
       case "trivia-again": return act("triviaAgain");
+      case "uno-draw": return act("unoDraw");
+      case "uno-pass": return act("unoPass");
+      case "uno-call": buzz(60); return act("unoCall");
+      case "uno-catch": return act("unoCatch");
+      case "uno-again": return act("unoAgain");
+      case "wild-cancel": pendingWild = null; return render();
     }
   });
   app.addEventListener("submit", e => {

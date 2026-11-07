@@ -75,8 +75,14 @@ function broadcast(code) {
     const room = rooms.get(code);
     const set = sockets.get(code);
     if (!room || !set) return;
-    const data = JSON.stringify({ t: "state", state: game.publicState(room) });
-    for (const ws of set) if (ws.readyState === 1) ws.send(data);
+    const state = game.publicState(room);
+    const data = JSON.stringify({ t: "state", state });
+    for (const ws of set) {
+      if (ws.readyState !== 1) continue;
+      // Games with hidden hands get each phone's own cards added; everything else is the same for everyone.
+      const mine = game.privateState(room, ws.pid);
+      ws.send(mine ? JSON.stringify({ t: "state", state, mine }) : data);
+    }
   });
 }
 function toRoom(code, msg) {
@@ -204,7 +210,7 @@ wss.on("connection", ws => {
       return toRoom(room.code, { t: "nudge", from: ws.pid, to: to.id });
     }
     if (msg.t === "act") {
-      if (game.isStale(room, msg)) return send(ws, { t: "stale", state: game.publicState(room) });
+      if (game.isStale(room, msg)) return send(ws, { t: "stale", state: game.publicState(room), mine: game.privateState(room, ws.pid) });
       const err = game.act(room, ws.pid, msg);
       if (err) return send(ws, { t: "error", msg: err });
       if (msg.a === "give") toRoom(room.code, { t: "gift", from: ws.pid, to: msg.to });

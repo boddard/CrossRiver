@@ -11,7 +11,7 @@ const SUITS = {
 };
 const SUIT_KEYS = ["S", "H", "D", "C"];
 const RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
-const MODES = ["classic", "hilo", "horse", "kings", "trivia"];
+const MODES = ["classic", "hilo", "horse", "kings", "trivia", "uno"];
 // Our own pack plus Open Trivia DB's verified questions (opentdb.com, CC BY-SA 4.0) when bundled.
 const QUESTIONS = (() => {
   const own = require("./trivia-questions");
@@ -186,6 +186,100 @@ function guess(room, g) {
 // ---- Horse race ----
 // Each flip moves that suit's ace one spot. Once every ace has reached sideline card k, card k turns
 // over and the ace of its suit drops back one (never below the start). First ace past the last card wins.
+// ---- Uno ----
+// Standard rules on a 108-card deck. Hands are private: publicState shows only how many cards each
+// player holds, and unoPrivate gives each phone its own hand.
+const UNO_COLORS = ["R", "Y", "G", "B"];
+const UNO_TURN_MS = 20000;
+function unoDeck() {
+  const d = []; let id = 0;
+  for (const c of UNO_COLORS) {
+    d.push({ id: id++, c, v: "0" });
+    for (const v of ["1", "2", "3", "4", "5", "6", "7", "8", "9", "S", "R", "D2"]) { d.push({ id: id++, c, v }); d.push({ id: id++, c, v }); }
+  }
+  for (let i = 0; i < 4; i++) { d.push({ id: id++, c: "W", v: "W" }); d.push({ id: id++, c: "W", v: "W4" }); }
+  return shuffle(d);
+}
+function newUno(room) {
+  const u = { id: token(4), deck: unoDeck(), discard: [], hands: {}, order: room.players.map(p => p.id), turn: 0, dir: 1,
+    color: null, drew: null, unoBy: null, unoSafe: false, winner: null, msg: "", last: null, wins: (room.uno && room.uno.wins) || {} };
+  room.uno = u;
+  for (const id of u.order) u.hands[id] = u.deck.splice(0, 7);
+  // Start the discard pile with a number card.
+  let i = u.deck.findIndex(c => /^[0-9]$/.test(c.v));
+  const first = u.deck.splice(i, 1)[0];
+  u.discard.push(first); u.color = first.c;
+  u.turn = rand(u.order.length);
+  u.msg = `${player(room, u.order[u.turn]).name} goes first.`;
+  room.screen = "uno";
+  bump(room, "uno");
+}
+const unoTop = u => u.discard[u.discard.length - 1];
+const unoCurrent = u => u.order[u.turn];
+function unoPlayable(u, c) { const t = unoTop(u); return c.c === "W" || c.c === u.color || c.v === t.v; }
+function unoDraw(u, n) {
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    if (!u.deck.length) {  // reshuffle the discard pile, keeping the top card
+      const top = u.discard.pop();
+      u.deck = shuffle(u.discard.map(c => (c.v === "W" || c.v === "W4") ? { ...c, c: "W" } : c));
+      u.discard = [top];
+    }
+    if (u.deck.length) out.push(u.deck.pop());
+  }
+  return out;
+}
+const unoNext = (u, steps = 1) => ((u.turn + u.dir * steps) % u.order.length + u.order.length) % u.order.length;
+function unoAdvance(room, steps = 1) {
+  const u = room.uno;
+  u.turn = unoNext(u, steps); u.drew = null;
+  bump(room, "unoTurn", -1, { by: unoCurrent(u) });
+}
+// A new turn closes the window to catch someone who forgot to call UNO.
+function unoCloseWindow(u) { u.unoBy = null; u.unoSafe = false; }
+function unoPlay(room, pid, card, color) {
+  const u = room.uno, hand = u.hands[pid], p = player(room, pid);
+  hand.splice(hand.indexOf(card), 1);
+  unoCloseWindow(u);
+  u.discard.push(card);
+  u.color = card.c === "W" ? color : card.c;
+  u.last = { by: pid, card, color: u.color };
+  if (!hand.length) {
+    u.winner = pid; u.wins[pid] = (u.wins[pid] || 0) + 1; p.rides += 1;
+    u.msg = `${p.name} wins!`;
+    bump(room, "unoWin", -1, { by: pid }); return;
+  }
+  if (hand.length === 1) { u.unoBy = pid; u.unoSafe = false; }
+  const two = u.order.length === 2;
+  let steps = 1, fx = "unoPlay", victim = null, n = 0;
+  if (card.v === "S") { steps = 2; fx = "unoSkip"; victim = u.order[unoNext(u)]; }
+  else if (card.v === "R") { u.dir *= -1; if (two) { steps = 2; } fx = "unoReverse"; }
+  else if (card.v === "D2" || card.v === "W4") {
+    n = card.v === "D2" ? 2 : 4; victim = u.order[unoNext(u)];
+    u.hands[victim].push(...unoDraw(u, n)); steps = 2; fx = "unoDrawN";
+  }
+  u.msg = victim && n ? `${player(room, victim).name} draws ${n}.` : card.v === "S" ? `${player(room, victim).name} is skipped.` : card.v === "R" ? "Reverse!" : "";
+  u.turn = unoNext(u, steps); u.drew = null;
+  bump(room, fx, -1, { by: pid, victim, n, card: card.v, color: u.color });
+}
+function unoTick(room, now) {
+  const u = room.uno;
+  if (u.winner) return false;
+  const cur = player(room, unoCurrent(u));
+  if (!cur) { u.turn = unoNext(u); return true; }
+  if (!cur.connected && room.players.some(p => p.connected) && now - Math.max(cur.offlineAt || now, room.phaseAt || 0) >= 8000) {
+    unoCloseWindow(u); u.msg = `${cur.name} is offline. Skipped.`; unoAdvance(room); return true;
+  }
+  if (cur.connected && now >= (room.phaseAt || 0) + UNO_TURN_MS + 800) {
+    // Out of time: draw a card (if they hadn't) and play passes on.
+    unoCloseWindow(u);
+    if (!u.drew) u.hands[cur.id].push(...unoDraw(u, 1));
+    u.msg = `${cur.name} ran out of time and drew.`;
+    unoAdvance(room); return true;
+  }
+  return false;
+}
+
 // ---- Trivia ----
 // Quick-fire quiz: everyone answers on their own phone against the clock. Faster right answers score
 // more, with a bonus for answering several right in a row. Each question goes question -> reveal -> scores.
@@ -395,6 +489,13 @@ function removePlayer(room, id) {
   if (room.hostId === id) { room.hostId = null; reassignHost(room); }
   if (!room.players.length) return;
   if (room.race && room.race.flipper === id) room.race.flipper = (room.players[i] || room.players[0]).id;
+  if (room.uno && room.uno.hands[id]) {
+    const u = room.uno, at = u.order.indexOf(id), wasTurn = unoCurrent(u) === id;
+    u.deck.push(...u.hands[id]); delete u.hands[id];
+    u.order.splice(at, 1);
+    if (!u.order.length) { room.uno = null; }
+    else { if (at < u.turn || u.turn >= u.order.length) u.turn = (u.turn - (at < u.turn ? 1 : 0) + u.order.length) % u.order.length; if (wasTurn) u.drew = null; }
+  }
   if (room.kings) {
     const k = room.kings;
     if (k.drawer === id) k.drawer = (room.players[i] || room.players[0]).id;
@@ -450,6 +551,7 @@ function act(room, pid, msg) {
       if (room.settings.mode === "horse") { room.screen = "bets"; bump(room, "screen"); return null; }
       if (room.settings.mode === "kings") { newKings(room); return null; }
       if (room.settings.mode === "trivia") { newTrivia(room); return null; }
+      if (room.settings.mode === "uno") { if (room.players.length < 2) return "Uno needs at least 2 players."; newUno(room); return null; }
       room.starter = 0; newRound(room); return null;
     case "menu":
       if (hostOnly()) return hostOnly();
@@ -465,6 +567,7 @@ function act(room, pid, msg) {
       if (room.settings.mode === "horse") { room.race = null; room.screen = "bets"; bump(room, "screen"); return null; }
       if (room.settings.mode === "kings") { newKings(room); return null; }
       if (room.settings.mode === "trivia") { newTrivia(room); return null; }
+      if (room.settings.mode === "uno") { if (room.uno) room.uno.wins = {}; newUno(room); return null; }
       if (room.screen === "play") newRound(room); else bump(room, "screen");
       return null;
     case "guess": {
@@ -587,6 +690,52 @@ function act(room, pid, msg) {
       room.settings.triviaCats = Array.isArray(msg.cats) ? [...new Set(msg.cats.filter(c => valid.has(c)))] : [];
       return null;
     }
+    case "unoPlay": {
+      const u = room.uno;
+      if (room.screen !== "uno" || !u || u.winner) return "The game is over.";
+      if (unoCurrent(u) !== pid) return "It's not your turn.";
+      const hand = u.hands[pid] || [], card = hand.find(c => c.id === msg.id);
+      if (!card) return "You don't have that card.";
+      if (u.drew != null && u.drew !== card.id) return "You can only play the card you just drew.";
+      if (!unoPlayable(u, card)) return "That card doesn't match.";
+      if (card.c === "W" && !UNO_COLORS.includes(msg.color)) return "Pick a colour.";
+      unoPlay(room, pid, card, msg.color); return null;
+    }
+    case "unoDraw": {
+      const u = room.uno;
+      if (room.screen !== "uno" || !u || u.winner) return null;
+      if (unoCurrent(u) !== pid) return "It's not your turn.";
+      if (u.drew != null) return "You've already drawn. Play it or pass.";
+      unoCloseWindow(u);
+      const [c] = unoDraw(u, 1);
+      if (!c) { unoAdvance(room); return null; }
+      u.hands[pid].push(c);
+      if (unoPlayable(u, c)) { u.drew = c.id; u.msg = `${me.name} drew a card.`; bump(room, "unoDrew", -1, { by: pid }); }
+      else { u.msg = `${me.name} drew and passed.`; unoAdvance(room); }
+      return null;
+    }
+    case "unoPass": {
+      const u = room.uno;
+      if (!u || unoCurrent(u) !== pid || u.drew == null) return null;
+      u.msg = `${me.name} passed.`; unoAdvance(room); return null;
+    }
+    case "unoCall": {
+      const u = room.uno;
+      if (u && u.unoBy === pid && !u.unoSafe) { u.unoSafe = true; bump(room, "unoCalled", -1, { by: pid }); }
+      return null;
+    }
+    case "unoCatch": {
+      const u = room.uno;
+      if (!u || !u.unoBy || u.unoSafe || u.unoBy === pid) return null;
+      const caught = u.unoBy;
+      u.hands[caught].push(...unoDraw(u, 2)); unoCloseWindow(u);
+      u.msg = `${me.name} caught ${player(room, caught).name}! +2`;
+      bump(room, "unoCaught", -1, { by: pid, victim: caught }); return null;
+    }
+    case "unoAgain":
+      if (hostOnly()) return hostOnly();
+      if (room.players.length < 2) return "Uno needs at least 2 players.";
+      newUno(room); return null;
     case "triviaAgain":
       if (hostOnly()) return hostOnly();
       newTrivia(room); return null;
@@ -611,12 +760,18 @@ function publicState(room) {
     next: room.screen === "play" ? nextUp(room, room.current) : null,
     autoPassMs: AUTO_PASS_MS, giveOnOff: GIVE_ON_OFF, offlineSkipMs: OFFLINE_SKIP_MS,
     triviaCategories: room.screen === "lobby" && room.settings.mode === "trivia" ? CATEGORIES : undefined,
-    turnMs: room.screen === "trivia" ? TRIVIA.question : TURN_MS, turnLeftMs: room.screen === "trivia" && room.trivia ? (room.trivia.phase === "question" ? Math.max(0, room.trivia.endsAt - Date.now()) : null) : clockRunning(room) ? Math.max(0, deadline(room) - Date.now()) : null,
+    turnMs: room.screen === "trivia" ? TRIVIA.question : room.screen === "uno" ? UNO_TURN_MS : TURN_MS,
+    turnLeftMs: room.screen === "uno" ? (room.uno && !room.uno.winner ? Math.max(0, (room.phaseAt || 0) + UNO_TURN_MS + 800 - Date.now()) : null)
+      : room.screen === "trivia" && room.trivia ? (room.trivia.phase === "question" ? Math.max(0, room.trivia.endsAt - Date.now()) : null) : clockRunning(room) ? Math.max(0, deadline(room) - Date.now()) : null,
     grudges: Object.entries(room.grudges || {}).map(([k, n]) => { const [from, to] = k.split(">"); return { from, to, n }; }),
     race: r && {
       id: r.id, len: r.len, side: r.side.map((c, i) => r.sideUp[i] ? c : null), sideUp: r.sideUp,
       pos: r.pos, last: r.last, msg: r.msg, back: r.back, flips: r.flips, winner: r.winner, results: r.results, flipper: r.flipper,
     },
+    uno: room.uno && (({ deck, discard, hands, ...u }) => ({
+      ...u, top: discard[discard.length - 1], deckLeft: deck.length, current: u.order[u.turn],
+      counts: Object.fromEntries(Object.entries(hands).map(([id, h]) => [id, h.length])), drew: u.drew != null,
+    }))(room.uno),
     trivia: room.trivia && (({ order, correct, answers, startedAt, endsAt, ...t }) => ({
       ...t, total: order.length, msLeft: Math.max(0, endsAt - Date.now()),
       answered: Object.keys(answers),
@@ -655,6 +810,7 @@ function timeout(room) {
 }
 function tick(room, now = Date.now()) {
   if (room.screen === "trivia" && room.trivia) return triviaTick(room, now);
+  if (room.screen === "uno" && room.uno) return unoTick(room, now);
   const k = room.kings;
   if (room.screen === "kings" && k && !k.over) {
     const pk = k.pending;
@@ -692,7 +848,14 @@ function tick(room, now = Date.now()) {
 
 // Actions that depend on what the player saw. A tap sent against an older state (double tap, or two
 // players flipping at once) is dropped instead of being applied to the next card.
-const SEQ_CHECKED = new Set(["guess", "pass", "skip", "flip", "draw", "startRace", "raceAgain", "kingsAgain", "triviaAgain", "start", "restart", "menu"]);
+const SEQ_CHECKED = new Set(["guess", "pass", "skip", "flip", "draw", "startRace", "raceAgain", "kingsAgain", "triviaAgain", "unoPlay", "unoDraw", "unoPass", "unoAgain", "start", "restart", "menu"]);
 const isStale = (room, msg) => SEQ_CHECKED.has(msg && msg.a) && Number.isInteger(msg.seq) && msg.seq !== room.ev.seq;
 
-module.exports = { tick, createRoom, addPlayer, removePlayer, setConnected, reassignHost, cleanName, act, isStale, publicState, player, SUIT_KEYS, MAX_PLAYERS };
+// Just this player's own cards, sent only to their phone.
+function privateState(room, pid) {
+  const u = room.uno;
+  if (!u || room.screen !== "uno" || !u.hands[pid]) return null;
+  return { hand: u.hands[pid], drewId: unoCurrent(u) === pid ? u.drew : null };
+}
+
+module.exports = { privateState, tick, createRoom, addPlayer, removePlayer, setConnected, reassignHost, cleanName, act, isStale, publicState, player, SUIT_KEYS, MAX_PLAYERS };
