@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>F the Bus</title>
-<meta name="theme-color" content="#13343b">
+<meta name="theme-color" content="#172328">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -29,7 +29,10 @@
   --muted: #b3b9c0;
   --bus: #f2c230;
   --bus-ink: #2a1d00;
-  --fabric: #13343b;
+  --fabric: #172328;
+  --out: cubic-bezier(.22,1,.36,1);
+  --in: cubic-bezier(.55,0,.75,.3);
+  --spring: cubic-bezier(.34,1.32,.64,1);
   --fabric-plum: #5b2a4e;
   --fabric-teal: #1f7a7a;
   --fabric-mustard: #d9a21b;
@@ -77,11 +80,11 @@ button:active { transform: scale(.97); }
 .code-row { display: flex; gap: 10px; }
 .code-row input { flex: 1; min-width: 0; }
 .code-row button { flex: none; width: 110px; }
-.sheet-back { position: fixed; inset: 0; z-index: 55; background: rgba(8,9,12,.72); display: flex; align-items: flex-end; animation: fade .15s ease-out both; }
+.sheet-back { position: fixed; inset: 0; z-index: 55; background: rgba(8,9,12,.72); display: flex; align-items: flex-end; animation: fade .15s var(--out) both; }
 .sheet {
   width: 100%; max-width: 480px; margin: 0 auto; background: var(--panel); border-top: 1px solid var(--line); border-radius: 18px 18px 0 0;
   padding: 18px max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 18px) max(16px, env(safe-area-inset-left, 0px));
-  display: grid; gap: 10px; max-height: 85dvh; overflow-y: auto; animation: rise .2s ease-out both;
+  display: grid; gap: 10px; max-height: 85dvh; overflow-y: auto; animation: rise .2s var(--out) both;
 }
 .sheet .label { text-align: center; }
 .sheet button { width: 100%; min-height: 56px; font-size: 18px; font-weight: 600; text-align: left; padding: 0 18px; }
@@ -91,12 +94,12 @@ button:active { transform: scale(.97); }
 .sheet .pax { padding: 0 2px; }
 .sheet table { font-size: 15px; }
 /* Drinks you owe: a card you have to clear with Done, and a badge on your bubble until you do */
-.owe { position: absolute; top: -4px; left: -2px; z-index: 2; padding: 2px 5px; border-radius: 999px; background: var(--miss); color: #fff; font: 800 11px/1.2 var(--body); box-shadow: 0 0 0 2px var(--asphalt); animation: pop .4s cubic-bezier(.2,1.6,.4,1); }
-.drink-back { position: fixed; inset: 0; z-index: 52; background: rgba(8,9,12,.78); display: flex; align-items: flex-end; animation: fade .2s ease-out both; }
+.owe { position: absolute; top: -4px; left: -2px; z-index: 2; padding: 2px 5px; border-radius: 999px; background: var(--miss); color: #fff; font: 800 11px/1.2 var(--body); box-shadow: 0 0 0 2px var(--asphalt); animation: pop .4s var(--spring); }
+.drink-back { position: fixed; inset: 0; z-index: 52; background: rgba(8,9,12,.78); display: flex; align-items: flex-end; animation: fade .2s var(--out) both; }
 .drink-card {
   width: 100%; max-width: 480px; margin: 0 auto; display: grid; gap: 14px; text-align: center;
   padding: 22px max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 22px) max(16px, env(safe-area-inset-left, 0px));
-  background: var(--panel); border-top: 2px solid var(--miss); border-radius: 20px 20px 0 0; animation: rise .25s ease-out both;
+  background: var(--panel); border-top: 2px solid var(--miss); border-radius: 20px 20px 0 0; animation: rise .25s var(--out) both;
 }
 .drink-card .big { font: 900 clamp(56px, 18vw, 84px)/.95 var(--display); text-transform: uppercase; color: var(--miss); }
 .drink-why { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; color: var(--muted); font-weight: 600; }
@@ -117,7 +120,7 @@ button:active { transform: scale(.97); }
 .uno-table { width: 100%; height: 100%; display: grid; place-items: center; align-content: center; gap: 12px; }
 .uno-pile { display: flex; align-items: center; gap: 22px; }
 .uno-pile .uc { --uw: min(26vw, 120px); }
-.uno-pile .uc.top { animation: slap .35s cubic-bezier(.2,1.5,.4,1); }
+.uno-pile .uc.top { animation: slap .35s var(--spring); }
 @keyframes slap { from { transform: translateY(-40px) rotate(-12deg) scale(1.15); opacity: 0; } to { transform: none; opacity: 1; } }
 .uno-deck { display: grid; justify-items: center; gap: 4px; }
 .uno-deck small { font: 700 11px/1 var(--mono); color: var(--muted); }
@@ -132,7 +135,7 @@ button:active { transform: scale(.97); }
 .hand .uc.can { transform: translateY(-10px); box-shadow: 0 0 0 3px var(--bus), 0 8px 16px rgba(0,0,0,.4); cursor: pointer; }
 .uno-actions { display: flex; gap: 8px; }
 .uno-actions button { flex: 1; }
-.uno-call { background: #e5484d !important; color: #fff !important; animation: pop .6s cubic-bezier(.2,1.6,.4,1) infinite alternate; }
+.uno-call { background: #e5484d !important; color: #fff !important; animation: pulse .7s ease-in-out infinite alternate; }
 .cnt { position: absolute; bottom: 12px; right: 0; z-index: 2; padding: 1px 4px; border-radius: 4px; background: #111; color: #fff; font: 700 10px/1.2 var(--mono); box-shadow: 0 0 0 1px var(--line); }
 .cnt.one { background: #e5484d; }
 .picker { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
@@ -141,7 +144,7 @@ button:active { transform: scale(.97); }
 /* Trivia: a big question card, four colour-coded answers, a reveal with who picked what, then scores */
 .q-card { width: 100%; max-height: 100%; display: grid; gap: 10px; align-content: center; text-align: center; padding: 8px; }
 .q-cat { justify-self: center; font: 700 12px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--bus); border: 1px solid var(--bus); padding: 5px 10px; border-radius: 999px; }
-.q-text { margin: 0; font: 900 clamp(22px, 6.5vw, 34px)/1.1 var(--display); text-transform: uppercase; text-wrap: balance; animation: slam .45s cubic-bezier(.2,1.6,.4,1) both; }
+.q-text { margin: 0; font: 900 clamp(22px, 6.5vw, 34px)/1.1 var(--display); text-transform: uppercase; text-wrap: balance; animation: slam .45s var(--spring) both; }
 .q-big { margin: 0; font: 900 clamp(48px, 16vw, 80px)/1 var(--display); text-transform: uppercase; color: var(--bus); }
 .answers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; height: 100%; }
 .ans {
@@ -153,13 +156,13 @@ button:active { transform: scale(.97); }
 .ans .sh { font-size: 20px; line-height: 1; }
 .ans.picked { box-shadow: 0 0 0 3px var(--asphalt), 0 0 0 6px var(--ink); }
 .answers.locked .ans:not(.picked) { opacity: .4; }
-.ans.right { box-shadow: 0 0 0 3px var(--asphalt), 0 0 0 6px var(--ok); animation: pop .5s cubic-bezier(.2,1.6,.4,1); }
+.ans.right { box-shadow: 0 0 0 3px var(--asphalt), 0 0 0 6px var(--ok); animation: pop .5s var(--spring); }
 .answers.revealed .ans:not(.right) { opacity: .3; transform: scale(.97); }
 .ans .who { position: absolute; right: 6px; bottom: 5px; display: flex; gap: 2px; }
 .ans .who .rdot { width: 14px; height: 14px; font-size: 8px; line-height: 14px; }
 .locked-line { margin: 0; text-align: center; color: var(--muted); font-weight: 600; }
 .board { list-style: none; margin: 0; padding: 0; width: 100%; display: grid; gap: 6px; align-content: center; max-height: 100%; overflow: hidden; }
-.board li { display: grid; grid-template-columns: 26px 30px 1fr auto auto; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 10px; background: var(--panel); border: 1px solid var(--line); animation: rise .4s calc(var(--i) * 70ms) ease-out both; }
+.board li { display: grid; grid-template-columns: 26px 30px 1fr auto auto; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 10px; background: var(--panel); border: 1px solid var(--line); animation: rise .4s calc(var(--i) * 70ms) var(--out) both; }
 .board li.me { border-color: var(--bus); }
 .board .rk { font: 900 18px/1 var(--display); color: var(--muted); text-align: center; }
 .board .av { width: 28px; height: 28px; font-size: 14px; }
@@ -171,7 +174,7 @@ button:active { transform: scale(.97); }
 .pod { display: grid; justify-items: center; gap: 6px; align-content: end; height: 100%; }
 .pod .av { width: 44px; height: 44px; font-size: 22px; }
 .pod .nm { font-weight: 700; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
-.pod .blk { width: 100%; border-radius: 10px 10px 0 0; background: var(--panel); border: 1px solid var(--line); display: grid; place-items: start center; padding-top: 8px; font: 900 28px/1 var(--display); color: var(--bus); animation: grow .8s calc(var(--i) * 200ms) cubic-bezier(.2,.8,.3,1) both; transform-origin: bottom; }
+.pod .blk { width: 100%; border-radius: 10px 10px 0 0; background: var(--panel); border: 1px solid var(--line); display: grid; place-items: start center; padding-top: 8px; font: 900 28px/1 var(--display); color: var(--bus); animation: grow .8s calc(var(--i) * 200ms) var(--out) both; transform-origin: bottom; }
 .pod .pts { font: 700 13px/1 var(--mono); color: var(--muted); }
 @keyframes grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
 .cats { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -192,7 +195,7 @@ button:active { transform: scale(.97); }
   background: repeating-linear-gradient(135deg, var(--bus) 0 4px, #e2a400 4px 8px); box-shadow: 0 2px 4px rgba(0,0,0,.4); }
 .cup { position: absolute; left: 50%; top: 50%; width: 36%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%;
   border: 3px solid var(--line); background: var(--asphalt); overflow: hidden; display: grid; place-items: center; align-content: center; }
-.cup-in { position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--fill) * 100%); background: linear-gradient(#f7d77a, #d99a00); transition: height .8s cubic-bezier(.3,1.3,.5,1); }
+.cup-in { position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--fill) * 100%); background: linear-gradient(#f7d77a, #d99a00); transition: height .8s var(--spring); }
 .cup-in::before { content: ""; position: absolute; left: 0; right: 0; top: -6px; height: 10px; background: #fff7e0; border-radius: 50%; opacity: calc(var(--fill) * 4); }
 .cup b, .cup small { position: relative; z-index: 1; text-shadow: 0 1px 3px #000; }
 .cup b { font: 900 clamp(22px, 7vw, 34px)/1 var(--display); }
@@ -206,7 +209,7 @@ button:active { transform: scale(.97); }
 .kc-picks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .kc-pick { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 10px; font-weight: 600; text-align: left; overflow: hidden; }
 .kc-pick .av { width: 28px; height: 28px; font-size: 14px; flex: none; }
-.tapbig { width: 100%; min-height: 96px !important; font-size: 34px !important; animation: pop .5s cubic-bezier(.2,1.6,.4,1) both; }
+.tapbig { width: 100%; min-height: 96px !important; font-size: 34px !important; animation: pop .5s var(--spring) both; }
 .kc-ruleform { display: flex; gap: 8px; }
 .kc-ruleform input { flex: 1; min-width: 0; background: var(--asphalt); color: var(--ink); border: 2px solid var(--line); border-radius: 10px; padding: 10px 12px; font: 500 16px var(--body); }
 .tagmini { position: absolute; bottom: 12px; right: 2px; font-size: 13px; line-height: 1; z-index: 2; }
@@ -311,9 +314,9 @@ html.framed body { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(-
 /* Cards */
 .slot { width: 100%; max-width: 100%; aspect-ratio: 5 / 7; perspective: 900px; container-type: inline-size; transition: transform .25s ease-out; }
 .stop.on .slot:not(.empty) .back { box-shadow: inset 0 0 0 3px var(--bus), 0 0 0 3px rgba(245,179,1,.25), 0 10px 30px rgba(245,179,1,.18); }
-.card { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform .5s cubic-bezier(.2,.7,.2,1); }
+.card { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform .45s var(--out); }
 .card.up { transform: rotateY(180deg); }
-.card.deal { animation: deal .6s cubic-bezier(.2,.7,.2,1); }
+.card.deal { animation: deal .6s var(--out); }
 @keyframes deal {
   0% { transform: translateY(-36px) scale(.9) rotateY(0deg); opacity: 0; }
   35% { transform: translateY(0) scale(1.04) rotateY(0deg); opacity: 1; }
@@ -423,21 +426,21 @@ details p { max-width: 65ch; color: var(--muted); }
 .flip-btn:active { transform: scale(.98); }
 .meters { gap: 12px; }
 /* Moments: a correct card pulses green, a miss shakes and flashes red, getting off throws confetti and drives a bus past */
-.slot.hit .face { animation: hit .7s .45s ease-out both; }
+.slot.hit .face { animation: hit .7s .22s var(--out) both; }
 @keyframes hit { 0% { box-shadow: 0 0 0 0 rgba(70,196,106,.9); } 100% { box-shadow: 0 0 0 18px rgba(70,196,106,0); } }
-.slot.shake { animation: shake .5s .5s ease-in-out both; }
-@keyframes shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-9px) rotate(-3deg); } 40% { transform: translateX(8px) rotate(2deg); } 60% { transform: translateX(-6px); } 80% { transform: translateX(4px); } }
-.miss-flash { position: fixed; inset: 0; pointer-events: none; z-index: 20; background: radial-gradient(ellipse at center, transparent 40%, rgba(239,90,95,.45)); animation: flash .9s .45s ease-out both; }
+.slot.shake { animation: shake .42s .26s ease-in-out both; }
+@keyframes shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-6px) rotate(-1.5deg); } 40% { transform: translateX(5px) rotate(1deg); } 60% { transform: translateX(-3px); } 80% { transform: translateX(2px); } }
+.miss-flash { position: fixed; inset: 0; pointer-events: none; z-index: 20; background: radial-gradient(ellipse at center, transparent 40%, rgba(239,90,95,.45)); animation: flash .8s .2s var(--out) both; }
 @keyframes flash { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
-.slam { display: inline-block; animation: slam .45s .5s cubic-bezier(.2,1.6,.4,1) both; }
-@keyframes slam { 0% { transform: scale(2.2); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
-.stop.enter .slot { animation: rise .45s calc(var(--i) * 80ms) cubic-bezier(.2,.7,.2,1) both; }
-@keyframes rise { 0% { transform: translateY(24px); opacity: 0; } 100% { transform: none; opacity: 1; } }
-.stop.cheer .slot { animation: cheer .6s calc(.5s + var(--i) * 90ms) ease-in-out both; }
-@keyframes cheer { 0%, 100% { transform: none; } 40% { transform: translateY(-16px) rotate(-3deg); } 70% { transform: translateY(2px); } }
-.rider.slide { animation: slide .45s cubic-bezier(.2,.7,.2,1) both; }
+.slam { display: inline-block; animation: slam .4s .24s var(--out) both; }
+@keyframes slam { 0% { transform: scale(1.3); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+.stop.enter .slot { animation: rise .45s calc(var(--i) * 80ms) var(--out) both; }
+@keyframes rise { 0% { transform: translateY(14px); opacity: 0; } 100% { transform: none; opacity: 1; } }
+.stop.cheer .slot { animation: cheer .5s calc(.25s + var(--i) * 70ms) var(--out) both; }
+@keyframes cheer { 0%, 100% { transform: none; } 45% { transform: translateY(-10px); } }
+.rider.slide { animation: slide .45s var(--out) both; }
 @keyframes slide { 0% { transform: translateX(-28px); opacity: 0; } 100% { transform: none; opacity: 1; } }
-.console.pop { animation: rise .35s .35s ease-out both; }
+.console.pop { animation: rise .3s .18s var(--out) both; }
 .fx-canvas { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 25; }
 .fx-bus { position: fixed; left: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); width: 150px; z-index: 30; pointer-events: none; animation: drive 2.2s .4s cubic-bezier(.45,0,.55,1) both; }
 .fx-bus g { animation: bob .22s ease-in-out infinite alternate; }
@@ -466,13 +469,13 @@ details p { max-width: 65ch; color: var(--muted); }
   position: absolute; left: 50%; bottom: 0; height: var(--row); width: min(100%, calc(var(--row) * 5 / 7));
   container-type: inline-size; border-radius: 6px; background: var(--card); color: var(--card-ink); border: 1px solid #d9d5c8;
   transform: translateX(-50%) translateY(calc(var(--p) * -1 * (var(--row) + var(--rgap))));
-  transition: transform .5s cubic-bezier(.3,1.35,.5,1); box-shadow: 0 6px 16px rgba(0,0,0,.35);
+  transition: transform .5s var(--spring); box-shadow: 0 6px 16px rgba(0,0,0,.35);
 }
 .hface { height: 100%; display: grid; place-items: center; align-content: center; font: 700 34cqw/1 var(--mono); }
 .hface span { font-size: 46cqw; line-height: 1; }
 .horse.red { color: var(--suit-red); }
 .horse.winner { box-shadow: 0 0 0 3px var(--bus), 0 0 24px rgba(245,179,1,.55); }
-.horse.hurt { animation: hurt .7s ease-out; }
+.horse.hurt { animation: hurt .6s var(--out); }
 @keyframes hurt { 0%, 100% { box-shadow: 0 6px 16px rgba(0,0,0,.35); } 30% { box-shadow: 0 0 0 4px var(--miss), 0 0 20px rgba(239,90,95,.6); } }
 .race-console { gap: 12px; }
 .draw { display: flex; align-items: center; gap: 14px; min-height: 84px; }
@@ -499,8 +502,8 @@ details p { max-width: 65ch; color: var(--muted); }
 .sign-end { display: flex; align-items: center; gap: 8px; }
 .sign-btn { background: transparent; border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font: 700 12px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
 .sign-btn:hover { color: var(--bus); border-color: var(--bus); }
-.confirm-back { position: fixed; inset: 0; z-index: 40; background: rgba(8,9,12,.72); display: grid; place-items: center; padding: 16px; animation: fade .2s ease-out both; }
-.confirm { width: min(420px, 100%); background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; display: grid; gap: 14px; animation: rise .25s ease-out both; }
+.confirm-back { position: fixed; inset: 0; z-index: 40; background: rgba(8,9,12,.72); display: grid; place-items: center; padding: 16px; animation: fade .2s var(--out) both; }
+.confirm { width: min(420px, 100%); background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; display: grid; gap: 14px; animation: rise .25s var(--out) both; }
 .confirm h2 { margin: 0; font: 900 28px/1 var(--display); text-transform: uppercase; }
 .confirm p { margin: 0; color: var(--muted); }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
@@ -566,17 +569,18 @@ details p { max-width: 65ch; color: var(--muted); }
 .bub.out .av::after { content: "Off"; position: absolute; top: 24px; font: 700 8px/1 var(--mono); background: var(--line); color: var(--ink); padding: 2px 3px; border-radius: 3px; }
 .bub .crown { position: absolute; top: -2px; right: 4px; font-size: 11px; color: var(--bus); }
 .bub.target .av { box-shadow: 0 0 0 2px var(--asphalt), 0 0 0 4px var(--ok); animation: wiggle 1s ease-in-out infinite; }
-.bub.pop .av { animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+.bub.pop .av { animation: pop .45s var(--spring); }
 .bub.hit .av { animation: shake .5s ease-in-out; }
 @keyframes glow { 50% { box-shadow: 0 0 0 2px var(--asphalt), 0 0 0 4px var(--bus), 0 0 16px 4px rgba(245,179,1,.45); } }
-@keyframes wiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-6deg); } 75% { transform: rotate(6deg); } }
-@keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.25); } 100% { transform: scale(1); } }
-.give-note { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 20; margin: 0; padding: 8px 12px; background-color: var(--panel); box-shadow: 0 8px 20px rgba(0,0,0,.4); border-radius: 8px; background: rgba(70,196,106,.14); border: 1px solid rgba(70,196,106,.5); font-weight: 600; text-align: center; animation: rise .3s ease-out both; }
+@keyframes wiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-4deg); } 75% { transform: rotate(4deg); } }
+@keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.12); } 100% { transform: scale(1); } }
+@keyframes pulse { from { transform: scale(1); } to { transform: scale(1.05); } }
+.give-note { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 20; margin: 0; padding: 8px 12px; background-color: var(--panel); box-shadow: 0 8px 20px rgba(0,0,0,.4); border-radius: 8px; background: rgba(70,196,106,.14); border: 1px solid rgba(70,196,106,.5); font-weight: 600; text-align: center; animation: rise .3s var(--out) both; }
 .react-btn { flex: none; width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--line); background: var(--panel); font-size: 22px; line-height: 1; }
 .react-btn[aria-expanded="true"] { border-color: var(--bus); }
-.tray { position: absolute; right: 0; top: calc(100% + 4px); z-index: 30; display: flex; gap: 4px; padding: 6px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,.45); animation: rise .2s ease-out both; }
+.tray { position: absolute; right: 0; top: calc(100% + 4px); z-index: 30; display: flex; gap: 4px; padding: 6px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,.45); animation: rise .2s var(--out) both; }
 .rx { width: 42px; height: 42px; border-radius: 50%; border: 0; background: none; font-size: 24px; line-height: 1; }
-.rx:active { transform: scale(1.3); }
+.rx:active { transform: scale(1.15); }
 
 /* Reactions and callouts float up every phone */
 .floats { position: fixed; inset: 0; pointer-events: none; z-index: 45; overflow: hidden; }
@@ -584,7 +588,7 @@ details p { max-width: 65ch; color: var(--muted); }
 .float b { font-size: 40px; line-height: 1; }
 .float small { font: 700 11px/1 var(--body); background: rgba(0,0,0,.6); color: #fff; padding: 3px 6px; border-radius: 999px; white-space: nowrap; }
 .float.note b { font: 900 18px/1.1 var(--display); text-transform: uppercase; background: var(--panel); border: 1px solid var(--line); color: var(--ink); padding: 6px 10px; border-radius: 8px; white-space: nowrap; }
-@keyframes floatup { 0% { transform: translate(-50%, 20px) scale(.6); opacity: 0; } 12% { transform: translate(-50%, 0) scale(1.1); opacity: 1; } 80% { opacity: 1; } 100% { transform: translate(-50%, -55vh) scale(1); opacity: 0; } }
+@keyframes floatup { 0% { transform: translate(-50%, 16px) scale(.8); opacity: 0; } 12% { transform: translate(-50%, 0) scale(1); opacity: 1; } 75% { opacity: 1; } 100% { transform: translate(-50%, -50vh); opacity: 0; } }
 
 /* Full-screen callouts: YOUR TURN, KIM DRINKS!, HURRY UP! */
 .takeover { position: fixed; inset: 0; z-index: 48; pointer-events: none; display: grid; place-items: center; padding: 0 16px; background: radial-gradient(ellipse at center, rgba(0,0,0,.55), rgba(0,0,0,.15) 70%); }
@@ -592,13 +596,13 @@ details p { max-width: 65ch; color: var(--muted); }
 .takeover.miss span { color: var(--miss); text-shadow: 0 4px 0 #000, 0 0 40px rgba(239,90,95,.55); }
 .takeover.gift span, .takeover.nudge span { color: var(--ink); }
 .takeover.show { animation: takeover 1.7s ease-out forwards; }
-.takeover.show span { animation: slam .45s cubic-bezier(.2,1.6,.4,1) both; }
-@keyframes takeover { 0% { opacity: 0; } 8% { opacity: 1; } 75% { opacity: 1; } 100% { opacity: 0; } }
+.takeover.show span { animation: slam .38s var(--out) both; }
+@keyframes takeover { 0% { opacity: 0; } 10% { opacity: 1; } 78% { opacity: 1; } 100% { opacity: 0; } }
 
 /* Suspense: the rider's call hangs on every screen before the card turns */
 .console.calling { text-align: center; justify-items: center; }
 .call-by { margin: 0; color: var(--muted); font-weight: 600; }
-.call { margin: 0; font: 900 clamp(40px, 12vw, 60px)/1 var(--display); text-transform: uppercase; color: var(--bus); animation: slam .35s cubic-bezier(.2,1.6,.4,1) both; }
+.call { margin: 0; font: 900 clamp(40px, 12vw, 60px)/1 var(--display); text-transform: uppercase; color: var(--bus); animation: slam .35s var(--spring) both; }
 .drum { display: flex; gap: 8px; }
 .drum span { width: 10px; height: 10px; border-radius: 50%; background: var(--bus); animation: drum .5s ease-in-out infinite alternate; }
 .drum span:nth-child(2) { animation-delay: .15s; } .drum span:nth-child(3) { animation-delay: .3s; }
@@ -613,7 +617,7 @@ details p { max-width: 65ch; color: var(--muted); }
 
 /* End-of-night awards */
 .awards { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-.award { display: grid; gap: 4px; padding: 14px 16px; border-radius: 12px; background: var(--asphalt); border: 1px solid var(--line); animation: rise .5s calc(var(--i) * 120ms) cubic-bezier(.2,.7,.2,1) both; }
+.award { display: grid; gap: 4px; padding: 14px 16px; border-radius: 12px; background: var(--asphalt); border: 1px solid var(--line); animation: rise .5s calc(var(--i) * 120ms) var(--out) both; }
 .award strong { font: 900 28px/1 var(--display); text-transform: uppercase; color: var(--bus); }
 .award:first-child { border-color: var(--bus); }
 
@@ -633,10 +637,10 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
 .clock span { display: block; height: 100%; background: var(--bus); transform-origin: left; animation: drain var(--ms) linear var(--delay, 0ms) forwards; }
 .clock.late span { background: var(--miss); }
 /* The giant card: fills the screen while it's being swiped and turns with the finger, face and all */
-.bigcard { position: fixed; inset: 0; z-index: 46; display: grid; place-items: center; align-content: center; gap: 18px; padding: 0 16px; background: rgba(8,9,12,.86); pointer-events: none; animation: fade .12s ease-out both; }
+.bigcard { position: fixed; inset: 0; z-index: 46; display: grid; place-items: center; align-content: center; gap: 18px; padding: 0 16px; background: rgba(8,9,12,.86); pointer-events: none; animation: fade .12s var(--out) both; }
 .bc-who { margin: 0; font: 900 clamp(26px, 8vw, 40px)/1 var(--display); text-transform: uppercase; color: var(--bus); text-align: center; text-wrap: balance; }
 .bc-card { width: min(72vw, calc(60dvh * 5 / 7)); aspect-ratio: 5 / 7; perspective: 1800px; container-type: inline-size; }
-.bc-inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transform: rotateY(var(--rot, 0deg)); transition: transform var(--rt, 0ms) linear; }
+.bc-inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; will-change: transform; }
 .bc-back, .bc-face { position: absolute; inset: 0; border-radius: 6cqw; backface-visibility: hidden; -webkit-backface-visibility: hidden; box-shadow: 0 30px 70px rgba(0,0,0,.6); }
 .bc-back { background: repeating-linear-gradient(135deg, var(--bus) 0 22px, #e2a400 22px 44px); border: 5px solid #0b0c0f; box-shadow: inset 0 0 0 7px var(--bus), 0 30px 70px rgba(0,0,0,.6); display: grid; place-items: center; }
 .bc-back::after { content: "BUS"; font: 900 26cqw/1 var(--display); color: #0b0c0f; letter-spacing: .06em; }
@@ -651,7 +655,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
 .slot, .draw-slot { position: relative; }
 @keyframes nudgex { 0%, 100% { transform: translate(-50%, 100%); } 25% { transform: translate(calc(-50% - 7px), 100%); } 75% { transform: translate(calc(-50% + 7px), 100%); } }
 /* The face lands in the direction and at the speed of the swipe */
-.card.swipe-in { animation: swipein var(--spd, 260ms) cubic-bezier(.25,.7,.35,1) both; }
+.card.swipe-in { animation: swipein var(--spd, 260ms) var(--out) both; }
 @keyframes swipein { from { transform: rotateY(calc(var(--dir, 1) * 84deg)); } to { transform: rotateY(calc(var(--dir, 1) * 180deg)); } }
 .choice.picked { border-color: var(--bus); background: rgba(245,179,1,.14); color: var(--bus); }
 .flip-row { display: flex; gap: 10px; align-items: center; }
@@ -663,10 +667,10 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
 .riders { position: absolute; left: 50%; top: calc(100% + 2px); transform: translateX(-50%); display: flex; gap: 1px; pointer-events: none; }
 .rdot { width: 11px; height: 11px; border-radius: 50%; background: var(--c); color: #111; font: 800 7px/11px var(--body); text-align: center; box-shadow: 0 0 0 1px var(--asphalt); }
 .horse.leader { box-shadow: 0 0 0 2px var(--bus), 0 6px 16px rgba(0,0,0,.35); }
-.horse.jump .hface { animation: gallop .5s cubic-bezier(.3,1.4,.5,1); }
-@keyframes gallop { 0% { transform: translateY(0); } 35% { transform: translateY(-12px) rotate(-8deg); } 70% { transform: translateY(2px) rotate(3deg); } 100% { transform: none; } }
+.horse.jump .hface { animation: gallop .5s var(--spring); }
+@keyframes gallop { 0% { transform: translateY(0); } 40% { transform: translateY(-9px) rotate(-5deg); } 100% { transform: none; } }
 .horse.hurt .hface { animation: stumble .6s ease-in-out; }
-@keyframes stumble { 0%, 100% { transform: none; } 20% { transform: rotate(14deg) translateX(4px); } 50% { transform: rotate(-10deg); } 80% { transform: rotate(5deg); } }
+@keyframes stumble { 0%, 100% { transform: none; } 25% { transform: rotate(9deg) translateX(3px); } 60% { transform: rotate(-5deg); } }
 .deck-row { display: flex; align-items: center; gap: 12px; min-height: 84px; }
 .deck-row .draw-slot { width: 60px; }
 .flipper-line { margin: 0; font-weight: 600; }
@@ -676,7 +680,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
 .toast {
   position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 20px); z-index: 60; transform: translateX(-50%);
   width: min(440px, calc(100% - 32px)); padding: 12px 16px; border-radius: 10px;
-  background: var(--card); color: var(--card-ink); font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,.4); animation: rise .25s ease-out both;
+  background: var(--card); color: var(--card-ink); font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,.4); animation: rise .25s var(--out) both;
 }
 
 /* ===================== Night bus seat ===================== */
@@ -684,16 +688,17 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
 * { text-transform: none !important; letter-spacing: normal !important; }
 body { font-variant-numeric: tabular-nums; }
 
-/* The seat fabric: crossing plum and teal bands with mustard flecks. */
+/* The seat fabric, after dark: the same weave, faded right back so the game sits on top of it. */
 body {
   background-color: var(--fabric);
   background-image:
-    radial-gradient(circle, var(--fabric-mustard) 0 2.6px, transparent 3.1px),
-    radial-gradient(circle, rgba(233,217,181,.85) 0 1.2px, transparent 1.7px),
-    linear-gradient(45deg, transparent 0 38%, var(--fabric-plum) 38% 62%, transparent 62%),
-    linear-gradient(-45deg, transparent 0 38%, rgba(31,122,122,.95) 38% 62%, transparent 62%);
-  background-size: 34px 34px, 17px 17px, 34px 34px, 34px 34px;
-  background-position: 0 0, 8.5px 8.5px, 0 0, 0 0;
+    radial-gradient(ellipse 120% 80% at 50% 0%, rgba(255,255,255,.035), transparent 60%),
+    radial-gradient(circle, rgba(217,162,27,.16) 0 1.3px, transparent 1.8px),
+    linear-gradient(45deg, transparent 0 40%, rgba(91,42,78,.16) 40% 60%, transparent 60%),
+    linear-gradient(-45deg, transparent 0 40%, rgba(31,122,122,.13) 40% 60%, transparent 60%);
+  background-size: 100% 100%, 34px 34px, 34px 34px, 34px 34px;
+  background-position: 0 0, 17px 17px, 0 0, 0 0;
+  background-attachment: fixed, scroll, scroll, scroll;
 }
 html { background: inherit; min-height: 100%; }
 body { min-height: 100vh; min-height: 100dvh; }
@@ -804,6 +809,34 @@ html, body { overflow-x: hidden; }
 .verdict.won .big { color: var(--bus); }
 .toast { background: var(--ink); color: #22262b; border-radius: 999px; }
 .roomcode strong { font-family: var(--led-font); font-weight: 900; color: var(--led); text-shadow: 0 0 6px rgba(255,138,31,.7); }
+
+/* ===== Motion ===== */
+/* Presses answer instantly and spring back. */
+button { transition: transform .14s var(--out), filter .14s var(--out), box-shadow .14s var(--out), opacity .2s var(--out), background-color .2s var(--out), border-color .2s var(--out); }
+button:active { transition-duration: .05s; }
+/* The giant card: it lifts as it turns, casting a longer shadow, and settles onto the table at the end. */
+.bc-card { transform-origin: 50% 60%; will-change: transform; }
+.bc-back, .bc-face { box-shadow: 0 calc(20px + var(--lift, 0) * 30px) calc(50px + var(--lift, 0) * 50px) rgba(0,0,0,calc(.45 + var(--lift, 0) * .2)) !important; }
+.bc-back { box-shadow: inset 0 0 0 3px var(--fabric-plum), 0 calc(20px + var(--lift, 0) * 30px) calc(50px + var(--lift, 0) * 50px) rgba(0,0,0,.55) !important; }
+.bigcard { animation: fade .16s var(--out) both; }
+.bigcard .bc-card { animation: bcin .26s var(--out) backwards; }
+.bigcard.out { animation: fadeout .22s var(--in) forwards; }
+.bigcard.out .bc-who { opacity: 0; transition: opacity .12s; }
+.bigcard.out .bc-card { animation: bcout .22s var(--in) forwards; }
+@keyframes bcin { from { opacity: 0; transform: translateY(6%) scale(.86); } }
+@keyframes bcout { to { opacity: 0; transform: translateY(14%) scale(.55); } }
+@keyframes fadeout { to { opacity: 0; } }
+/* The card lands on the table where the giant card came down. */
+.card.land { animation: land .34s var(--out) both; }
+@keyframes land { from { transform: translateY(-14%) scale(1.22) rotateY(180deg); opacity: 0; } to { transform: rotateY(180deg); opacity: 1; } }
+/* A new screen eases in. */
+#app.screen-in { animation: screenin .28s var(--out); }
+@keyframes screenin { from { opacity: 0; } to { opacity: 1; } }
+/* Callouts: the backdrop breathes in and the words settle, no bounce. */
+.takeover.show { animation: takeover 1.7s var(--out) forwards; }
+/* Horses glide up the track. */
+.horse { transition-timing-function: var(--spring) !important; }
+@media (prefers-reduced-motion: reduce) { .bc-card { transform: none !important; } }
 </style>
 </head>
 <body>
@@ -1107,16 +1140,47 @@ html, body { overflow-x: hidden; }
 
   // ---- the giant card ----
   // Angles: 0 is face down, 90 edge-on, 180 face up. dir is the swipe direction (-1 left, 1 right).
+  // One animation loop drives it: the finger sets the angle directly, other phones ease toward the angle
+  // they last heard (so a 20-a-second feed still looks smooth), and finishing turns ease out from the
+  // swipe's speed. The card lifts towards you as it goes edge-on and settles as it lands.
   const big = {
+    cur: 0, to: 0, from: 0, t0: 0, dur: 0, mode: "set", raf: 0, last: 0, hideTimer: 0,
     show(label) {
       const el = document.getElementById("bigcard");
       document.getElementById("bc-who").textContent = label || "";
-      if (el.hidden) { this.face(null); this.turn(0, 0); el.hidden = false; }
+      clearTimeout(this.hideTimer);
+      if (el.hidden || el.classList.contains("out")) {
+        el.classList.remove("out");
+        if (el.hidden) { this.face(null); this.cur = this.to = 0; this.mode = "set"; this.apply(); el.hidden = false; }
+      }
     },
-    turn(deg, ms = 0) {
-      const inner = document.getElementById("bc-inner");
-      inner.style.setProperty("--rt", `${Math.round(ms)}ms`);
-      inner.style.setProperty("--rot", `${deg}deg`);
+    // ms > 0: tween there; follow: chase the target smoothly; otherwise jump (the finger is on it).
+    turn(deg, ms = 0, follow = false) {
+      this.to = deg;
+      if (follow) this.mode = "follow";
+      else if (ms > 0) { this.mode = "tween"; this.from = this.cur; this.t0 = performance.now(); this.dur = ms; }
+      else { this.mode = "set"; this.cur = deg; this.apply(); return; }
+      if (!this.raf) { this.last = performance.now(); this.raf = requestAnimationFrame(t => this.step(t)); }
+    },
+    step(now) {
+      const dt = Math.min(64, now - this.last); this.last = now;
+      if (this.mode === "tween") {
+        const k = Math.min(1, (now - this.t0) / this.dur), e = 1 - Math.pow(1 - k, 3);
+        this.cur = this.from + (this.to - this.from) * e;
+        if (k >= 1) this.mode = "set";
+      } else if (this.mode === "follow") {
+        this.cur += (this.to - this.cur) * (1 - Math.exp(-dt / 55));
+        if (Math.abs(this.to - this.cur) < .2) this.cur = this.to;
+      }
+      this.apply();
+      this.raf = this.mode === "set" || (this.mode === "follow" && this.cur === this.to) ? 0 : requestAnimationFrame(t => this.step(t));
+    },
+    apply() {
+      const inner = document.getElementById("bc-inner"), card = inner.parentNode;
+      const a = this.cur, lift = Math.sin(Math.min(180, Math.abs(a)) * Math.PI / 180), dir = a < 0 ? -1 : 1;
+      inner.style.transform = `rotateY(${a.toFixed(2)}deg)`;
+      card.style.transform = `scale(${(1 + lift * .05).toFixed(4)}) rotate(${(-dir * lift * 3).toFixed(2)}deg)`;
+      card.style.setProperty("--lift", lift.toFixed(3));
     },
     face(c) {
       const el = document.getElementById("bc-face");
@@ -1125,7 +1189,14 @@ html, body { overflow-x: hidden; }
       el.className = `bc-face${sd.red ? " red" : ""}`;
       el.innerHTML = `<span class="c">${c.r}${sd.sym}</span><span class="pp">${sd.sym}</span><span class="c b">${c.r}${sd.sym}</span>`;
     },
-    hide() { document.getElementById("bigcard").hidden = true; },
+    // Settle down onto the table rather than vanish.
+    hide() {
+      const el = document.getElementById("bigcard");
+      if (el.hidden) return;
+      el.classList.add("out");
+      clearTimeout(this.hideTimer);
+      this.hideTimer = setTimeout(() => { el.hidden = true; el.classList.remove("out"); }, 230);
+    },
   };
   function flipLabel(by) {
     const mine = by === me, name = plainName(by);
@@ -1145,7 +1216,7 @@ html, body { overflow-x: hidden; }
       big.hide();
       if (flip === f) flip = null;
       if (f.after) f.after();
-    }, ms + 650);
+    }, ms + 520);
   }
   // The card is dealt: put its face on the giant card. The rider keeps turning it with their finger;
   // if they've already let go it finishes at their speed. Watchers wait for the rider (with a safety net).
@@ -1304,7 +1375,7 @@ html, body { overflow-x: hidden; }
     }
     flip.dir = remote.dir;
     if (m.p >= 1) flip.committed = true;
-    big.turn(flip.dir * (flip.faceKnown ? Math.min(180, m.p * 90) : Math.min(90, m.p * 90)), 70);
+    big.turn(flip.dir * (flip.faceKnown ? Math.min(180, m.p * 90) : Math.min(90, m.p * 90)), 0, true);
   }
   const recentSwipe = () => lastSwipe && Date.now() - lastSwipe.at < 8000 ? lastSwipe : null;
   function leaveLocal() {
@@ -1506,7 +1577,7 @@ html, body { overflow-x: hidden; }
         <span class="corner">${c.r}${s.sym}</span><span class="pip">${s.sym}</span><span class="corner bot">${c.r}${s.sym}</span></div>`;
     }
     // A swiped card lands the way it was swiped; a dealt one (Higher or Lower's start card) drops in.
-    const cardCls = c ? (i === landed && !ev.call ? "card deal up" : "card up") : "card";
+    const cardCls = c ? (i === landed ? (ev.call ? "card up land" : "card deal up") : "card up") : "card";
     const cardStyle = "";
     const key = c ? ` data-key="k${i}${c.r}${c.s}"` : "";
     const aria = c ? `${c.r === "A" ? "Ace" : c.r} of ${suitOf(c).name}` : slotCls.includes("armed") ? "Your card. Swipe it sideways to flip it" : "Face-down card";
@@ -2001,7 +2072,8 @@ html, body { overflow-x: hidden; }
   function render() {
     // A new screen (lobby to game, game to awards) starts at the top; updates within a screen keep their place.
     const screen = S ? S.screen : "join";
-    if (screen !== lastScreen) { lastScreen = screen; scrollTo(0, 0); }
+    const newScreen = screen !== lastScreen;
+    if (newScreen) { lastScreen = screen; scrollTo(0, 0); }
     document.documentElement.classList.toggle("framed", screen === "play" || (screen === "race" && !!S.race) || (screen === "kings" && !!S.kings) || (screen === "trivia" && !!S.trivia) || (screen === "uno" && !!S.uno));
     document.documentElement.classList.toggle("swipe-turn", !!canSwipe());
     paint(!S ? joinHTML()
@@ -2013,6 +2085,7 @@ html, body { overflow-x: hidden; }
       : S.screen === "trivia" && S.trivia ? triviaHTML()
       : S.screen === "uno" && S.uno ? unoHTML()
       : playHTML());
+    if (newScreen) { app.classList.remove("screen-in"); void app.offsetWidth; app.classList.add("screen-in"); }
     document.getElementById("more").hidden = !S;
     animateHorses();
     if (fx === "won") celebrate();
@@ -2090,9 +2163,9 @@ html, body { overflow-x: hidden; }
     const d = drag; drag = null;
     if (!d.started || !flip || flip.by !== me || flip.done) return;
     if (!flip.committed) {
-      big.turn(0, 200);
-      sendTurn(0, flip.dir, { ms: 200 }, true);
-      const f = flip; setTimeout(() => { if (flip === f) { big.hide(); flip = null; } }, 230);
+      big.turn(0, 240);
+      sendTurn(0, flip.dir, { ms: 240 }, true);
+      const f = flip; setTimeout(() => { if (flip === f) { big.hide(); flip = null; } }, 250);
       return;
     }
     // Let go after halfway: finish at the speed the finger was moving.
