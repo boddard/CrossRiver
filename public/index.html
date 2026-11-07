@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>F the Bus</title>
-<meta name="theme-color" content="#14161b">
+<meta name="theme-color" content="#13343b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -15,25 +15,39 @@
 <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Doto:wght@700;900&family=Overpass:wght@400;600;800;900&display=swap">
 <style>
-/* Layout: phone-only, full-screen night-bus stage. Slim sign on top, four big cards in a 2x2 grid fill the middle, buttons dock at the bottom; the scoreboard sits below the fold. Wider screens get the same phone-width column. */
+/* Night bus seat: the loud seat fabric is the backdrop, the destination sign's orange LEDs carry the
+   headlines, controls are red stop buttons and yellow grab rails, cards sit on ribbed floor rubber.
+   Layout: phone-only, full-screen night-bus stage. Slim sign on top, four big cards in a 2x2 grid fill the middle, buttons dock at the bottom; the scoreboard sits below the fold. Wider screens get the same phone-width column. */
 :root {
-  --asphalt: #14161b;
-  --panel: #1d2028;
-  --line: #333845;
-  --ink: #eef0f3;
-  --muted: #9aa1ae;
-  --bus: #f5b301;
-  --bus-ink: #1a1505;
+  /* moulded bus plastic, grab-rail yellow, seat fabric, LED sign */
+  --asphalt: #22262b;
+  --panel: #2d3238;
+  --line: #4a5058;
+  --ink: #f4efe6;
+  --muted: #b3b9c0;
+  --bus: #f2c230;
+  --bus-ink: #2a1d00;
+  --fabric: #13343b;
+  --fabric-plum: #5b2a4e;
+  --fabric-teal: #1f7a7a;
+  --fabric-mustard: #d9a21b;
+  --led: #ff8a1f;
+  --led-red: #ff4a3d;
+  --sign-bg: #1a0f08;
+  --stop: #d7262e;
+  --stop-deep: #8f1218;
+  --floor: #3b4046;
   --card: #f7f5ef;
   --card-ink: #1b1d22;
   --suit-red: #d93a3f;
   --ok: #46c46a;
   --miss: #ef5a5f;
-  --display: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
-  --body: "Barlow", "Helvetica Neue", Arial, sans-serif;
-  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  --display: "Overpass", "Helvetica Neue", Arial, sans-serif;
+  --body: "Overpass", "Helvetica Neue", Arial, sans-serif;
+  --mono: "Overpass", "Helvetica Neue", Arial, sans-serif;
+  --led-font: "Doto", "Overpass", monospace;
   --gutter: max(12px, env(safe-area-inset-left, 0px));
   --safe-y: calc(env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px));
   --pad-y: 10px;
@@ -549,7 +563,7 @@ details p { max-width: 65ch; color: var(--muted); }
 .bub.riding .av { box-shadow: 0 0 0 2px var(--asphalt), 0 0 0 4px var(--bus); animation: glow 1.6s ease-in-out infinite; }
 .bub.riding .bn { color: var(--bus); }
 .bub.away .av { opacity: .35; filter: grayscale(1); }
-.bub.out .av::after { content: "OFF"; position: absolute; top: 24px; font: 700 8px/1 var(--mono); background: var(--line); color: var(--ink); padding: 2px 3px; border-radius: 3px; }
+.bub.out .av::after { content: "Off"; position: absolute; top: 24px; font: 700 8px/1 var(--mono); background: var(--line); color: var(--ink); padding: 2px 3px; border-radius: 3px; }
 .bub .crown { position: absolute; top: -2px; right: 4px; font-size: 11px; color: var(--bus); }
 .bub.target .av { box-shadow: 0 0 0 2px var(--asphalt), 0 0 0 4px var(--ok); animation: wiggle 1s ease-in-out infinite; }
 .bub.pop .av { animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
@@ -664,6 +678,132 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
   width: min(440px, calc(100% - 32px)); padding: 12px 16px; border-radius: 10px;
   background: var(--card); color: var(--card-ink); font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,.4); animation: rise .25s ease-out both;
 }
+
+/* ===================== Night bus seat ===================== */
+/* Sentence case everywhere except the LED signs, which are capitals like a real destination sign. */
+* { text-transform: none !important; letter-spacing: normal !important; }
+body { font-variant-numeric: tabular-nums; }
+
+/* The seat fabric: crossing plum and teal bands with mustard flecks. */
+body {
+  background-color: var(--fabric);
+  background-image:
+    radial-gradient(circle, var(--fabric-mustard) 0 2.6px, transparent 3.1px),
+    radial-gradient(circle, rgba(233,217,181,.85) 0 1.2px, transparent 1.7px),
+    linear-gradient(45deg, transparent 0 38%, var(--fabric-plum) 38% 62%, transparent 62%),
+    linear-gradient(-45deg, transparent 0 38%, rgba(31,122,122,.95) 38% 62%, transparent 62%);
+  background-size: 34px 34px, 17px 17px, 34px 34px, 34px 34px;
+  background-position: 0 0, 8.5px 8.5px, 0 0, 0 0;
+}
+html { background: inherit; min-height: 100%; }
+body { min-height: 100vh; min-height: 100dvh; }
+
+/* The destination sign and every LED headline. */
+.sign {
+  background: var(--sign-bg) radial-gradient(rgba(255,138,31,.07) 1px, transparent 1.4px) 0 0 / 5px 5px;
+  border: 3px solid #3a2a1c; border-radius: 10px;
+  box-shadow: inset 0 0 16px rgba(0,0,0,.85), 0 4px 0 rgba(0,0,0,.35);
+}
+.sign h1, .frame .turn-head, .clock-num, .takeover span {
+  font-family: var(--led-font) !important; font-weight: 900 !important; text-transform: uppercase !important;
+  letter-spacing: .04em !important; color: var(--led); text-shadow: 0 0 6px rgba(255,138,31,.75), 0 0 18px rgba(255,138,31,.35);
+}
+.sign h1 { font-size: 26px; }
+.sign-btn { border-color: #3a2a1c; background: #24170d; color: #e8c9a8; }
+.frame > .status {
+  background: var(--sign-bg) radial-gradient(rgba(255,138,31,.07) 1px, transparent 1.4px) 0 0 / 5px 5px;
+  border: 3px solid #3a2a1c; border-radius: 10px; padding: 0 12px;
+  box-shadow: inset 0 0 14px rgba(0,0,0,.85);
+}
+.frame .turn-head { font-size: clamp(22px, 7vw, 32px); color: var(--led); }
+.frame .turn-head.mine { color: #ffd23a; text-shadow: 0 0 6px rgba(255,210,58,.8), 0 0 20px rgba(255,210,58,.4); }
+.clock-num { font-size: 28px; }
+.clock-num.late { color: var(--led-red); text-shadow: 0 0 6px rgba(255,74,61,.8); }
+.clock { left: 10px; right: 10px; bottom: 5px; height: 3px; background: rgba(255,138,31,.15); }
+.clock span { background: var(--led); box-shadow: 0 0 6px var(--led); }
+.clock.late span { background: var(--led-red); }
+
+/* Full-screen callouts read like the sign flashing a message. */
+.takeover { background: radial-gradient(ellipse at center, rgba(26,15,8,.92), rgba(26,15,8,.55) 70%); }
+.takeover span { font-size: clamp(40px, 13vw, 76px) !important; line-height: 1.05; }
+.takeover.miss span { color: var(--led-red); text-shadow: 0 0 8px rgba(255,74,61,.85), 0 0 26px rgba(255,74,61,.4); }
+.takeover.won span, .takeover.turn span { color: #ffd23a; text-shadow: 0 0 8px rgba(255,210,58,.85), 0 0 26px rgba(255,210,58,.4); }
+.takeover.gift span, .takeover.nudge span { color: var(--led); }
+
+/* Moulded grey plastic for every panel. */
+.console, .confirm, .sheet, .drink-card {
+  background: linear-gradient(180deg, #343a41, #2a2f35); border: 1px solid #50575f;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 8px 24px rgba(0,0,0,.45); border-radius: 16px;
+}
+.sheet, .drink-card { border-radius: 20px 20px 0 0; }
+.drink-card { border-top: 3px solid var(--stop); }
+
+/* Cards and the track sit on ribbed floor rubber. */
+.frame .table-area {
+  background: repeating-linear-gradient(0deg, #41474e 0 5px, #353a40 5px 9px);
+  border-radius: 14px; box-shadow: inset 0 2px 10px rgba(0,0,0,.5), 0 0 0 2px #2a2f35; padding: 8px;
+}
+
+/* The rider's row of bubbles hangs off a dark handrail strip. */
+.crew-row { background: #1f2327; border-radius: 999px; padding: 3px 4px 3px 6px; box-shadow: 0 2px 8px rgba(0,0,0,.4); }
+.bn { color: var(--ink); font-weight: 600; }
+.av { box-shadow: 0 0 0 2px #1a1d21, 0 0 0 4px transparent; font-family: var(--display); font-weight: 900; }
+.bub.riding .av { box-shadow: 0 0 0 2px #1a1d21, 0 0 0 4px var(--bus); }
+.react-btn { background: #2d3238; border-color: #50575f; }
+
+/* Main actions are the red stop button you press to get off. */
+.primary {
+  background: radial-gradient(circle at 50% 30%, #ff6a6a, var(--stop) 55%, #b5161e) !important; color: #fff !important;
+  border: 0; border-radius: 999px !important; font-family: var(--display) !important; font-weight: 900 !important;
+  box-shadow: 0 0 0 4px var(--bus), 0 6px 0 4px var(--stop-deep), 0 10px 18px rgba(0,0,0,.45);
+  text-shadow: 0 1px 1px rgba(0,0,0,.35); margin-bottom: 8px;
+}
+.primary:active { transform: translateY(4px) !important; box-shadow: 0 0 0 4px var(--bus), 0 2px 0 4px var(--stop-deep); }
+.primary[disabled] { filter: grayscale(.8); opacity: .6; }
+
+/* Answer choices are yellow grab-rail loops. */
+.choice {
+  background: #262a2f; color: var(--ink); border: 4px solid var(--bus) !important; border-radius: 999px !important;
+  font-family: var(--display) !important; font-weight: 800 !important; box-shadow: inset 0 2px 0 rgba(255,255,255,.06), 0 3px 0 #7a6114;
+}
+.choice:active { transform: translateY(2px); }
+.choice-red { border-color: var(--bus) !important; }
+.choice.picked { background: var(--bus); color: var(--bus-ink); }
+.choice .r { color: #ff6b6b; }
+.choice.picked .r { color: #a3151c; }
+
+/* Secondary buttons are plain grey plastic. */
+.ghost { background: #3a4047 !important; border: 1px solid #5c636c !important; color: var(--ink) !important; border-radius: 999px !important; font-weight: 600; }
+
+/* Card backs wear the seat fabric too. */
+.back, .bc-back {
+  background-color: var(--fabric-plum) !important;
+  background-image:
+    radial-gradient(circle, var(--fabric-mustard) 0 2px, transparent 2.5px),
+    linear-gradient(45deg, transparent 0 38%, var(--fabric-teal) 38% 62%, transparent 62%) !important;
+  background-size: 14px 14px, 14px 14px !important;
+  border: 3px solid #f4efe6 !important; box-shadow: inset 0 0 0 2px var(--fabric-plum) !important;
+}
+.back::after, .bc-back::after { color: #f4efe6 !important; font-family: var(--led-font) !important; font-weight: 900; text-shadow: 0 2px 0 rgba(0,0,0,.4); }
+.slot.empty .back { background: transparent !important; border: 2px dashed rgba(244,239,230,.35) !important; box-shadow: none !important; }
+.rc { background: linear-gradient(45deg, var(--fabric-plum) 0 50%, var(--fabric-teal) 50%) !important; border: 1px solid #f4efe6 !important; }
+
+/* Quieter text treatments: sentence-case labels in the body face, no monospace. */
+.label { font-family: var(--body); font-weight: 600; font-size: 13px; color: var(--muted); }
+.stop-name, summary, .q-cat, .flag, .call-by { font-family: var(--body); font-weight: 700; }
+.stop-name { font-size: 13px; }
+.frame { grid-template-columns: minmax(0, 1fr); min-width: 0; }
+.frame > * { min-width: 0; }
+.frame > .status .turn-head { min-width: 0; flex: 1 1 auto; }
+html, body { overflow-x: hidden; }
+/* The giant swipe card's caption is a sign too. */
+.bc-who { font-family: var(--led-font) !important; font-weight: 900; text-transform: uppercase !important; letter-spacing: .04em !important; color: var(--led); text-shadow: 0 0 6px rgba(255,138,31,.75); }
+.deck-row .swipe-hint { display: none; }
+.prompt, .verdict .big, .call, .q-text, .q-big, .award strong, .setup h2, .join h2, .confirm h2 { font-family: var(--display); font-weight: 900; }
+.verdict.miss .big { color: #ff6b6b; }
+.verdict.won .big { color: var(--bus); }
+.toast { background: var(--ink); color: #22262b; border-radius: 999px; }
+.roomcode strong { font-family: var(--led-font); font-weight: 900; color: var(--led); text-shadow: 0 0 6px rgba(255,138,31,.7); }
 </style>
 </head>
 <body>
@@ -697,7 +837,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
   const SUIT_KEYS = ["S", "H", "D", "C"];
   const MODES = {
     classic: { name: "Classic", blurb: "Red or black, higher or lower, inside or outside, then the suit.", dots: ["1", "2", "3", "4"],
-      stops: [["Red / Black", "Red/Blk"], ["Higher / Lower", "Hi/Lo"], ["Inside / Outside", "In/Out"], ["Suit", "Suit"]] },
+      stops: [["Red / Black", "R/B"], ["Higher / Lower", "Hi/Lo"], ["Inside / Outside", "In/Out"], ["Suit", "Suit"]] },
     hilo: { name: "Higher or Lower", blurb: "Get 3 higher-or-lower calls right in a row.", dots: ["S", "1", "2", "3"],
       stops: [["Start card", "Start"], ["Guess 1", "Guess 1"], ["Guess 2", "Guess 2"], ["Guess 3", "Guess 3"]] },
     horse: { name: "Horse Race", blurb: "Bet on an ace and take turns flipping cards to race them up the track." },
@@ -770,7 +910,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
   const amHost = () => S && S.hostId === me;
   const nameOf = id => { const p = byId(id); return p ? esc(p.name) : "Someone"; };
   const plainName = id => { const p = byId(id); return p ? p.name : "Someone"; };
-  const youTag = id => id === me ? ' <span class="tag you">YOU</span>' : "";
+  const youTag = id => id === me ? ' <span class="tag you">You</span>' : "";
   const initial = name => (Array.from(String(name).trim())[0] || "?").toUpperCase();
   const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
   const buzz = pattern => { try { navigator.vibrate && navigator.vibrate(pattern); } catch (e) {} };
@@ -1101,7 +1241,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
       const k = S.kings, c = k.last, by = S.ev.by;
       if (fx === "draw" && c) {
         const bad = c.r === "A" || (c.r === "3" && by === me);
-        takeover(`${c.r} · ${KC[c.r][0]}`, bad ? "miss" : "turn");
+        takeover(`${c.r}: ${KC[c.r][0]}`, bad ? "miss" : "turn");
         if (c.r === "4" || c.r === "7") { sfx.buzz(); buzz([80, 40, 80]); } else sfx.chime();
       }
       if (fx === "kingscup") { takeover(by === me ? "Drink the Kings Cup!" : `${plainName(by)} drinks the cup!`, "miss"); sfx.horn(); celebrate(); }
@@ -1300,7 +1440,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
   // ---- lobby ----
   function lobbyHTML() {
     const people = S.players.map(p => `<li><span class="av" style="--c:${p.color};width:28px;height:28px;font-size:14px">${esc(initial(p.name))}</span>
-      <span class="pname">${esc(p.name)}</span>${p.id === S.hostId ? '<span class="tag">HOST</span>' : ""}${youTag(p.id)}
+      <span class="pname">${esc(p.name)}</span>${p.id === S.hostId ? '<span class="tag">Host</span>' : ""}${youTag(p.id)}
       <span class="live${p.connected ? "" : " away"}" title="${p.connected ? "Online" : "Offline"}"></span>
       ${amHost() && p.id !== me ? `<button data-kick="${p.id}" aria-label="Remove ${esc(p.name)}">×</button>` : ""}</li>`).join("");
     const modes = amHost()
@@ -1447,7 +1587,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
   }
   function paxHTML() {
     const rows = S.players.map(p => {
-      const tag = p.id === S.current && S.phase !== "won" ? '<span class="tag">RIDING</span>' : p.off ? '<span class="tag off">OFF</span>' : "";
+      const tag = p.id === S.current && S.phase !== "won" ? '<span class="tag">Riding</span>' : p.off ? '<span class="tag off">Off</span>' : "";
       return `<tr class="${p.id === S.current ? "current" : ""}${p.off ? " is-off" : ""}">
       <td><span class="live${p.connected ? "" : " away"}" style="display:inline-block;margin-right:8px"></span><span class="pname">${esc(p.name)}</span>${tag}${youTag(p.id)}</td>
       <td class="n">${p.roundDrinks}</td><td class="n">${p.drinks}</td><td class="n">${p.best ?? "–"}</td></tr>`;
@@ -1475,9 +1615,8 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
   function miniFace(c) { return c ? `<div class="face mini-face${suitOf(c).red ? " red" : ""}">${c.r}<span>${suitOf(c).sym}</span></div>` : ""; }
   function raceStatusHTML(r) {
     const lead = leader(r), tie = SUIT_KEYS.filter(k => r.pos[k] === r.pos[lead]).length > 1;
-    const head = r.winner ? `${suitSym(r.winner)} ${suitName(r.winner)} win` : r.flips === 0 ? "They're at the gate" : tie ? "Neck and neck" : `${suitSym(lead)} ${suitName(lead)} lead`;
-    return `<div><span class="label">Room ${esc(S.code)} · Horse Race · ${r.len} cards</span><p class="rider">${head}</p></div>
-      ${r.winner ? `<div class="meters"><div class="meter"><span class="label">Flips</span><strong>${r.flips}</strong></div></div>` : clockHTML()}`;
+    const head = r.winner ? `${suitSym(r.winner)} ${suitName(r.winner)} win` : r.flips === 0 ? "At the gate" : tie ? "Neck and neck" : `${suitSym(lead)} ${suitName(lead)} lead`;
+    return `<p class="turn-head">${head}</p>${r.winner ? "" : clockHTML()}`;
   }
   function trackHTML(r) {
     const myBet = byId(me) && byId(me).bet;
@@ -1595,7 +1734,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
       <p class="uno-msg">${esc(u.msg || "")}</p></div></div>`;
     if (u.winner) {
       return `${confirmHTML()}${layer("")}<div class="frame">${crewHTML()}<section class="status"><p class="turn-head${u.winner === me ? " mine" : ""}">${head}</p></section>${table}
-        <section class="console"><p class="waiting" style="text-align:center">Wins tonight: ${S.players.map(p => `${esc(p.name)} ${u.wins[p.id] || 0}`).join(" · ")}</p>
+        <section class="console"><p class="waiting" style="text-align:center">Wins tonight: ${S.players.map(p => `${esc(p.name)} ${u.wins[p.id] || 0}`).join(", ")}</p>
         ${amHost() ? '<div class="row"><button class="primary" id="uno-again">Play again</button><button class="ghost" id="to-menu">Change game</button></div>' : `<p class="waiting">Waiting for <b>${nameOf(S.hostId)}</b>.</p>`}</section></div>`;
     }
     const hand = myCards ? unoSort(myCards.hand) : [];
@@ -1624,7 +1763,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     if (!cats.length) return "";
     const total = cats.reduce((n, c) => n + c.n, 0);
     const chips = cats.map(c => `<button class="cat${on.includes(c.name) ? " on" : ""}" data-cat="${esc(c.name)}"${editable ? "" : " disabled"}>${esc(c.name)} <small>${c.n}</small></button>`).join("");
-    return `<div class="field"><span class="label">Categories ${on.length ? `· ${on.length} picked` : `· all ${total.toLocaleString()} questions`}</span>
+    return `<div class="field"><span class="label">Categories: ${on.length ? `${on.length} picked` : `all ${total.toLocaleString()} questions`}</span>
       <div class="cats">${editable ? `<button class="cat${on.length ? "" : " on"}" data-cat="">All</button>` : ""}${chips}</div></div>`;
   }
   const ordinal = n => { const v = n % 100; return n + (["th", "st", "nd", "rd"][(v - 20) % 10] || ["th", "st", "nd", "rd"][v] || "th"); };
@@ -1649,7 +1788,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     const t = S.trivia, q = t.q;
     if (t.phase !== "question") myAnswer = null;
     const picked = t.phase === "question" ? (myAnswer ?? null) : t.picks[me] ?? null;
-    const head = t.phase === "ready" ? "Get ready" : t.phase === "over" ? "Final scores" : t.phase === "board" ? "Scores" : `Question ${t.n + 1} of ${t.total}`;
+    const head = t.phase === "ready" ? "Get ready" : t.phase === "over" ? "Final scores" : t.phase === "board" ? "Scores" : `Q${t.n + 1} of ${t.total}`;
     let middle;
     if (t.phase === "ready") middle = `<div class="q-card"><span class="q-cat">${t.total} questions</span><p class="q-big">Question 1</p></div>`;
     else if (t.phase === "board") middle = boardHTML(t, false);
@@ -1665,7 +1804,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
       }).join("");
       const line = revealed
         ? (t.picks[me] === t.correct ? `Correct! +${t.gained[me] || 0}` : t.picks[me] == null ? "No answer" : "Wrong")
-        : picked !== null ? `Locked in · ${t.answered.length}/${S.players.filter(p => p.connected).length} answered` : "";
+        : picked !== null ? `Locked in. ${t.answered.length} of ${S.players.filter(p => p.connected).length} answered` : "";
       panel = `<section class="console"><div class="answers${revealed ? " revealed" : picked !== null ? " locked" : ""}">${btns}</div>${line ? `<p class="locked-line">${line}</p>` : ""}</section>`;
     } else if (t.phase === "over") {
       const winner = [...S.players].sort((a, b) => (t.scores[b.id] || 0) - (t.scores[a.id] || 0))[0];
@@ -1695,7 +1834,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
       <span class="av" style="--c:${p.color}">${esc(initial(p.name))}</span>${p.id === me ? "Me" : esc(p.name)}</button>`).join("")}</div>`;
   }
   function kingsConsoleHTML(k) {
-    const rules = k.rules.length ? `<p class="kc-rules">📜 ${k.rules.map(r => esc(r.text)).join(" · ")}</p>` : "";
+    const rules = k.rules.length ? `<p class="kc-rules">📜 ${k.rules.map(r => esc(r.text)).join(", ")}</p>` : "";
     if (k.over) {
       return `<section class="console" aria-live="polite">
         <div class="verdict miss"><span class="big slam">Kings Cup!</span><p>${k.over === me ? "You drink" : `${nameOf(k.over)} drinks`} the cup.</p></div>
@@ -1798,7 +1937,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
       <p>Pick categories in the lobby, or leave it on All. Everyone answers on their own phone. You've got ${Math.round((S.turnMs || 15000) / 1000)} seconds a question; the question ends early once everyone has answered. A right answer scores 50 to 90 points, more the faster you are, plus up to 10 bonus for answering right several times in a row. No question is worth more than 100.</p>
       <p class="hint">Extra questions from Open Trivia DB (opentdb.com), used under CC BY-SA 4.0.</p></details>`;
     if (kings()) return `<details><summary>House rules: Kings Cup</summary><ol>
-      ${Object.entries(KC).sort((a, b) => "A2345678910JQK".indexOf(a[0]) - "A2345678910JQK".indexOf(b[0])).map(([r, [t, d]]) => `<li><b>${r} · ${t}.</b> ${d}</li>`).join("")}</ol>
+      ${Object.entries(KC).sort((a, b) => "A2345678910JQK".indexOf(a[0]) - "A2345678910JQK".indexOf(b[0])).map(([r, [t, d]]) => `<li><b>${r}: ${t}.</b> ${d}</li>`).join("")}</ol>
       <p>Take turns drawing by swiping across the screen. Anyone mated to a drinker drinks too.</p></details>`;
     if (horse()) return `<details><summary>House rules: Horse Race</summary><ol>
       <li>Everyone backs one of the four aces and bets 1 to 5 drinks.</li>
@@ -1824,7 +1963,7 @@ html.swipe-turn, html.swipe-turn body { touch-action: none; }
     if (!sheetOpen || !S) return layer("");
     const host = amHost();
     return layer(`<div class="sheet-back" id="sheet-back"><div class="sheet" role="dialog" aria-modal="true" aria-label="Menu">
-      <span class="label">Room ${esc(S.code)} · ${MODES[mode()].name}</span>
+      <span class="label">${MODES[mode()].name} in room ${esc(S.code)}</span>
       ${S.screen === "play" ? paxHTML() : S.screen === "race" && S.race ? betsTableHTML() : ""}
       <button class="ghost" id="invite">Invite friends</button>
       <button class="ghost" id="rules-toggle" aria-expanded="${sheetRules}">How to play</button>

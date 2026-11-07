@@ -430,7 +430,7 @@ function newRace(room) {
   const d = deck({ aces: false });
   room.race = {
     id: token(4), len, side: d.splice(0, len), sideUp: Array(len).fill(false), next: 1, deck: d, discard: [],
-    pos: { S: 0, H: 0, D: 0, C: 0 }, last: null, msg: "Tap Flip to start the race.", back: null, flips: 0,
+    pos: { S: 0, H: 0, D: 0, C: 0 }, last: null, msg: "The first card starts the race.", back: null, flips: 0,
     winner: null, results: null, entrants: room.players.map(p => p.id), flipper: null,
   };
   // Players take turns flipping, starting with whoever's online first.
