@@ -800,7 +800,7 @@ body { min-height: 100vh; min-height: 100dvh; }
 .frame { grid-template-columns: minmax(0, 1fr); min-width: 0; }
 .frame > * { min-width: 0; }
 .frame > .status .turn-head { min-width: 0; flex: 1 1 auto; }
-html, body { overflow-x: hidden; }
+html, body { overflow-x: clip; }
 /* The giant swipe card's caption is a sign too. */
 .bc-who { font-family: var(--led-font) !important; font-weight: 900; text-transform: uppercase !important; letter-spacing: .04em !important; color: var(--led); text-shadow: 0 0 6px rgba(255,138,31,.75); }
 .deck-row .swipe-hint { display: none; }
@@ -837,6 +837,50 @@ button:active { transition-duration: .05s; }
 /* Horses glide up the track. */
 .horse { transition-timing-function: var(--spring) !important; }
 @media (prefers-reduced-motion: reduce) { .bc-card { transform: none !important; } }
+
+/* ===== Lobby ===== */
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.lobby { gap: 20px; padding-bottom: 0; }
+.lb-block { display: grid; gap: 10px; }
+.seats { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.seat { display: flex; align-items: center; gap: 8px; padding: 5px 6px 5px 5px; border-radius: 999px; background: #23272c; border: 1px solid var(--line); min-width: 0; animation: rise .3s var(--out) both; }
+.seat .av { width: 30px; height: 30px; font-size: 15px; flex: none; }
+.seat .pname { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 9em; padding-right: 4px; }
+.seat .tag { margin: 0 2px 0 0; }
+.seat.away { opacity: .5; }
+.seat .kick { width: 28px; height: 28px; border-radius: 50%; border: 0; background: transparent; color: var(--muted); font: 600 18px/1 var(--body); }
+.games { border: 0; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.game-tile span { display: grid; justify-items: center; align-content: center; gap: 6px; min-height: 84px; padding: 10px 6px; text-align: center;
+  border-radius: 12px; border: 2px solid var(--line); background: #23272c; transition: border-color .2s var(--out), background-color .2s var(--out), transform .14s var(--out); }
+.game-tile i { font: 900 22px/1 var(--led-font); font-style: normal; color: var(--muted); transition: color .2s var(--out), text-shadow .2s var(--out); }
+.game-tile b { font: 800 14px/1.1 var(--body); color: var(--ink); }
+.game-tile:active span { transform: scale(.96); }
+.game-tile input:checked + span { border-color: var(--led); background: var(--sign-bg); box-shadow: none; }
+.game-tile input:checked + span i { color: var(--led); text-shadow: 0 0 8px rgba(255,138,31,.7); }
+.game-tile input:checked + span b { color: var(--ink); }
+.game-panel { display: grid; gap: 14px; padding: 16px; border-radius: 14px; background: #23272c; border: 1px solid var(--line); animation: rise .28s var(--out) both; }
+.games + .game-panel { position: relative; }
+.gp-head { display: flex; gap: 14px; align-items: center; }
+.gp-head i { flex: none; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 12px; background: var(--sign-bg); font: 900 24px/1 var(--led-font); font-style: normal; color: var(--led); text-shadow: 0 0 8px rgba(255,138,31,.7); }
+.gp-head h2 { margin: 0; font: 900 24px/1.05 var(--body); }
+.gp-head p { margin: 4px 0 0; color: var(--muted); font-size: 14px; line-height: 1.35; }
+.settings { display: grid; gap: 12px; padding-top: 14px; border-top: 1px solid var(--line); }
+.set-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.set-label { font-weight: 700; min-width: 0; }
+.set-label small { display: block; font-weight: 400; font-size: 12.5px; color: var(--muted); line-height: 1.3; margin-top: 2px; }
+.set-val { font: 800 18px var(--body); }
+.seg { flex: none; display: inline-flex; padding: 3px; border-radius: 999px; background: var(--asphalt); border: 1px solid var(--line); }
+.seg button { min-height: 38px; min-width: 52px; padding: 0 14px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); font: 700 14px var(--body); }
+.seg button.on { background: var(--bus); color: var(--bus-ink); }
+.seg button[disabled] { opacity: 1; cursor: default; }
+.seg button[disabled]:not(.on) { opacity: .55; }
+.settings .field { gap: 8px; }
+.game-panel details { border-top: 1px solid var(--line); padding-top: 12px; }
+.lobby-go { position: sticky; bottom: 0; z-index: 3; margin: 0; padding: 14px 0 calc(env(safe-area-inset-bottom, 0px) + 14px);
+  background: linear-gradient(to bottom, rgba(45,50,56,0), var(--panel) 30%); display: grid; gap: 6px; justify-items: center; }
+.lobby-go .primary[disabled] { filter: grayscale(.7); opacity: .6; }
+.lobby-go .waiting { margin: 0; }
+@media (max-width: 360px) { .games { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 </style>
 </head>
 <body>
@@ -869,14 +913,14 @@ button:active { transition-duration: .05s; }
   ];
   const SUIT_KEYS = ["S", "H", "D", "C"];
   const MODES = {
-    classic: { name: "Classic", blurb: "Red or black, higher or lower, inside or outside, then the suit.", dots: ["1", "2", "3", "4"],
+    classic: { glyph: "♥♠", name: "Classic", blurb: "Red or black, higher or lower, inside or outside, then the suit.", dots: ["1", "2", "3", "4"],
       stops: [["Red / Black", "R/B"], ["Higher / Lower", "Hi/Lo"], ["Inside / Outside", "In/Out"], ["Suit", "Suit"]] },
-    hilo: { name: "Higher or Lower", blurb: "Get 3 higher-or-lower calls right in a row.", dots: ["S", "1", "2", "3"],
+    hilo: { glyph: "▲▼", name: "Higher or Lower", blurb: "Get 3 higher-or-lower calls right in a row.", dots: ["S", "1", "2", "3"],
       stops: [["Start card", "Start"], ["Guess 1", "Guess 1"], ["Guess 2", "Guess 2"], ["Guess 3", "Guess 3"]] },
-    horse: { name: "Horse Race", blurb: "Bet on an ace and take turns flipping cards to race them up the track." },
-    uno: { name: "Uno", blurb: "Match colours and numbers. First to empty their hand wins. Don't forget to call UNO!" },
-    trivia: { name: "Trivia", blurb: "Quick-fire quiz on everyone's phone. Faster right answers score more." },
-    kings: { name: "Kings Cup", blurb: "Take turns drawing from the ring. Every card has a rule; the 4th King drinks the cup." },
+    horse: { glyph: "A♣", name: "Horse Race", blurb: "Bet on an ace and take turns flipping cards to race them up the track." },
+    uno: { glyph: "+4", name: "Uno", blurb: "Match colours and numbers. First to empty their hand wins. Don't forget to call UNO!" },
+    trivia: { glyph: "?", name: "Trivia", blurb: "Quick-fire quiz on everyone's phone. Faster right answers score more." },
+    kings: { glyph: "K♚", name: "Kings Cup", blurb: "Take turns drawing from the ring. Every card has a rule; the 4th King drinks the cup." },
   };
   // Kings Cup rules by rank: [title, what happens]
   const KC = {
@@ -1510,32 +1554,55 @@ button:active { transition-duration: .05s; }
 
   // ---- lobby ----
   function lobbyHTML() {
-    const people = S.players.map(p => `<li><span class="av" style="--c:${p.color};width:28px;height:28px;font-size:14px">${esc(initial(p.name))}</span>
-      <span class="pname">${esc(p.name)}</span>${p.id === S.hostId ? '<span class="tag">Host</span>' : ""}${youTag(p.id)}
-      <span class="live${p.connected ? "" : " away"}" title="${p.connected ? "Online" : "Offline"}"></span>
-      ${amHost() && p.id !== me ? `<button data-kick="${p.id}" aria-label="Remove ${esc(p.name)}">×</button>` : ""}</li>`).join("");
-    const modes = amHost()
-      ? `<fieldset class="modes"><legend class="label">Game mode</legend>${Object.entries(MODES).map(([k, m]) =>
-          `<label class="mode"><input type="radio" name="mode" value="${k}" ${mode() === k ? "checked" : ""}><span><b>${m.name}</b><small>${m.blurb}</small></span></label>`).join("")}</fieldset>
-        ${trivia() ? `<div class="field"><span class="label">Questions</span><div class="len-pick">${[10, 15, 20].map(n => `<button class="${S.settings.triviaLen === n ? "on" : ""}" data-tl="${n}">${n}</button>`).join("")}</div></div>
-          ${catPickHTML(true)}` : ""}
-        <div class="opts"${horse() || kings() || trivia() || unoMode() ? " hidden" : ""}>
-          <label class="opt"><input type="checkbox" id="aces" ${S.settings.acesHigh ? "checked" : ""}><span>Aces high<small>Off makes aces the lowest card.</small></span></label>
-          <label class="opt"><input type="checkbox" id="ties" ${S.settings.tiesMiss ? "checked" : ""}><span>Ties are a miss<small>A card matching the one it's compared to means you drink. Off gives a free pass.</small></span></label>
-        </div>`
-      : `<div class="field"><span class="label">Game mode</span><div class="mode-read"><b>${MODES[mode()].name}</b><p class="hint">${MODES[mode()].blurb}</p></div></div>${trivia() ? catPickHTML(false) : ""}`;
-    const go = amHost()
-      ? `<button class="primary wide" id="start">${horse() ? "Place your bets" : kings() ? "Start Kings Cup" : trivia() ? "Start Trivia" : unoMode() ? "Start Uno" : "Start the game"}</button>`
-      : `<p class="waiting">Waiting for <b>${nameOf(S.hostId)}</b> to start the game.</p>`;
-    return `${confirmHTML()}<section class="console setup">
+    const host = amHost(), m = mode(), M = MODES[m];
+    const people = S.players.map(p => `<li class="seat${p.connected ? "" : " away"}">
+      <span class="av" style="--c:${p.color}">${esc(initial(p.name))}</span>
+      <span class="pname">${p.id === me ? "You" : esc(p.name)}</span>${p.id === S.hostId ? '<span class="tag">Host</span>' : ""}
+      ${host && p.id !== me ? `<button class="kick" data-kick="${p.id}" aria-label="Remove ${esc(p.name)}">×</button>` : ""}</li>`).join("");
+    // The picker: one tile per game, the chosen one opens into a panel with only its own settings.
+    const tiles = host ? `<fieldset class="games"><legend class="sr">Pick a game</legend>${Object.entries(MODES).map(([k, g]) =>
+        `<label class="mode game-tile"><input type="radio" name="mode" value="${k}" ${m === k ? "checked" : ""}><span><i aria-hidden="true">${g.glyph}</i><b>${g.name}</b></span></label>`).join("")}</fieldset>` : "";
+    const panel = `<div class="game-panel" data-key="gp-${m}">
+      <div class="gp-head"><i aria-hidden="true">${M.glyph}</i><div><h2>${M.name}</h2><p>${M.blurb}</p></div></div>
+      ${settingsHTML(host)}
+      ${rulesHTML()}
+    </div>`;
+    const unoShort = unoMode() && S.players.length < 2;
+    const go = host
+      ? `<button class="primary wide" id="start"${unoShort ? " disabled" : ""}>${horse() ? "Place your bets" : `Start ${M.name}`}</button>${unoShort ? '<p class="hint">Uno needs at least 2 players.</p>' : ""}`
+      : `<p class="waiting">Waiting for <b>${nameOf(S.hostId)}</b> to start.</p>`;
+    return `${confirmHTML()}<section class="console setup lobby">
       <div class="roomcode"><div><span class="label">Room code</span><br><strong>${esc(S.code)}</strong></div>
         <button class="ghost" id="invite">Invite friends</button></div>
-      <span class="label">Players (${S.players.length})</span>
-      <ul class="people">${people}</ul>
-      ${modes}
-      <div class="row">${go}</div>
-      ${rulesHTML()}
+      <div class="lb-block"><span class="label">On the bus (${S.players.length})</span><ul class="seats">${people}</ul></div>
+      <div class="lb-block"><span class="label">${host ? "Pick a game" : "Up next"}</span>${tiles}${panel}</div>
+      <div class="lobby-go">${go}</div>
     </section>`;
+  }
+  // A two-way switch: two labelled halves, the live one lit.
+  function segHTML(key, on, yes, no, host) {
+    return `<div class="seg" role="group">${[[true, yes], [false, no]].map(([v, t]) =>
+      `<button class="${on === v ? "on" : ""}" data-set="${key}" data-val="${v ? 1 : 0}"${host ? "" : " disabled"} aria-pressed="${on === v}">${t}</button>`).join("")}</div>`;
+  }
+  // Only the settings that change the chosen game.
+  function settingsHTML(host) {
+    const st = S.settings, row = (label, ctl, note = "") => `<div class="set-row"><div class="set-label">${label}${note ? `<small>${note}</small>` : ""}</div>${ctl}</div>`;
+    const m = mode();
+    if (m === "classic" || m === "hilo") return `<div class="settings">
+      ${row("Aces", segHTML("acesHigh", !!st.acesHigh, "High", "Low", host))}
+      ${row("A tie", segHTML("tiesMiss", !!st.tiesMiss, "Drink", "Free pass", host), "When the card matches the one it's compared to.")}
+    </div>`;
+    if (m === "horse") return `<div class="settings">
+      ${row("Track length", host ? `<div class="stepper" role="group" aria-label="Track length"><button id="len-down" aria-label="Shorter track">−</button><strong>${st.trackLen}</strong><button id="len-up" aria-label="Longer track">+</button></div>` : `<strong class="set-val">${st.trackLen}</strong>`, "Sideline cards. Longer races take longer.")}
+      <p class="hint">Everyone places their bet on their own phone after you start.</p>
+    </div>`;
+    if (m === "trivia") return `<div class="settings">
+      ${row("Questions", `<div class="seg">${[10, 15, 20].map(n => `<button class="${st.triviaLen === n ? "on" : ""}" data-tl="${n}"${host ? "" : " disabled"}>${n}</button>`).join("")}</div>`)}
+      ${catPickHTML(host)}
+    </div>`;
+    if (m === "uno") return `<div class="settings"><p class="hint">2 or more players. Each phone holds its own hand, with ${Math.round((S.turnMs || 20000) / 1000)} seconds a turn.</p></div>`;
+    if (m === "kings") return `<div class="settings"><p class="hint">Put an empty cup in the middle of the table. The phones run the rules.</p></div>`;
+    return "";
   }
 
   // ---- classic / higher or lower ----
@@ -2220,6 +2287,7 @@ button:active { transition-duration: .05s; }
       send({ t: "act", a: "answer", i: myAnswer }); return render();
     }
     if (t.dataset.tl) return act("setTriviaLen", { n: +t.dataset.tl });
+    if (t.dataset.set) return act("setSetting", { key: t.dataset.set, value: t.dataset.val === "1" });
     if (t.dataset.cat !== undefined && amHost()) {
       const on = new Set(S.settings.triviaCats || []), c = t.dataset.cat;
       if (!c) on.clear(); else if (on.has(c)) on.delete(c); else on.add(c);
