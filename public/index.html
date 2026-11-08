@@ -910,6 +910,42 @@ button:active { transition-duration: .05s; }
 @keyframes clue { from { opacity: 0; transform: scale(1.6); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
 @keyframes burst { 0% { opacity: 0; } 15% { opacity: .95; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .bigcard.walkout .bc-rays { animation: none; } }
+
+/* ===== Uno round the table ===== */
+.uno-ring { position: relative; width: 100%; height: 100%; container-type: size; }
+.uno-ring .felt { position: absolute; left: 9%; right: 9%; top: 12%; bottom: 12%; border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 45%, #2b5a4a, #1c3b31 70%); box-shadow: inset 0 0 0 6px #4a3424, inset 0 0 0 9px #2a1d14, inset 0 10px 40px rgba(0,0,0,.45), 0 12px 30px rgba(0,0,0,.35); }
+.uno-mid { position: absolute; left: 50%; top: 56%; transform: translate(-50%, -50%); display: grid; justify-items: center; gap: 6px; width: 62%; }
+.uno-mid .uno-pile { gap: 14px; }
+.uno-mid .uno-pile .uc { --uw: min(15cqw, 20cqh, 84px); }
+.uno-mid .uno-info { font-size: 13px; }
+.uno-mid .uno-msg { font-size: 12.5px; line-height: 1.25; }
+.uno-top .uc.top { animation: deal-in .42s var(--out); }
+@keyframes deal-in { from { transform: translate(calc(var(--sx) * 1cqw), calc(var(--sy) * 1cqh)) scale(.55) rotate(-25deg); } 70% { transform: scale(1.06) rotate(3deg); } to { transform: none; } }
+.seat-u { position: absolute; transform: translate(-50%, -50%); display: grid; justify-items: center; gap: 2px; z-index: 2; transition: left .5s var(--out), top .5s var(--out); }
+.seat-u .fan { position: relative; height: 34px; width: 46px; margin-bottom: -6px; }
+.seat-u .fan i { position: absolute; left: 50%; bottom: 0; width: 22px; height: 32px; margin-left: -11px; border-radius: 4px; background: #111; border: 2px solid #f4efe6;
+  box-shadow: inset 0 0 0 2px #e5484d, 0 2px 4px rgba(0,0,0,.4); transform-origin: 50% 120%; transform: rotate(var(--r)); transition: transform .3s var(--out); }
+.seat-tag { display: flex; align-items: center; gap: 5px; padding: 3px 7px 3px 3px; border-radius: 999px; background: rgba(20,22,26,.92); border: 1px solid var(--line); max-width: 30cqw; }
+.seat-tag .av { width: 22px; height: 22px; font-size: 11px; flex: none; }
+.seat-tag b { font: 700 12px/1 var(--body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.seat-tag em { font: 800 11px/1 var(--body); font-style: normal; min-width: 18px; padding: 3px 5px; border-radius: 999px; background: var(--asphalt); text-align: center; animation: pop .35s var(--out); }
+.seat-u.on .seat-tag { border-color: var(--bus); box-shadow: 0 0 0 2px rgba(242,194,48,.35), 0 0 16px rgba(242,194,48,.35); }
+.seat-u.on .fan i { transform: rotate(var(--r)) translateY(-3px); }
+.seat-u.last .seat-tag em { background: #e5484d; color: #fff; }
+.seat-u.me .seat-tag { background: rgba(20,22,26,.7); }
+.uno-ring.crowded .seat-u .fan { height: 26px; width: 36px; }
+.uno-ring.crowded .seat-u .fan i { width: 16px; height: 24px; margin-left: -8px; }
+.uno-ring.crowded .seat-tag b { display: none; }
+/* The UNO! / Catch! button lands somewhere random, the same place on every phone. */
+.uno-pop { position: fixed; z-index: 44; transform: translate(-50%, -50%) rotate(var(--tilt)); width: 136px; height: 136px; padding: 0 14px; border-radius: 50%; line-height: 1.05;
+  border: 5px solid #f2c230; background: radial-gradient(circle at 40% 35%, #ff6b6b, #d7262e 60%, #8f1218); color: #fff;
+  font: 900 30px/1 var(--body); text-shadow: 0 2px 0 rgba(0,0,0,.35); box-shadow: 0 0 0 6px rgba(215,38,46,.35), 0 18px 40px rgba(0,0,0,.55);
+  animation: unopop .4s var(--spring) both, unobeat .8s .4s ease-in-out infinite; }
+.uno-pop.catch { font-size: 19px; background: radial-gradient(circle at 40% 35%, #ffe27a, #f2c230 60%, #b88a00); color: var(--bus-ink); text-shadow: none; border-color: #fff; }
+.uno-pop:active { filter: brightness(1.15); }
+@keyframes unopop { from { transform: translate(-50%, -50%) rotate(calc(var(--tilt) - 30deg)) scale(0); } to { transform: translate(-50%, -50%) rotate(var(--tilt)) scale(1); } }
+@keyframes unobeat { 50% { transform: translate(-50%, -50%) rotate(var(--tilt)) scale(1.07); } }
 </style>
 </head>
 <body>
@@ -1910,14 +1946,42 @@ button:active { transition-duration: .05s; }
   }
   const UNO_ORDER = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "S", "R", "D2", "W", "W4"];
   const unoSort = h => [...h].sort((a, b) => "RYGBW".indexOf(a.c) - "RYGBW".indexOf(b.c) || UNO_ORDER.indexOf(a.v) - UNO_ORDER.indexOf(b.v));
+  // Seats round the table: you at the bottom, everyone else spread over the top in turn order.
+  function unoSeats(u) {
+    const order = u.order || S.players.map(p => p.id), mine = Math.max(0, order.indexOf(me));
+    const others = order.slice(mine + 1).concat(order.slice(0, mine)).filter(id => id !== me);
+    const seats = {};
+    seats[me] = { x: 50, y: 92 };
+    others.forEach((id, i) => {
+      const a = (180 + (i + 1) * 180 / (others.length + 1)) * Math.PI / 180;
+      seats[id] = { x: 50 + 44 * Math.cos(a), y: 55 + 43 * Math.sin(a) };
+    });
+    return { seats, others };
+  }
+  function unoSeatHTML(id, pos, u, small) {
+    const p = byId(id); if (!p) return "";
+    const n = (u.counts && u.counts[id]) || 0, show = Math.min(n, small ? 5 : 7);
+    const fan = Array.from({ length: show }, (_, i) => `<i style="--r:${((i - (show - 1) / 2) * (small ? 9 : 8)).toFixed(1)}deg"></i>`).join("");
+    const cls = ["seat-u", id === u.current && !u.winner ? "on" : "", u.unoBy === id ? "last" : "", id === me ? "me" : ""].filter(Boolean).join(" ");
+    return `<div class="${cls}" data-seat="${id}" style="left:${pos.x.toFixed(1)}%;top:${pos.y.toFixed(1)}%">
+      ${id === me ? "" : `<div class="fan" aria-hidden="true">${fan}</div>`}
+      <div class="seat-tag"><span class="av" style="--c:${p.color}">${esc(initial(p.name))}</span><b>${id === me ? "You" : esc(p.name)}</b><em data-key="n${id}${n}">${n}</em></div></div>`;
+  }
   function unoHTML() {
     const u = S.uno, myTurn = !u.winner && u.current === me, top = u.top;
     const head = u.winner ? (u.winner === me ? "You win!" : `${nameOf(u.winner)} wins!`) : myTurn ? "Your turn" : `${nameOf(u.current)}'s turn`;
-    const table = `<div class="table-area"><div class="uno-table">
-      <div class="uno-pile"><div class="uno-deck">${unoCardHTML({ c: "X", v: "UNO" }, { cls: "uc-back" })}<small>${u.deckLeft} left</small></div>
-        ${unoCardHTML(top, { cls: "top", key: `t${top.id}` })}</div>
-      <div class="uno-info"><span class="uno-dot" style="--k:${UNO_HEX[u.color]}"></span>${UNO_NAME[u.color]}<span class="uno-dir" title="Direction">${u.dir === 1 ? "↻" : "↺"}</span></div>
-      <p class="uno-msg">${esc(u.msg || "")}</p></div></div>`;
+    const { seats, others } = unoSeats(u), small = others.length > 5;
+    // The top card flies in from the seat of whoever played it.
+    const from = u.last && seats[u.last.by] ? seats[u.last.by] : { x: 50, y: 50 };
+    const table = `<div class="table-area"><div class="uno-ring${small ? " crowded" : ""}">
+      <div class="felt" aria-hidden="true"></div>
+      ${Object.entries(seats).map(([id, pos]) => unoSeatHTML(id, pos, u, small)).join("")}
+      <div class="uno-mid">
+        <div class="uno-pile"><div class="uno-deck">${unoCardHTML({ c: "X", v: "UNO" }, { cls: "uc-back" })}<small>${u.deckLeft} left</small></div>
+          <div class="uno-top" style="--sx:${(from.x - 50).toFixed(1)};--sy:${(from.y - 50).toFixed(1)}">${unoCardHTML(top, { cls: "top", key: `t${top.id}` })}</div></div>
+        <div class="uno-info"><span class="uno-dot" style="--k:${UNO_HEX[u.color]}"></span>${UNO_NAME[u.color]}<span class="uno-dir" title="Direction">${u.dir === 1 ? "↻" : "↺"}</span></div>
+        <p class="uno-msg">${esc(u.msg || "")}</p></div>
+    </div></div>`;
     if (u.winner) {
       return `${confirmHTML()}${layer("")}<div class="frame">${crewHTML()}<section class="status"><p class="turn-head${u.winner === me ? " mine" : ""}">${head}</p></section>${table}
         <section class="console"><p class="waiting" style="text-align:center">Wins tonight: ${S.players.map(p => `${esc(p.name)} ${u.wins[p.id] || 0}`).join(", ")}</p>
@@ -1930,8 +1994,11 @@ button:active { transition-duration: .05s; }
     const cards = hand.map(c => unoCardHTML(c, { button: true, cls: can(c) ? "can" : "" })).join("");
     const actions = [];
     if (myTurn) actions.push(drewId != null ? '<button class="ghost" id="uno-pass">Keep it &amp; pass</button>' : '<button class="primary" id="uno-draw">Draw</button>');
-    if (u.unoBy === me && !u.unoSafe) actions.push('<button class="primary uno-call" id="uno-call">UNO!</button>');
-    if (u.unoBy && !u.unoSafe && u.unoBy !== me) actions.push(`<button class="primary uno-call" id="uno-catch">Catch ${nameOf(u.unoBy)}!</button>`);
+    // UNO! for the player on one card, Catch! for everyone else: same random spot on every phone, first tap wins.
+    const spot = u.unoSpot || { x: 50, y: 45, r: 0 };
+    const pop = u.unoBy && !u.unoSafe
+      ? `<button class="uno-pop${u.unoBy === me ? "" : " catch"}" id="${u.unoBy === me ? "uno-call" : "uno-catch"}" data-key="up${u.unoBy}${spot.x}${spot.y}"
+          style="left:${spot.x}%;top:${spot.y}%;--tilt:${spot.r}deg">${u.unoBy === me ? "UNO!" : `Catch ${esc(plainName(u.unoBy))}!`}</button>` : "";
     const picker = pendingWild != null ? layer(`<div class="confirm-back"><div class="confirm"><h2>Pick a colour</h2>
       <div class="picker">${Object.keys(UNO_HEX).map(k => `<button data-ucolor="${k}" style="--k:${UNO_HEX[k]}">${UNO_NAME[k]}</button>`).join("")}</div>
       <button class="ghost" id="wild-cancel">Cancel</button></div></div>`) : layer("");
@@ -1939,7 +2006,7 @@ button:active { transition-duration: .05s; }
       <section class="status"><p class="turn-head${myTurn ? " mine" : ""}">${head}</p>${clockHTML()}</section>
       ${table}
       <section class="console"><div class="hand${myTurn ? " mine-turn" : ""}" style="--overlap:${overlap}" aria-label="Your hand">${cards}</div>
-        ${actions.length ? `<div class="uno-actions">${actions.join("")}</div>` : ""}</section></div>`;
+        ${actions.length ? `<div class="uno-actions">${actions.join("")}</div>` : ""}</section>${pop}</div>`;
   }
 
   // ---- Trivia ----

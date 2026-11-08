@@ -249,7 +249,8 @@ function unoPlay(room, pid, card, color) {
     u.msg = `${p.name} wins!`;
     bump(room, "unoWin", -1, { by: pid }); return;
   }
-  if (hand.length === 1) { u.unoBy = pid; u.unoSafe = false; }
+  // One card left: the UNO! button (and everyone else's Catch!) pops up in the same random spot on every phone.
+  if (hand.length === 1) { u.unoBy = pid; u.unoSafe = false; u.unoSpot = { x: 20 + rand(61), y: 26 + rand(41), r: rand(21) - 10 }; }
   const two = u.order.length === 2;
   let steps = 1, fx = "unoPlay", victim = null, n = 0;
   if (card.v === "S") { steps = 2; fx = "unoSkip"; victim = u.order[unoNext(u)]; }
