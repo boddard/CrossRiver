@@ -6,7 +6,7 @@ The F the Bus drinking game, built for phones. Three modes:
 - **Higher or Lower**: a free start card, then 3 higher-or-lower calls in a row to get off.
 - **Horse Race**: bet drinks on one of the four aces and flip cards to race them up the track.
 - **Uno** (online version): standard Uno with a 108-card deck. Each phone holds its own private hand; Skip, Reverse, +2, Wild and Wild +4, calling UNO! (or getting caught for +2), and 20 seconds a turn.
-- **Trivia** (online version): a quick-fire quiz with thousands of questions (our own pack plus Open Trivia DB), and the host can pick categories. Everyone answers on their own phone against a 15-second clock; faster right answers score more, with streak bonuses, a scoreboard after each question and a podium at the end.
+- **Trivia** (online version): a quick-fire general-knowledge quiz with about 500 easy questions (our own pack plus hand-picked easy ones from Open Trivia DB), and the host can pick categories. Everyone answers on their own phone against a 15-second clock; faster right answers score more, with streak bonuses, a scoreboard after each question and a podium at the end.
 - **Kings Cup** (online version): take turns drawing from a ring of cards. Each rank has a rule, and the phones run the interactive ones: races to tap for Heaven and Floor, picking who drinks, mates, rules shown on every phone, and the Question Master. The 4th King drinks the cup.
 
 There are two versions:
@@ -90,4 +90,4 @@ npm start            # http://localhost:3000
 
 ## Credits
 
-Extra trivia questions in `server/opentdb-questions.json` come from [Open Trivia DB](https://opentdb.com), licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+Some trivia questions in `server/opentdb-questions.json` come from [Open Trivia DB](https://opentdb.com), licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).

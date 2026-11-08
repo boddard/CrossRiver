@@ -12,12 +12,11 @@ const SUITS = {
 const SUIT_KEYS = ["S", "H", "D", "C"];
 const RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
 const MODES = ["classic", "hilo", "horse", "kings", "trivia", "uno"];
-// Our own pack plus Open Trivia DB's verified questions (opentdb.com, CC BY-SA 4.0) when bundled.
+// Our own easy pack plus a hand-picked set of Open Trivia DB's easy questions (opentdb.com, CC BY-SA 4.0).
 const OWN_QUESTIONS = require("./trivia-questions");
 const QUESTIONS = (() => {
   try { return OWN_QUESTIONS.concat(require("./opentdb-questions.json")); } catch (e) { return OWN_QUESTIONS; }
 })();
-const OWN_SHARE = 0.75;  // our own easy pack makes up most of each game; the rest comes from Open Trivia DB's easy set
 const CATEGORY_ORDER = ["Aussie", "Pop culture", "Music", "Movies & TV", "Sport", "Food & drink", "Science & nature",
   "History & geography", "Books & art", "Tech", "Games", "Anime & comics", "Random"];
 const CATEGORIES = (() => {
@@ -291,10 +290,7 @@ function newTrivia(room) {
   const len = room.settings.triviaLen;
   let pool = QUESTIONS.map((_, i) => i).filter(i => !cats.length || cats.includes(QUESTIONS[i][0]));
   if (pool.length < len) pool = QUESTIONS.map((_, i) => i);
-  // Mostly our own pack, topped up from Open Trivia DB.
-  const own = shuffle(pool.filter(i => i < OWN_QUESTIONS.length)), more = shuffle(pool.filter(i => i >= OWN_QUESTIONS.length));
-  const fromOwn = Math.min(own.length, Math.max(Math.ceil(len * OWN_SHARE), len - more.length));
-  const order = shuffle(own.slice(0, fromOwn).concat(more.slice(0, len - fromOwn)));
+  const order = shuffle(pool).slice(0, len);
   room.trivia = {
     id: token(4), order, n: 0, phase: "ready", endsAt: Date.now() + TRIVIA.ready,
     q: null, correct: -1, answers: {}, scores: {}, streak: {}, gained: {}, prevRank: {},
