@@ -969,6 +969,40 @@ button:active { transition-duration: .05s; }
 .bigcard.walkout.wo-3 .bc-card { animation: woshake .5s linear; }
 @keyframes woshake { 0%, 100% { translate: 0 0; } 15% { translate: -12px 6px; } 30% { translate: 10px -8px; } 45% { translate: -7px -5px; } 60% { translate: 6px 6px; } 80% { translate: -3px 2px; } }
 @media (prefers-reduced-motion: reduce) { .bigcard.walkout .wo-spark, .bigcard.walkout .wo-flare { display: none; } .bigcard.walkout .wo-flash { animation-duration: 1.2s; } }
+
+/* Walkout tunnel: spotlights, haze, clue panels, the card rising, fireworks */
+.bigcard.walkout .wo-stage { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+.bigcard.walkout .bc-card, .bigcard.walkout .bc-who, .bigcard.walkout .bc-clue { position: relative; z-index: 2; }
+.wo-beam { position: absolute; top: -10%; width: 70vw; height: 130vh; transform-origin: 50% 0; opacity: .55; mix-blend-mode: screen;
+  background: linear-gradient(to bottom, rgba(255,255,255,.55), rgba(var(--glow), .18) 55%, transparent 90%); clip-path: polygon(46% 0, 54% 0, 100% 100%, 0 100%); filter: blur(6px); }
+.wo-beam.l { left: -20vw; animation: beamL 2.6s ease-in-out infinite alternate; }
+.wo-beam.r { right: -20vw; animation: beamR 2.9s ease-in-out infinite alternate; }
+@keyframes beamL { from { transform: rotate(-38deg); } to { transform: rotate(-6deg); } }
+@keyframes beamR { from { transform: rotate(38deg); } to { transform: rotate(6deg); } }
+.bigcard.wo-charge .wo-beam { animation-duration: .7s; opacity: .8; }
+.wo-haze { position: absolute; left: -20%; right: -20%; bottom: -5%; height: 45%; background: radial-gradient(ellipse at 30% 100%, rgba(200,210,230,.22), transparent 60%), radial-gradient(ellipse at 70% 100%, rgba(var(--glow), .2), transparent 60%);
+  filter: blur(20px); animation: haze 6s ease-in-out infinite alternate; }
+@keyframes haze { to { transform: translateX(8%) scaleY(1.15); } }
+.wo-panels { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; gap: 10px; z-index: 3; transition: opacity .4s var(--out), transform .5s var(--in); }
+.bigcard.wo-rise .wo-panels { opacity: 0; transform: translate(-50%, -140%) scale(.7); }
+.wo-panel { width: min(27vw, 112px); aspect-ratio: 3 / 4; border-radius: 12px; display: grid; place-items: center; align-content: center; gap: 8px; padding: 8px;
+  background: linear-gradient(160deg, rgba(255,255,255,.14), rgba(255,255,255,.03)); border: 2px solid rgba(var(--glow), .9);
+  box-shadow: 0 0 24px rgba(var(--glow), .55), inset 0 0 20px rgba(var(--glow), .2); backdrop-filter: blur(4px); animation: panelin .5s var(--spring) both; }
+.wo-panel b { font: 900 clamp(13px, 3.8vw, 17px)/1.05 var(--led-font); text-transform: uppercase; color: rgb(var(--glow)); text-align: center; text-shadow: 0 0 8px rgba(var(--glow), .8); }
+.wo-panel i { font-style: normal; display: grid; place-items: center; width: 54px; height: 54px; }
+.wo-panel i.sw { border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 18px rgba(var(--glow), .9); }
+.wo-panel i.sy { font-size: 52px; line-height: 1; color: #fff; text-shadow: 0 0 14px rgba(var(--glow), 1); }
+.wo-panel i.sy.red { color: #ff5a5a; }
+.wo-panel i.tr { font: 900 40px/1 var(--led-font); color: #fff; text-shadow: 0 0 14px rgba(var(--glow), 1); }
+@keyframes panelin { from { opacity: 0; transform: translateY(-60px) scale(1.6) rotate(-8deg); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+.bigcard.walkout.wo-pre .bc-card { opacity: 0; animation: none; }
+.bigcard.walkout.wo-rise .bc-card { animation: worise 1s var(--out) both, tremble2 .06s 1s linear infinite; }
+.bigcard.walkout.wo-rise.wo-3 .bc-card { animation: woshake .5s linear; }
+@keyframes worise { from { opacity: 0; translate: 0 45%; filter: brightness(0); } 60% { opacity: 1; filter: brightness(.6); } to { opacity: 1; translate: 0 0; filter: none; } }
+.bigcard.walkout .wo-fw { position: fixed; width: 6px; height: 6px; margin: -3px; border-radius: 50%; z-index: 5; pointer-events: none;
+  background: hsl(var(--h), 100%, 65%); box-shadow: 0 0 10px hsl(var(--h), 100%, 60%), 0 0 2px #fff; animation: fw 1.4s cubic-bezier(.15,.7,.3,1) forwards; }
+@keyframes fw { 0% { transform: translate(0, 0) scale(1.4); opacity: 1; } 65% { transform: translate(var(--dx), var(--dy)) scale(1); opacity: 1; } 100% { transform: translate(var(--dx), calc(var(--dy) + 50px)) scale(.4); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .wo-beam, .wo-haze { animation: none !important; } .bigcard.walkout .wo-fw { display: none; } }
 </style>
 </head>
 <body>
@@ -1327,7 +1361,7 @@ button:active { transition-duration: .05s; }
       if (el.hidden) return;
       el.classList.add("out");
       clearTimeout(this.hideTimer);
-      this.hideTimer = setTimeout(() => { el.hidden = true; el.classList.remove("out", "walkout", "wo-1", "wo-2", "wo-3", "wo-open", "wo-charge"); document.getElementById("bc-clue").textContent = ""; }, 230);
+      this.hideTimer = setTimeout(() => { el.hidden = true; el.classList.remove("out", "walkout", "wo-1", "wo-2", "wo-3", "wo-open", "wo-charge", "wo-pre", "wo-rise"); el.querySelectorAll(".wo-stage, .wo-fw").forEach(n => n.remove()); document.getElementById("bc-clue").textContent = ""; }, 230);
     },
   };
   function flipLabel(by) {
@@ -1357,7 +1391,7 @@ button:active { transition-duration: .05s; }
     setTimeout(() => {
       if (flip === f) { big.hide(); flip = null; }
       if (f.after) f.after();
-    }, ms + (f.walk ? 2100 : 520));
+    }, ms + (f.walk ? 2300 : 520));
   }
   // The card is dealt: put its face on the giant card and turn it once it has had a moment in the air.
   function faceArrived(card, after) {
@@ -1380,24 +1414,42 @@ button:active { transition-duration: .05s; }
     const show = text => { clue.textContent = text; clue.className = "bc-clue"; void clue.offsetWidth; clue.className = "bc-clue show"; };
     show("Last card");
     sfx.drum(); buzz([30, 80, 30]);
-    // Effects layered over the card: full-screen flashes, lens-flare streaks, sparks and a shockwave.
-    const fx = (cls, style, ms) => { const d = document.createElement("div"); d.className = cls; if (style) d.style.cssText = style; el.appendChild(d); setTimeout(() => d.remove(), ms); };
+    // Effects layered over the card: full-screen flashes, lens-flare streaks, sparks, shockwaves and fireworks.
+    const fx = (cls, style, ms, parent = el) => { const d = document.createElement("div"); d.className = cls; if (style) d.style.cssText = style; parent.appendChild(d); if (ms) setTimeout(() => d.remove(), ms); return d; };
+    const glow = el.style.getPropertyValue("--glow");
     const flash = (rgb, o) => fx("wo-flash", `--c:${rgb};--o:${o}`, 900);
     const flare = deg => fx("wo-flare", `--rot:${deg}deg`, 1000);
     const sparks = n => { for (let i = 0; i < n; i++) fx("wo-spark", `--a:${Math.round(Math.random() * 360)}deg;--d:${Math.round(140 + Math.random() * 260)}px;--t:${Math.round(600 + Math.random() * 500)}ms`, 1200); };
+    const firework = (x, y, hue) => { for (let i = 0; i < 26; i++) { const a = i / 26 * Math.PI * 2, d = 70 + Math.random() * 70;
+      fx("wo-fw", `left:${x}%;top:${y}%;--dx:${Math.round(Math.cos(a) * d)}px;--dy:${Math.round(Math.sin(a) * d)}px;--h:${hue + Math.round(Math.random() * 40)}`, 1500); } };
     const heartbeat = () => { tone(55, .14, "sine", .5); tone(48, .16, "sine", .45, .2); buzz([50, 120, 60]); };
+    // The tunnel: sweeping spotlights, haze, and three clue panels where the card will stand.
+    const stage = fx("wo-stage", "", 0);
+    fx("wo-beam l", "", 0, stage); fx("wo-beam r", "", 0, stage); fx("wo-haze", "", 0, stage);
+    const panels = fx("wo-panels", "", 0, stage);
+    const panel = html => { const d = fx("wo-panel", "", 0, panels); d.innerHTML = html; sfx.bump ? sfx.bump() : sfx.pop(); return d; };
+    el.classList.add("wo-pre");
+    const tier = card.r === "A" ? "Ace" : "JQK".includes(card.r) ? "Face card" : "Number";
     const step = (ms, fn) => setTimeout(() => { if (flip === f) fn(); }, ms);
     f.timers = [
       step(500, heartbeat),
-      step(1300, () => { el.classList.add("wo-1"); show(sd.red ? "Red" : "Black"); flash(el.style.getPropertyValue("--glow"), .55); flare(0); sparks(14); sfx.chime(); buzz(70); }),
-      step(2100, heartbeat),
-      step(2900, () => { el.classList.add("wo-2"); show(`${sd.sym} ${sd.name}`); flash(el.style.getPropertyValue("--glow"), .75); flare(-18); flare(18); sparks(24); sfx.chime(); sfx.drum(); buzz(110); }),
-      step(3700, () => { el.classList.add("wo-charge"); heartbeat(); }),
-      step(4150, heartbeat),
-      step(4550, heartbeat),
-      step(4950, () => {
+      step(1200, () => { el.classList.add("wo-1"); show(sd.red ? "Red" : "Black"); panel(`<i class="sw" style="background:${sd.red ? "#e5484d" : "#15171b"}"></i><b>${sd.red ? "Red" : "Black"}</b>`);
+        flash(glow, .5); flare(0); sparks(12); sfx.chime(); buzz(70); }),
+      step(2000, heartbeat),
+      step(2600, () => { el.classList.add("wo-2"); show(`${sd.sym} ${sd.name}`); panel(`<i class="sy${sd.red ? " red" : ""}">${sd.sym}</i><b>${sd.name}</b>`);
+        flash(glow, .7); flare(-18); flare(18); sparks(20); sfx.chime(); sfx.drum(); buzz(110); }),
+      step(3400, heartbeat),
+      step(3900, () => { show(tier); panel(`<i class="tr">${card.r === "A" ? "A" : "JQK".includes(card.r) ? "♛" : "#"}</i><b>${tier}</b>`);
+        flash(glow, .85); flare(0); flare(-35); flare(35); sparks(26); sfx.chime(); buzz(130); }),
+      // Walkout: the panels clear and the card rises out of the dark, shaking with energy.
+      step(4900, () => { el.classList.remove("wo-pre"); el.classList.add("wo-rise", "wo-charge"); show(`${sd.sym} ${sd.name}`); tone(70, 1.1, "sawtooth", .12, 0, 140); heartbeat(); }),
+      step(5450, heartbeat),
+      step(5850, heartbeat),
+      step(6250, () => {
         el.classList.add("wo-3"); el.classList.remove("wo-charge");
         flash("255,255,255", 1); fx("wo-ring", "", 1000); fx("wo-ring two", "", 1200); flare(0); flare(-35); flare(35); sparks(44);
+        const hue = sd.red ? 350 : 210;
+        firework(22, 26, hue); step(220, () => firework(78, 22, 45)); step(420, () => firework(30, 74, hue)); step(620, () => firework(72, 70, 45)); step(820, () => firework(50, 16, hue));
         sfx.flip(); tone(90, .5, "sawtooth", .25, 0, 40); buzz([80, 40, 220]); finishFlip(480);
       }),
     ];
