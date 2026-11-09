@@ -1003,6 +1003,51 @@ button:active { transition-duration: .05s; }
   background: hsl(var(--h), 100%, 65%); box-shadow: 0 0 10px hsl(var(--h), 100%, 60%), 0 0 2px #fff; animation: fw 1.4s cubic-bezier(.15,.7,.3,1) forwards; }
 @keyframes fw { 0% { transform: translate(0, 0) scale(1.4); opacity: 1; } 65% { transform: translate(var(--dx), var(--dy)) scale(1); opacity: 1; } 100% { transform: translate(var(--dx), calc(var(--dy) + 50px)) scale(.4); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .wo-beam, .wo-haze { animation: none !important; } .bigcard.walkout .wo-fw { display: none; } }
+
+/* Walkout, gone nuts: warp tunnel, headlights, hyperspace, countdown, gold or bust finale */
+.wo-warp { position: absolute; left: 50%; top: 50%; width: 80px; height: 110px; margin: -55px 0 0 -40px; border-radius: 22px; border: 2px solid rgba(var(--glow), .5);
+  box-shadow: 0 0 18px rgba(var(--glow), .35), inset 0 0 12px rgba(var(--glow), .25); animation: warp 2.24s cubic-bezier(.6,0,1,1) infinite; opacity: 0; }
+@keyframes warp { 0% { transform: scale(.05); opacity: 0; } 20% { opacity: .9; } 100% { transform: scale(9); opacity: 0; } }
+.bigcard.wo-hyper .wo-warp { animation-duration: .7s; border-color: rgba(255,255,255,.7); }
+.wo-lights { position: absolute; left: 50%; top: 56%; display: flex; gap: 46px; transform: translate(-50%, -50%) scale(.15); animation: lights 4.6s cubic-bezier(.5,0,1,1) forwards; }
+.wo-lights div { width: 26px; height: 26px; border-radius: 50%; background: radial-gradient(circle, #fff 0 30%, rgba(255,240,200,.8) 45%, transparent 70%); box-shadow: 0 0 40px 18px rgba(255,236,190,.55); }
+@keyframes lights { 0% { transform: translate(-50%, -50%) scale(.1); opacity: 0; } 15% { opacity: 1; } 100% { transform: translate(-50%, -50%) scale(3.2); opacity: 0; } }
+.bigcard.wo-rise .wo-lights { display: none; }
+.bigcard.walkout .wo-streak { position: fixed; left: 50%; top: 50%; width: 2px; height: 90px; margin: -45px 0 0 -1px; z-index: 1; pointer-events: none;
+  background: linear-gradient(transparent, #fff 60%, rgba(var(--glow), .9)); animation: streak var(--t) cubic-bezier(.5,0,1,1) forwards; }
+@keyframes streak { from { transform: rotate(var(--a)) translateY(-40px) scaleY(.1); opacity: 0; } 30% { opacity: 1; } to { transform: rotate(var(--a)) translateY(-75vh) scaleY(1.6); opacity: 0; } }
+.bigcard.wo-hyper .bc-card { filter: drop-shadow(0 0 30px rgba(var(--glow), .9)); }
+.bigcard.wo-hyper { animation: hyperzoom 2.1s cubic-bezier(.4,0,1,1) forwards; }
+@keyframes hyperzoom { from { filter: none; } to { filter: brightness(1.4) saturate(1.3); } }
+.bigcard.walkout .wo-count { position: fixed; left: 50%; top: 50%; z-index: 7; transform: translate(-50%, -50%); pointer-events: none;
+  font: 900 min(56vw, 300px)/1 var(--led-font); color: #fff; -webkit-text-stroke: 12px rgba(0,0,0,.8); paint-order: stroke fill; text-shadow: 0 0 30px rgba(var(--glow), 1), 0 0 80px rgba(var(--glow), .8); opacity: 0; }
+.bigcard.walkout .wo-count.go { animation: count .44s cubic-bezier(.2,.9,.3,1) forwards; }
+@keyframes count { 0% { opacity: 0; transform: translate(-50%, -50%) scale(2.4); } 18% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 78% { opacity: 1; transform: translate(-50%, -50%) scale(.9); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(.7); } }
+.bigcard.walkout .wo-banner { position: fixed; left: 0; right: 0; top: 7%; z-index: 7; text-align: center; white-space: nowrap; pointer-events: none; font: 900 clamp(30px, 10.5vw, 64px)/1 var(--led-font); text-transform: uppercase;
+  animation: banner 2.8s var(--out) forwards; }
+.wo-banner.win { color: #ffd84d; text-shadow: 0 0 12px rgba(255,216,77,1), 0 0 40px rgba(255,180,0,.8), 0 4px 0 #6b4a00; }
+.wo-banner.bust { color: #ff3b3b; text-shadow: 0 0 12px rgba(255,59,59,1), 0 0 40px rgba(255,0,0,.8), 0 4px 0 #4a0000; }
+@keyframes banner { 0% { opacity: 0; transform: translateX(-60%) skewX(-20deg); } 14% { opacity: 1; transform: translateX(4%) skewX(6deg); } 22% { transform: none; } 82% { opacity: 1; transform: none; } 100% { opacity: 0; transform: scale(1.3); } }
+.bigcard.walkout .wo-conf { position: fixed; top: -4%; width: 9px; height: 14px; z-index: 6; pointer-events: none; border-radius: 2px; animation: conf var(--d) linear var(--w) forwards; opacity: 0; }
+@keyframes conf { 0% { opacity: 1; transform: translate(0, 0) rotate(0); } 100% { opacity: 1; transform: translate(var(--x), 110vh) rotate(var(--r)); } }
+.bigcard.wo-win { background: radial-gradient(ellipse at 50% 50%, rgba(255,200,60,.55), transparent 65%), #120c02 !important; }
+.bigcard.wo-win .bc-face { box-shadow: 0 0 0 5px #ffd84d, 0 0 90px 30px rgba(255,200,60,.75) !important; }
+.bigcard.wo-win .bc-face::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,.85) 48%, rgba(255,230,140,.6) 52%, transparent 70%); background-size: 260% 100%; animation: shine 1.1s .45s ease-in-out 2 both; }
+@keyframes shine { from { background-position: 130% 0; } to { background-position: -130% 0; } }
+.bigcard.wo-win .bc-rays { opacity: 1 !important; animation-duration: 3s; filter: sepia(1) saturate(4) hue-rotate(5deg); }
+.bigcard.wo-bust { background: radial-gradient(ellipse at 50% 50%, rgba(255,30,30,.35), transparent 65%), #0c0202 !important; }
+.bigcard.wo-bust .bc-card { animation: glitch .5s steps(2) .45s 3; }
+@keyframes glitch { 0% { translate: 0 0; filter: none; } 25% { translate: -10px 3px; filter: hue-rotate(90deg) contrast(1.6); } 50% { translate: 8px -4px; filter: invert(.15) saturate(3); } 75% { translate: -4px 0; filter: none; } 100% { translate: 0 0; } }
+.bigcard.walkout .wo-crack { position: fixed; inset: 0; z-index: 6; pointer-events: none; }
+.wo-crack svg { width: 100%; height: 100%; }
+.wo-crack path { fill: none; stroke: rgba(255,255,255,.9); stroke-width: .35; filter: drop-shadow(0 0 1px #fff); stroke-dasharray: 120; stroke-dashoffset: 120; animation: crack .35s ease-out forwards; vector-effect: non-scaling-stroke; }
+.wo-crack path { stroke-width: 2.2px; }
+@keyframes crack { to { stroke-dashoffset: 0; } }
+.bigcard.walkout .wo-alarm { position: fixed; inset: 0; z-index: 5; pointer-events: none; background: radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(255,0,0,.55)); animation: alarm .32s steps(1) 8; }
+@keyframes alarm { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .wo-warp, .wo-lights, .bigcard.walkout .wo-streak, .bigcard.walkout .wo-conf, .bigcard.walkout .wo-alarm { display: none !important; } .bigcard.wo-bust .bc-card { animation: none; } }
+.bigcard.walkout.wo-3 .bc-who, .bigcard.walkout.wo-hyper .bc-who { opacity: 0; transition: opacity .25s; }
 </style>
 </head>
 <body>
@@ -1361,7 +1406,7 @@ button:active { transition-duration: .05s; }
       if (el.hidden) return;
       el.classList.add("out");
       clearTimeout(this.hideTimer);
-      this.hideTimer = setTimeout(() => { el.hidden = true; el.classList.remove("out", "walkout", "wo-1", "wo-2", "wo-3", "wo-open", "wo-charge", "wo-pre", "wo-rise"); el.querySelectorAll(".wo-stage, .wo-fw").forEach(n => n.remove()); document.getElementById("bc-clue").textContent = ""; }, 230);
+      this.hideTimer = setTimeout(() => { el.hidden = true; el.classList.remove("out", "walkout", "wo-1", "wo-2", "wo-3", "wo-open", "wo-charge", "wo-pre", "wo-rise", "wo-hyper", "wo-win", "wo-bust"); el.querySelectorAll(".wo-stage, .wo-fw, .wo-count, .wo-streak, .wo-conf, .wo-crack, .wo-alarm, .wo-banner").forEach(n => n.remove()); document.getElementById("bc-clue").textContent = ""; }, 230);
     },
   };
   function flipLabel(by) {
@@ -1380,7 +1425,7 @@ button:active { transition-duration: .05s; }
     const f = flip;
     f.safety = setTimeout(() => { if (flip === f && !f.faceKnown) { big.hide(); flip = null; pendingFlip = null; render(); } }, 6000);
   }
-  function clearFlipTimers() { if (flip) { clearTimeout(flip.safety); (flip.timers || []).forEach(clearTimeout); } }
+  function clearFlipTimers() { if (flip) { clearTimeout(flip.safety); (flip.timers || []).forEach(t => t && t.clear ? t.clear() : clearTimeout(t)); } }
   // Turn it over, hold the face up for a moment, then show the result.
   function finishFlip(ms) {
     if (!flip || flip.done) return;
@@ -1391,7 +1436,7 @@ button:active { transition-duration: .05s; }
     setTimeout(() => {
       if (flip === f) { big.hide(); flip = null; }
       if (f.after) f.after();
-    }, ms + (f.walk ? 2300 : 520));
+    }, ms + (f.walk ? 2700 : 520));
   }
   // The card is dealt: put its face on the giant card and turn it once it has had a moment in the air.
   function faceArrived(card, after) {
@@ -1401,58 +1446,87 @@ button:active { transition-duration: .05s; }
     clearTimeout(f.safety);
     f.safety = setTimeout(() => { if (flip === f && !f.done) finishFlip(560); }, Math.max(0, f.t0 + 620 - Date.now()));
   }
-  // Classic's last card gets a walkout: lights down, then the colour, then the suit, then the card.
-  function walkout(card, after) {
+  // Classic's last card gets a full walkout: a tunnel at warp speed, a bus's headlights, three clue panels,
+  // the card rising into a 3-2-1 countdown, then a gold celebration or a shattered-glass bust.
+  function walkout(card, after, outcome) {
     const f = flip;
     f.faceKnown = true; f.after = after; f.walk = true;
     clearTimeout(f.safety);
     big.face(card);
     const el = document.getElementById("bigcard"), sd = suitOf(card), clue = document.getElementById("bc-clue");
-    el.style.setProperty("--glow", sd.red ? "255,58,58" : "150,178,255");
-    el.classList.add("walkout");
+    const glow = sd.red ? "255,58,58" : "150,178,255", win = outcome === "won";
+    el.style.setProperty("--glow", glow);
+    el.classList.add("walkout", "wo-pre");
     clue.textContent = ""; clue.className = "bc-clue";
     const show = text => { clue.textContent = text; clue.className = "bc-clue"; void clue.offsetWidth; clue.className = "bc-clue show"; };
-    show("Last card");
-    sfx.drum(); buzz([30, 80, 30]);
-    // Effects layered over the card: full-screen flashes, lens-flare streaks, sparks, shockwaves and fireworks.
     const fx = (cls, style, ms, parent = el) => { const d = document.createElement("div"); d.className = cls; if (style) d.style.cssText = style; parent.appendChild(d); if (ms) setTimeout(() => d.remove(), ms); return d; };
-    const glow = el.style.getPropertyValue("--glow");
     const flash = (rgb, o) => fx("wo-flash", `--c:${rgb};--o:${o}`, 900);
     const flare = deg => fx("wo-flare", `--rot:${deg}deg`, 1000);
     const sparks = n => { for (let i = 0; i < n; i++) fx("wo-spark", `--a:${Math.round(Math.random() * 360)}deg;--d:${Math.round(140 + Math.random() * 260)}px;--t:${Math.round(600 + Math.random() * 500)}ms`, 1200); };
-    const firework = (x, y, hue) => { for (let i = 0; i < 26; i++) { const a = i / 26 * Math.PI * 2, d = 70 + Math.random() * 70;
-      fx("wo-fw", `left:${x}%;top:${y}%;--dx:${Math.round(Math.cos(a) * d)}px;--dy:${Math.round(Math.sin(a) * d)}px;--h:${hue + Math.round(Math.random() * 40)}`, 1500); } };
+    const firework = (x, y, hue) => { for (let i = 0; i < 28; i++) { const a = i / 28 * Math.PI * 2, d = 70 + Math.random() * 80;
+      fx("wo-fw", `left:${x}%;top:${y}%;--dx:${Math.round(Math.cos(a) * d)}px;--dy:${Math.round(Math.sin(a) * d)}px;--h:${hue + Math.round(Math.random() * 30)}`, 1500); } };
     const heartbeat = () => { tone(55, .14, "sine", .5); tone(48, .16, "sine", .45, .2); buzz([50, 120, 60]); };
-    // The tunnel: sweeping spotlights, haze, and three clue panels where the card will stand.
+    const whoosh = () => { noise(.45, .25, 900); noise(.3, .15, 2600, .1); };
+    show("Last card");
+    sfx.drum(); buzz([30, 80, 30]);
+    // The tunnel: warp rings rushing past, spotlights, haze, and a bus's headlights coming closer.
     const stage = fx("wo-stage", "", 0);
+    for (let i = 0; i < 7; i++) fx("wo-warp", `animation-delay:${(i * .32).toFixed(2)}s`, 0, stage);
     fx("wo-beam l", "", 0, stage); fx("wo-beam r", "", 0, stage); fx("wo-haze", "", 0, stage);
+    const lights = fx("wo-lights", "", 0, stage); fx("", "", 0, lights); fx("", "", 0, lights);
     const panels = fx("wo-panels", "", 0, stage);
-    const panel = html => { const d = fx("wo-panel", "", 0, panels); d.innerHTML = html; sfx.bump ? sfx.bump() : sfx.pop(); return d; };
-    el.classList.add("wo-pre");
+    const panel = html => { const d = fx("wo-panel", "", 0, panels); d.innerHTML = html; sfx.bump(); whoosh(); return d; };
+    const count = fx("wo-count", "", 0);
+    const tick = n => { count.textContent = n; count.className = "wo-count"; void count.offsetWidth; count.className = "wo-count go"; flash("255,255,255", .35); heartbeat(); tone(n === 1 ? 660 : 440, .12, "square", .12); };
     const tier = card.r === "A" ? "Ace" : "JQK".includes(card.r) ? "Face card" : "Number";
+    let streaks = null;
     const step = (ms, fn) => setTimeout(() => { if (flip === f) fn(); }, ms);
     f.timers = [
       step(500, heartbeat),
       step(1200, () => { el.classList.add("wo-1"); show(sd.red ? "Red" : "Black"); panel(`<i class="sw" style="background:${sd.red ? "#e5484d" : "#15171b"}"></i><b>${sd.red ? "Red" : "Black"}</b>`);
         flash(glow, .5); flare(0); sparks(12); sfx.chime(); buzz(70); }),
-      step(2000, heartbeat),
-      step(2600, () => { el.classList.add("wo-2"); show(`${sd.sym} ${sd.name}`); panel(`<i class="sy${sd.red ? " red" : ""}">${sd.sym}</i><b>${sd.name}</b>`);
+      step(1900, heartbeat),
+      step(2500, () => { el.classList.add("wo-2"); show(`${sd.sym} ${sd.name}`); panel(`<i class="sy${sd.red ? " red" : ""}">${sd.sym}</i><b>${sd.name}</b>`);
         flash(glow, .7); flare(-18); flare(18); sparks(20); sfx.chime(); sfx.drum(); buzz(110); }),
-      step(3400, heartbeat),
-      step(3900, () => { show(tier); panel(`<i class="tr">${card.r === "A" ? "A" : "JQK".includes(card.r) ? "♛" : "#"}</i><b>${tier}</b>`);
+      step(3200, heartbeat),
+      step(3800, () => { show(tier); panel(`<i class="tr">${card.r === "A" ? "A" : "JQK".includes(card.r) ? "♛" : "#"}</i><b>${tier}</b>`);
         flash(glow, .85); flare(0); flare(-35); flare(35); sparks(26); sfx.chime(); buzz(130); }),
-      // Walkout: the panels clear and the card rises out of the dark, shaking with energy.
-      step(4900, () => { el.classList.remove("wo-pre"); el.classList.add("wo-rise", "wo-charge"); show(`${sd.sym} ${sd.name}`); tone(70, 1.1, "sawtooth", .12, 0, 140); heartbeat(); }),
-      step(5450, heartbeat),
-      step(5850, heartbeat),
-      step(6250, () => {
-        el.classList.add("wo-3"); el.classList.remove("wo-charge");
-        flash("255,255,255", 1); fx("wo-ring", "", 1000); fx("wo-ring two", "", 1200); flare(0); flare(-35); flare(35); sparks(44);
-        const hue = sd.red ? 350 : 210;
-        firework(22, 26, hue); step(220, () => firework(78, 22, 45)); step(420, () => firework(30, 74, hue)); step(620, () => firework(72, 70, 45)); step(820, () => firework(50, 16, hue));
-        sfx.flip(); tone(90, .5, "sawtooth", .25, 0, 40); buzz([80, 40, 220]); finishFlip(480);
+      // Hyperspace: the panels clear, light streaks rush past and the card rises out of the dark.
+      step(4800, () => {
+        el.classList.remove("wo-pre"); el.classList.add("wo-rise", "wo-charge", "wo-hyper"); show(`${sd.sym} ${sd.name}`);
+        tone(70, 2, "sawtooth", .12, 0, 520); noise(1.8, .12, 400);
+        streaks = setInterval(() => { for (let i = 0; i < 6; i++) fx("wo-streak", `--a:${Math.round(Math.random() * 360)}deg;--t:${Math.round(350 + Math.random() * 300)}ms`, 700); }, 70);
+      }),
+      step(5600, () => tick(3)),
+      step(6050, () => tick(2)),
+      step(6500, () => tick(1)),
+      step(6950, () => {
+        clearInterval(streaks); count.className = "wo-count"; count.textContent = "";
+        el.classList.add("wo-3", win ? "wo-win" : "wo-bust"); el.classList.remove("wo-charge", "wo-hyper");
+        fx("wo-ring", "", 1000); fx("wo-ring two", "", 1200); flare(0); flare(-35); flare(35); sparks(48);
+        sfx.flip(); tone(90, .6, "sawtooth", .25, 0, 40); finishFlip(460);
+        if (win) {
+          // Gold: fireworks, confetti rain, a shine across the card and the banner.
+          flash("255,214,90", 1);
+          [[22, 26, 45], [78, 22, 30], [30, 74, 50], [72, 70, 40], [50, 14, 45], [15, 50, 0], [85, 48, 55]].forEach(([x, y, h], i) => step(i * 190, () => firework(x, y, h)));
+          for (let i = 0; i < 90; i++) fx("wo-conf", `left:${Math.round(Math.random() * 100)}%;--d:${(1.6 + Math.random() * 1.6).toFixed(2)}s;--w:${(Math.random() * .8).toFixed(2)}s;--r:${Math.round(Math.random() * 720 - 360)}deg;--x:${Math.round(Math.random() * 80 - 40)}px;background:${["#f2c230", "#fff3b0", "#ffd84d", "#ffffff", "#e0a400"][i % 5]}`, 3600);
+          fx("wo-banner win", "", 3000).textContent = "Off the bus!";
+          sfx.horn(); step(250, () => sfx.ding()); buzz([100, 50, 100, 50, 300]);
+        } else {
+          // Bust: the screen cracks, red alarm strobes, the card glitches.
+          flash("255,40,40", 1);
+          const crack = fx("wo-crack", "", 3000);
+          crack.innerHTML = `<svg viewBox="0 0 100 100" preserveAspectRatio="none">${Array.from({ length: 11 }, (_, i) => {
+            let x = 50, y = 50, d = `M50 50`, a = i / 11 * Math.PI * 2 + Math.random() * .4;
+            for (let k = 0; k < 5; k++) { a += (Math.random() - .5) * .9; const len = 6 + Math.random() * 12; x += Math.cos(a) * len; y += Math.sin(a) * len; d += ` L${x.toFixed(1)} ${y.toFixed(1)}`; }
+            return `<path d="${d}"/>`; }).join("")}</svg>`;
+          fx("wo-alarm", "", 2600);
+          fx("wo-banner bust", "", 3000).textContent = "Drink!";
+          noise(.6, .4, 300); tone(50, .9, "square", .22, 0, 30); step(200, () => sfx.gulp()); buzz([300, 80, 300]);
+        }
       }),
     ];
+    f.timers.push({ clear: () => clearInterval(streaks) });
   }
 
   function onState(next) {
@@ -1477,7 +1551,7 @@ button:active { transition-duration: .05s; }
       suspense = { seq: S.ev.seq, fx, dealt, call: S.ev.call, lastGood: prev ? prev.lastGood : "" };
       fx = ""; dealt = -1;
       if (!flip || flip.by !== S.ev.by || flip.faceKnown) autoFlip(S.ev.by);
-      if (mode() === "classic" && suspense.dealt === 3) walkout(S.row[3], reveal);
+      if (mode() === "classic" && suspense.dealt === 3) { suspense.walked = true; walkout(S.row[3], reveal, suspense.fx); }
       else faceArrived(S.row[suspense.dealt], reveal);
       return render();
     }
@@ -1503,7 +1577,8 @@ button:active { transition-duration: .05s; }
     if (!S || !s || S.ev.seq !== s.seq) return;
     fx = s.fx; dealt = s.dealt;
     const p = byId(S.ev.by), mine = S.ev.by === me, name = p ? p.name : "Someone";
-    if (s.fx === "miss") { setTimeout(() => { takeover(mine ? "Drink!" : `${name} drinks!`, "miss"); sfx.gulp(); if (mine) buzz(250); }, 150); }
+    if (s.walked) { if (s.fx === "won") sfx.ding(); }
+    else if (s.fx === "miss") { setTimeout(() => { takeover(mine ? "Drink!" : `${name} drinks!`, "miss"); sfx.gulp(); if (mine) buzz(250); }, 150); }
     else if (s.fx === "won") { setTimeout(() => { takeover(mine ? "You're off!" : `${name} is off!`, "won"); sfx.horn(); }, 150); }
     else sfx.ding();
     oweReadyAt = Date.now() + 1700; setTimeout(render, 1750);

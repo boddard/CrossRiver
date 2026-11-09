@@ -838,7 +838,7 @@ function tick(room, now = Date.now()) {
     return false;
   }
   if (room.screen !== "play" || !room.current) return false;
-  const hold = AUTO_PASS_MS + (room.settings.mode === "classic" && room.stage === 3 ? 7500 : 0);  // the last card gets a longer reveal
+  const hold = AUTO_PASS_MS + (room.settings.mode === "classic" && room.stage === 3 ? 9000 : 0);  // the last card gets a longer reveal
   if (room.phase !== "guess" && now - (room.phaseAt || now) >= hold) { passTurn(room); return true; }
   const rider = player(room, room.current);
   if (room.phase === "guess" && rider && rider.connected && now >= deadline(room)) { timeout(room); return true; }
